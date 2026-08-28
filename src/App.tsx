@@ -1,5 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
+import { BrowserRouter } from 'react-router-dom'
+import { LoginPage } from './components/LoginPage'
+import { PortalLayout } from './components/PortalLayout'
 import { supabase } from './lib/supabase'
 import './App.css'
 
@@ -118,60 +121,55 @@ function App() {
   }
 
   if (isLoadingSession) {
-    return <main>Loading...</main>
+    return <div className="app-status">Loading portal...</div>
   }
 
   if (!user) {
     return (
-      <main>
-        <section className="panel">
+      <LoginPage
+        email={email}
+        password={password}
+        error={error}
+        isSigningIn={isSigningIn}
+        onEmailChange={setEmail}
+        onPasswordChange={setPassword}
+        onSubmit={handleSignIn}
+      />
+    )
+  }
+
+  if (isLoadingDealer) {
+    return <div className="app-status">Loading dealer...</div>
+  }
+
+  if (!dealer) {
+    return (
+      <main className="access-state">
+        <section className="access-state__card">
+          <div className="brand-mark" aria-hidden="true">
+            HG
+          </div>
           <h1>Home Guard Dealer Portal</h1>
-          <form onSubmit={handleSignIn}>
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-            />
-
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              required
-            />
-
-            {error && <p className="error">{error}</p>}
-
-            <button type="submit" disabled={isSigningIn}>
-              {isSigningIn ? 'Signing In...' : 'Sign In'}
-            </button>
-          </form>
+          <p className="message message--error">{membershipMessage}</p>
+          <p className="account-email">Signed in as: {user.email}</p>
+          {error && <p className="message message--error">{error}</p>}
+          <button className="button button--primary" onClick={handleSignOut}>
+            Sign Out
+          </button>
         </section>
       </main>
     )
   }
 
   return (
-    <main>
-      <section className="panel">
-        <h1>Home Guard Dealer Portal</h1>
-        {isLoadingDealer && <p>Loading dealer...</p>}
-        {dealer && <h2>Welcome, {dealer.company_name}</h2>}
-        {membershipMessage && <p className="error">{membershipMessage}</p>}
-        <p>Signed in as: {user.email}</p>
-        {error && <p className="error">{error}</p>}
-        <button type="button" onClick={handleSignOut}>
-          Sign Out
-        </button>
-      </section>
-    </main>
+    <BrowserRouter>
+      <PortalLayout
+        dealerName={dealer.company_name}
+        email={user.email ?? ''}
+        signOutError={error}
+        onSignOut={handleSignOut}
+      />
+    </BrowserRouter>
   )
 }
 
