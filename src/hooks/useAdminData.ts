@@ -31,7 +31,7 @@ export function useAdminData(): AdminDataState {
       const [dealerResult, leadResult] = await Promise.all([
         supabase
           .from('dealers')
-          .select('id, company_name, slug, primary_contact_name, email, phone, website, address, city, state, zip, primary_color, secondary_color, is_active, created_at')
+          .select('id, company_name, slug, logo_url, logo_light_url, primary_contact_name, email, phone, website, address, city, state, zip, primary_color, secondary_color, is_active, created_at, requested_slug, slug_request_status, slug_requested_at')
           .order('company_name', { ascending: true }),
         supabase
           .from('leads')

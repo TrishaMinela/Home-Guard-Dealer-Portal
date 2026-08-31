@@ -5,6 +5,8 @@ export type AdminDealer = {
   primary_contact_name: string | null
   email: string | null
   phone: string | null
+  logo_url: string | null
+  logo_light_url: string | null
   website: string | null
   address: string | null
   city: string | null
@@ -14,6 +16,9 @@ export type AdminDealer = {
   secondary_color: string | null
   is_active: boolean
   created_at: string
+  requested_slug: string | null
+  slug_request_status: 'pending' | 'rejected' | null
+  slug_requested_at: string | null
 }
 
 export type AdminLead = {

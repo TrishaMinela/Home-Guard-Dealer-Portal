@@ -78,7 +78,7 @@ export function EditDealerPage({ dealers, isLoading, error, onSaved }: EditDeale
         secondary_color: optionalValue(values.secondaryColor),
       })
       .eq('id', dealer.id)
-      .select('id, company_name, slug, primary_contact_name, email, phone, website, address, city, state, zip, primary_color, secondary_color, is_active, created_at')
+      .select('id, company_name, slug, logo_url, logo_light_url, primary_contact_name, email, phone, website, address, city, state, zip, primary_color, secondary_color, is_active, created_at, requested_slug, slug_request_status, slug_requested_at')
       .single()
 
     if (updateError) {

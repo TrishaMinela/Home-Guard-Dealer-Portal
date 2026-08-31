@@ -15,7 +15,11 @@ function App() {
   const [error, setError] = useState('')
   const [isLoadingSession, setIsLoadingSession] = useState(true)
   const [isSigningIn, setIsSigningIn] = useState(false)
-  const { access, isLoading: isLoadingAccess } = useAccountAccess(user)
+  const {
+    access,
+    isLoading: isLoadingAccess,
+    updateDealer,
+  } = useAccountAccess(user)
 
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => {
@@ -117,10 +121,11 @@ function App() {
   return (
     <BrowserRouter>
       <PortalLayout
-        dealerName={access.dealer.company_name}
+        dealer={access.dealer}
         email={user.email ?? ''}
         signOutError={error}
         onSignOut={handleSignOut}
+        onDealerUpdated={updateDealer}
       />
     </BrowserRouter>
   )

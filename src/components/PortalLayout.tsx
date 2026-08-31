@@ -3,8 +3,11 @@ import { Navigate, NavLink, Route, Routes } from 'react-router-dom'
 import { useLeads } from '../hooks/useLeads'
 import { DashboardPage } from '../pages/DashboardPage'
 import { LeadsPage } from '../pages/LeadsPage'
+import { DealerCompanyProfilePage } from '../pages/DealerCompanyProfilePage'
 import { PlaceholderPage } from '../pages/PlaceholderPage'
+import type { DealerAccount } from '../types/account'
 import { NavIcon } from './NavIcon'
+import { NotificationLauncher, type PortalNotification } from './NotificationLauncher'
 
 const navigation = [
   { label: 'Dashboard', path: '/dashboard', icon: 'grid' },
@@ -15,20 +18,32 @@ const navigation = [
 ]
 
 type PortalLayoutProps = {
-  dealerName: string
+  dealer: DealerAccount
   email: string
   signOutError: string
   onSignOut: () => Promise<void>
+  onDealerUpdated: (dealer: DealerAccount) => void
 }
 
 export function PortalLayout({
-  dealerName,
+  dealer,
   email,
   signOutError,
   onSignOut,
+  onDealerUpdated,
 }: PortalLayoutProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const leadData = useLeads()
+  const notifications: PortalNotification[] = leadData.leads
+    .filter((lead) => lead.status.trim().toLowerCase() === 'new')
+    .map((lead) => ({
+      id: `lead-${lead.id}`,
+      type: 'lead',
+      title: 'New Lead',
+      message: `${lead.first_name} ${lead.last_name} submitted a request`,
+      actionLabel: 'View Lead',
+      path: '/leads',
+    }))
 
   return (
     <div className="portal-shell">
@@ -99,10 +114,10 @@ export function PortalLayout({
 
         <div className="sidebar-account">
           <div className="dealer-avatar" aria-hidden="true">
-            {dealerName.charAt(0).toUpperCase()}
+            {dealer.company_name.charAt(0).toUpperCase()}
           </div>
           <div className="sidebar-account__details">
-            <strong>{dealerName}</strong>
+            <strong>{dealer.company_name}</strong>
             <span title={email}>{email}</span>
           </div>
           {signOutError && (
@@ -122,7 +137,7 @@ export function PortalLayout({
         <Routes>
           <Route
             path="/dashboard"
-            element={<DashboardPage dealerName={dealerName} {...leadData} />}
+            element={<DashboardPage dealerName={dealer.company_name} {...leadData} />}
           />
           <Route path="/leads" element={<LeadsPage {...leadData} />} />
           <Route
@@ -131,12 +146,18 @@ export function PortalLayout({
           />
           <Route
             path="/company"
-            element={<PlaceholderPage title="Company Profile" />}
+            element={
+              <DealerCompanyProfilePage
+                dealer={dealer}
+                onDealerUpdated={onDealerUpdated}
+              />
+            }
           />
           <Route path="/settings" element={<PlaceholderPage title="Settings" />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>
+      <NotificationLauncher notifications={notifications} />
     </div>
   )
 }

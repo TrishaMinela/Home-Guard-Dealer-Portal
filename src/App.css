@@ -128,6 +128,7 @@ input:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,102
 .page-actions { display: flex; align-items: center; gap: 10px; }
 .page-header h1 { margin: 7px 0 8px; font-size: clamp(28px,3vw,40px); letter-spacing: -.035em; }
 .metric-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 18px; }
+.metric-grid--admin { grid-template-columns: repeat(5,minmax(0,1fr)); }
 .metric-card, .content-card {
   border: 1px solid var(--color-border); border-radius: var(--radius-card);
   background: var(--color-white); box-shadow: var(--shadow-card);
@@ -140,6 +141,69 @@ input:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,102
 .content-card { margin-top: 22px; }
 .content-card__header { padding: 24px 26px 20px; border-bottom: 1px solid var(--color-border); }
 .content-card h2 { margin-top: 5px; font-size: 18px; }
+.admin-notifications { overflow: hidden; }
+.notification-list { display: grid; }
+.notification-item {
+  display: grid; grid-template-columns: 46px minmax(0,1fr) auto; align-items: center;
+  gap: 16px; padding: 18px 26px; border-bottom: 1px solid var(--color-border);
+}
+.notification-item:last-child { border-bottom: 0; }
+.notification-icon {
+  width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%;
+  color: var(--color-teal-dark); background: rgba(13,102,108,.1); font-size: 9px;
+  font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+}
+.notification-icon--request { color: #745f00; background: rgba(248,211,14,.18); }
+.notification-copy { min-width: 0; }
+.notification-copy p { color: var(--color-muted); font-size: 11px; font-weight: 700; }
+.notification-copy strong {
+  display: block; margin-top: 5px; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere;
+}
+.notification-launcher {
+  position: fixed; right: 24px; bottom: 24px; z-index: 100;
+}
+.notification-bell {
+  position: relative; width: 56px; height: 56px; display: grid; place-items: center;
+  padding: 0; border: 1px solid rgba(255,255,255,.28); border-radius: 50%;
+  color: var(--color-white); background: var(--color-teal); cursor: pointer;
+  box-shadow: 0 10px 28px rgba(5,32,34,.28); transition: transform 160ms ease, background 160ms ease;
+}
+.notification-bell:hover { transform: translateY(-2px); background: var(--color-teal-dark); }
+.notification-bell:focus-visible { outline: 3px solid rgba(248,211,14,.75); outline-offset: 3px; }
+.notification-bell svg {
+  width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.notification-badge {
+  position: absolute; top: -6px; right: -6px; min-width: 22px; height: 22px;
+  display: grid; place-items: center; padding: 0 5px; border: 2px solid var(--color-white);
+  border-radius: 999px; color: var(--color-white); background: #c92f2f;
+  font-size: 9px; font-weight: 800; line-height: 1;
+}
+.notification-drawer {
+  position: absolute; right: 0; bottom: 70px; width: min(390px,calc(100vw - 32px));
+  max-height: min(560px,calc(100vh - 120px)); overflow: hidden; border: 1px solid var(--color-border);
+  border-radius: var(--radius-card); background: var(--color-white); box-shadow: 0 18px 48px rgba(5,32,34,.24);
+}
+.notification-drawer__header {
+  display: flex; align-items: center; justify-content: space-between; gap: 18px;
+  padding: 20px 22px; border-bottom: 1px solid var(--color-border);
+}
+.notification-drawer__header h2 { margin-top: 4px; font-size: 18px; }
+.notification-drawer__close {
+  width: 34px; height: 34px; border: 1px solid var(--color-border); border-radius: 50%;
+  color: var(--color-ink); background: var(--color-white); font: inherit; font-size: 22px; cursor: pointer;
+}
+.notification-drawer__list { max-height: min(470px,calc(100vh - 210px)); overflow-y: auto; }
+.notification-drawer__item {
+  display: grid; grid-template-columns: 42px minmax(0,1fr); gap: 13px;
+  padding: 17px 20px; border-bottom: 1px solid var(--color-border);
+}
+.notification-drawer__item:last-child { border-bottom: 0; }
+.notification-drawer__item .notification-copy a {
+  display: inline-block; margin-top: 10px; color: var(--color-teal); font-size: 11px; font-weight: 700;
+}
+.notification-drawer__empty { padding: 34px 22px; color: var(--color-muted); font-size: 13px; text-align: center; }
 .empty-state {
   min-height: 230px; display: grid; place-content: center; justify-items: center;
   gap: 13px; color: var(--color-muted); font-size: 13px;
@@ -191,6 +255,7 @@ input:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,102
 .status-badge--sold { color: #285d2c; background: rgba(40,93,44,.1); }
 .status-badge--active { color: #285d2c; background: rgba(40,93,44,.1); }
 .status-badge--inactive { color: var(--color-muted); background: rgba(104,114,118,.12); }
+.status-badge--pending-url { color: #745f00; background: rgba(248,211,14,.18); }
 .status-badge--lost { color: var(--color-error); background: rgba(165,42,42,.09); }
 .status-badge--quoted, .status-badge--appointment-scheduled {
   color: #745f00; background: rgba(248,211,14,.18);
@@ -228,6 +293,7 @@ select:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,10
 .dealer-row:hover, .dealer-row:focus-visible { background: rgba(13,102,108,.045); outline: none; }
 .dealer-row--disabled { background: rgba(104,114,118,.045); }
 .dealer-row--disabled td:not(:last-child) { opacity: .68; }
+.dealer-company-cell { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .dealer-form { overflow: hidden; }
 .dealer-form__section { padding: 28px; }
 .dealer-form__section-heading { margin-bottom: 24px; }
@@ -267,8 +333,47 @@ select:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,10
 }
 .dealer-detail__item dd { margin: 7px 0 0; color: var(--color-ink); font-size: 13px; overflow-wrap: anywhere; }
 .dealer-not-found { display: grid; justify-items: start; gap: 20px; padding: 28px; }
+.profile-logo-card {
+  display: grid; grid-template-columns: 86px minmax(0,1fr) auto; align-items: center;
+  gap: 20px; margin-bottom: 22px; padding: 22px 26px;
+}
+.profile-logo-grid { display: grid; gap: 16px; margin-bottom: 22px; }
+.profile-logo-grid .profile-logo-card { margin-bottom: 0; }
+.profile-logo-card h2 { margin-top: 5px; }
+.profile-logo-card p:last-child { margin-top: 6px; color: var(--color-muted); font-size: 11px; }
+.profile-logo-preview {
+  width: 82px; height: 72px; display: grid; place-items: center; overflow: hidden;
+  border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-canvas);
+}
+.profile-logo-preview img { width: 100%; height: 100%; object-fit: contain; padding: 7px; }
+.profile-logo-preview span { color: var(--color-teal); font-size: 24px; font-weight: 800; }
+.profile-logo-preview--dark { border-color: rgba(255,255,255,.14); background: #132d30; }
+.profile-logo-preview--dark span { color: var(--color-white); }
+.profile-logo-card .logo-helper-note { color: var(--color-ink); font-weight: 600; }
+.upload-button { position: relative; overflow: hidden; }
+.upload-button input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.upload-button.is-disabled { cursor: wait; opacity: .6; }
+.visualizer-request-card, .slug-review-card { margin-top: 22px; padding: 26px; }
+.visualizer-request-card > .dealer-form__section-heading { margin-bottom: 20px; }
+.slug-request-form { display: grid; gap: 16px; }
+.slug-request-state {
+  display: grid; gap: 5px; padding: 15px 17px; border-radius: var(--radius-control); font-size: 12px;
+}
+.slug-request-state--pending { color: #745f00; background: rgba(248,211,14,.14); }
+.slug-request-state--rejected { color: var(--color-error); background: rgba(165,42,42,.07); }
+.slug-request-state p { color: inherit; line-height: 1.5; }
+.visualizer-warning {
+  padding-left: 12px; border-left: 3px solid var(--color-gold); color: var(--color-muted);
+  font-size: 11px; line-height: 1.55;
+}
+.slug-review-card { padding: 0; overflow: hidden; }
+.slug-review-card__body { display: grid; gap: 20px; padding: 22px 26px; }
+.slug-review-details { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); margin: 0; }
+.slug-review-details .dealer-detail__item { padding: 10px 20px; border: 0; border-left: 1px solid var(--color-border); }
+.slug-review-details .dealer-detail__item:first-child { padding-left: 0; border-left: 0; }
+.data-state--compact { min-height: 110px; }
 
-@media (max-width: 1050px) { .metric-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 1050px) { .metric-grid, .metric-grid--admin { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width: 760px) {
   .mobile-header {
     position: sticky; top: 0; z-index: 20; min-height: 66px; display: flex; align-items: center;
@@ -298,6 +403,12 @@ select:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,10
   .page-actions .button { width: 100%; }
   .metric-grid { grid-template-columns: 1fr; gap: 12px; }
   .metric-card { min-height: 126px; }
+  .notification-item { grid-template-columns: 42px minmax(0,1fr); padding: 16px 18px; }
+  .notification-item .button { grid-column: 1 / -1; width: 100%; }
+  .notification-launcher { right: max(18px,env(safe-area-inset-right)); bottom: max(18px,env(safe-area-inset-bottom)); }
+  .notification-bell { width: 54px; height: 54px; }
+  .notification-drawer { right: 0; bottom: 68px; max-height: calc(100vh - 110px); }
+  .notification-drawer__list { max-height: calc(100vh - 205px); }
   .content-card { margin-top: 16px; }
   .recent-lead {
     grid-template-columns: 40px minmax(0,1fr) auto; gap: 12px; padding: 16px 18px;
@@ -316,6 +427,13 @@ select:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,10
   .dealer-detail__item:nth-child(odd), .dealer-detail__item:nth-child(even) {
     padding: 16px 0; border-left: 0;
   }
+  .profile-logo-card { grid-template-columns: 70px minmax(0,1fr); padding: 18px; }
+  .profile-logo-preview { width: 68px; height: 62px; }
+  .profile-logo-card .upload-button { grid-column: 1 / -1; width: 100%; }
+  .visualizer-request-card { padding: 20px 18px; }
+  .slug-review-details { grid-template-columns: 1fr; }
+  .slug-review-details .dealer-detail__item,
+  .slug-review-details .dealer-detail__item:first-child { padding: 12px 0; border-left: 0; border-bottom: 1px solid var(--color-border); }
   .table-scroll { overflow: visible; }
   .leads-table, .leads-table tbody, .leads-table tr, .leads-table td { display: block; width: 100%; }
   .leads-table thead { display: none; }

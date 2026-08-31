@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import type { AccountAccess } from '../types/account'
@@ -74,7 +74,7 @@ export function useAccountAccess(user: User | null) {
 
       const { data: dealerRecord, error: dealerError } = await supabase
         .from('dealers')
-        .select('company_name')
+        .select('id, company_name, slug, logo_url, logo_light_url, primary_contact_name, email, phone, website, address, city, state, zip, primary_color, secondary_color, is_active, created_at, requested_slug, slug_request_status, slug_requested_at')
         .eq('id', membership.dealer_id)
         .single()
 
@@ -106,8 +106,16 @@ export function useAccountAccess(user: User | null) {
     }
   }, [user])
 
+  const updateDealer = useCallback((dealer: AccountAccess['dealer']) => {
+    if (!dealer) return
+    setAccess((current) =>
+      current?.type === 'dealer' ? { ...current, dealer } : current,
+    )
+  }, [])
+
   return {
     access,
     isLoading: Boolean(user && access?.userId !== user.id),
+    updateDealer,
   }
 }

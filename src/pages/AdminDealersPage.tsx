@@ -94,7 +94,16 @@ export function AdminDealersPage({
                       }
                     }}
                   >
-                    <td data-label="Company Name"><strong>{dealer.company_name}</strong></td>
+                    <td data-label="Company Name">
+                      <div className="dealer-company-cell">
+                        <strong>{dealer.company_name}</strong>
+                        {dealer.slug_request_status === 'pending' && (
+                          <span className="status-badge status-badge--pending-url">
+                            URL Request Pending
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td data-label="Slug">{dealer.slug}</td>
                     <td data-label="Primary Contact">{dealer.primary_contact_name || '—'}</td>
                     <td data-label="Email">{dealer.email || '—'}</td>

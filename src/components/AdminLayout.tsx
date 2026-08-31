@@ -10,6 +10,7 @@ import { EditDealerPage } from '../pages/EditDealerPage'
 import { PlaceholderPage } from '../pages/PlaceholderPage'
 import type { AdminDealer } from '../types/admin'
 import { NavIcon } from './NavIcon'
+import { NotificationLauncher, type PortalNotification } from './NotificationLauncher'
 
 const navigation = [
   { label: 'Dashboard', path: '/admin', icon: 'grid', end: true },
@@ -29,6 +30,28 @@ export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps
   const [dealerSuccess, setDealerSuccess] = useState('')
   const [dealerDetailSuccess, setDealerDetailSuccess] = useState('')
   const adminData = useAdminData()
+  const notifications: PortalNotification[] = [
+    ...adminData.dealers
+      .filter((dealer) => dealer.slug_request_status === 'pending' && dealer.requested_slug)
+      .map((dealer) => ({
+        id: `slug-${dealer.id}`,
+        type: 'request' as const,
+        title: 'Visualizer URL request',
+        message: `${dealer.company_name} requested /${dealer.requested_slug}`,
+        actionLabel: 'View Request',
+        path: `/admin/dealers/${dealer.id}`,
+      })),
+    ...adminData.leads
+      .filter((lead) => lead.status.trim().toLowerCase() === 'new')
+      .map((lead) => ({
+        id: `lead-${lead.id}`,
+        type: 'lead' as const,
+        title: 'New Lead',
+        message: `${lead.first_name} ${lead.last_name} submitted a request`,
+        actionLabel: 'View Lead',
+        path: '/admin/leads',
+      })),
+  ]
 
   function handleDealerCreated(companyName: string) {
     adminData.refresh()
@@ -40,11 +63,9 @@ export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps
     setDealerDetailSuccess(`${dealer.company_name} was updated successfully.`)
   }
 
-  function handleDealerStatusUpdated(dealer: AdminDealer) {
+  function handleDealerDetailUpdated(dealer: AdminDealer, message: string) {
     adminData.replaceDealer(dealer)
-    setDealerDetailSuccess(
-      `${dealer.company_name} was ${dealer.is_active ? 'enabled' : 'disabled'} successfully.`,
-    )
+    setDealerDetailSuccess(message)
   }
 
   return (
@@ -149,7 +170,7 @@ export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps
                 isLoading={adminData.isLoading}
                 error={adminData.error}
                 successMessage={dealerDetailSuccess}
-                onDealerUpdated={handleDealerStatusUpdated}
+                onDealerUpdated={handleDealerDetailUpdated}
                 onClearSuccess={() => setDealerDetailSuccess('')}
               />
             }
@@ -173,6 +194,7 @@ export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </main>
+      <NotificationLauncher notifications={notifications} />
     </div>
   )
 }

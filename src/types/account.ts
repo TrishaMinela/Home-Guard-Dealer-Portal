@@ -1,6 +1,6 @@
-export type DealerAccount = {
-  company_name: string
-}
+import type { AdminDealer } from './admin'
+
+export type DealerAccount = AdminDealer
 
 export type AccountAccess =
   | { userId: string; type: 'admin'; dealer: null; message: '' }
