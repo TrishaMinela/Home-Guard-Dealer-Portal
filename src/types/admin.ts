@@ -25,4 +25,5 @@ export type AdminDataState = {
   leads: AdminLead[]
   isLoading: boolean
   error: string
+  refresh: () => void
 }

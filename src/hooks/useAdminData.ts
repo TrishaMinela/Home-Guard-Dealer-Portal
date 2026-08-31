@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { AdminDataState, AdminDealer, AdminLead } from '../types/admin'
 
@@ -7,6 +7,12 @@ export function useAdminData(): AdminDataState {
   const [leads, setLeads] = useState<AdminLead[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
+  const [refreshVersion, setRefreshVersion] = useState(0)
+
+  const refresh = useCallback(() => {
+    setIsLoading(true)
+    setRefreshVersion((version) => version + 1)
+  }, [])
 
   useEffect(() => {
     let isCurrent = true
@@ -47,7 +53,7 @@ export function useAdminData(): AdminDataState {
     return () => {
       isCurrent = false
     }
-  }, [])
+  }, [refreshVersion])
 
-  return { dealers, leads, isLoading, error }
+  return { dealers, leads, isLoading, error, refresh }
 }

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom'
 import { useAdminData } from '../hooks/useAdminData'
 import { AdminDashboardPage } from '../pages/AdminDashboardPage'
+import { AddDealerPage } from '../pages/AddDealerPage'
 import { AdminDealersPage } from '../pages/AdminDealersPage'
 import { AdminLeadsPage } from '../pages/AdminLeadsPage'
 import { PlaceholderPage } from '../pages/PlaceholderPage'
@@ -22,7 +23,13 @@ type AdminLayoutProps = {
 
 export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [dealerSuccess, setDealerSuccess] = useState('')
   const adminData = useAdminData()
+
+  function handleDealerCreated(companyName: string) {
+    adminData.refresh()
+    setDealerSuccess(`${companyName} was added successfully.`)
+  }
 
   return (
     <div className="portal-shell portal-shell--admin">
@@ -104,7 +111,20 @@ export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps
       <main className="portal-main">
         <Routes>
           <Route path="/admin" element={<AdminDashboardPage {...adminData} />} />
-          <Route path="/admin/dealers" element={<AdminDealersPage {...adminData} />} />
+          <Route
+            path="/admin/dealers"
+            element={
+              <AdminDealersPage
+                {...adminData}
+                successMessage={dealerSuccess}
+                onClearSuccess={() => setDealerSuccess('')}
+              />
+            }
+          />
+          <Route
+            path="/admin/dealers/new"
+            element={<AddDealerPage onCreated={handleDealerCreated} />}
+          />
           <Route path="/admin/leads" element={<AdminLeadsPage {...adminData} />} />
           <Route
             path="/admin/settings"

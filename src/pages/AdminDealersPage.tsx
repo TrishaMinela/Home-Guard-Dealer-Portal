@@ -1,13 +1,40 @@
+import { Link } from 'react-router-dom'
 import type { AdminDataState } from '../types/admin'
 
-export function AdminDealersPage({ dealers, isLoading, error }: AdminDataState) {
+type AdminDealersPageProps = AdminDataState & {
+  successMessage: string
+  onClearSuccess: () => void
+}
+
+export function AdminDealersPage({
+  dealers,
+  isLoading,
+  error,
+  successMessage,
+  onClearSuccess,
+}: AdminDealersPageProps) {
   return (
     <div className="page-content">
-      <header className="page-header admin-page-header">
-        <p className="eyebrow">Home Guard</p>
-        <h1>Dealers</h1>
-        <p>View every dealership with access to the dealer portal.</p>
+      <header className="page-header admin-page-header page-header--with-action">
+        <div>
+          <p className="eyebrow">Home Guard</p>
+          <h1>Dealers</h1>
+          <p>View every dealership with access to the dealer portal.</p>
+        </div>
+        <Link
+          className="button button--primary"
+          to="/admin/dealers/new"
+          onClick={onClearSuccess}
+        >
+          Add Dealer
+        </Link>
       </header>
+
+      {successMessage && (
+        <div className="portal-alert portal-alert--success" role="status">
+          {successMessage}
+        </div>
+      )}
 
       <section className="content-card leads-card">
         {isLoading && <div className="data-state">Loading dealers...</div>}
