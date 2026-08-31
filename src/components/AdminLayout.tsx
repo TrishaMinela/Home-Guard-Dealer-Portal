@@ -5,7 +5,10 @@ import { AdminDashboardPage } from '../pages/AdminDashboardPage'
 import { AddDealerPage } from '../pages/AddDealerPage'
 import { AdminDealersPage } from '../pages/AdminDealersPage'
 import { AdminLeadsPage } from '../pages/AdminLeadsPage'
+import { DealerDetailPage } from '../pages/DealerDetailPage'
+import { EditDealerPage } from '../pages/EditDealerPage'
 import { PlaceholderPage } from '../pages/PlaceholderPage'
+import type { AdminDealer } from '../types/admin'
 import { NavIcon } from './NavIcon'
 
 const navigation = [
@@ -24,11 +27,24 @@ type AdminLayoutProps = {
 export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [dealerSuccess, setDealerSuccess] = useState('')
+  const [dealerDetailSuccess, setDealerDetailSuccess] = useState('')
   const adminData = useAdminData()
 
   function handleDealerCreated(companyName: string) {
     adminData.refresh()
     setDealerSuccess(`${companyName} was added successfully.`)
+  }
+
+  function handleDealerSaved(dealer: AdminDealer) {
+    adminData.replaceDealer(dealer)
+    setDealerDetailSuccess(`${dealer.company_name} was updated successfully.`)
+  }
+
+  function handleDealerStatusUpdated(dealer: AdminDealer) {
+    adminData.replaceDealer(dealer)
+    setDealerDetailSuccess(
+      `${dealer.company_name} was ${dealer.is_active ? 'enabled' : 'disabled'} successfully.`,
+    )
   }
 
   return (
@@ -124,6 +140,30 @@ export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps
           <Route
             path="/admin/dealers/new"
             element={<AddDealerPage onCreated={handleDealerCreated} />}
+          />
+          <Route
+            path="/admin/dealers/:dealerId"
+            element={
+              <DealerDetailPage
+                dealers={adminData.dealers}
+                isLoading={adminData.isLoading}
+                error={adminData.error}
+                successMessage={dealerDetailSuccess}
+                onDealerUpdated={handleDealerStatusUpdated}
+                onClearSuccess={() => setDealerDetailSuccess('')}
+              />
+            }
+          />
+          <Route
+            path="/admin/dealers/:dealerId/edit"
+            element={
+              <EditDealerPage
+                dealers={adminData.dealers}
+                isLoading={adminData.isLoading}
+                error={adminData.error}
+                onSaved={handleDealerSaved}
+              />
+            }
           />
           <Route path="/admin/leads" element={<AdminLeadsPage {...adminData} />} />
           <Route

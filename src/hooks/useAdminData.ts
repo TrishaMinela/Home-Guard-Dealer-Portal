@@ -14,6 +14,16 @@ export function useAdminData(): AdminDataState {
     setRefreshVersion((version) => version + 1)
   }, [])
 
+  const replaceDealer = useCallback((updatedDealer: AdminDealer) => {
+    setDealers((current) =>
+      current
+        .map((dealer) =>
+          dealer.id === updatedDealer.id ? updatedDealer : dealer,
+        )
+        .sort((a, b) => a.company_name.localeCompare(b.company_name)),
+    )
+  }, [])
+
   useEffect(() => {
     let isCurrent = true
 
@@ -21,7 +31,7 @@ export function useAdminData(): AdminDataState {
       const [dealerResult, leadResult] = await Promise.all([
         supabase
           .from('dealers')
-          .select('id, company_name, slug, primary_contact_name, email, phone, is_active')
+          .select('id, company_name, slug, primary_contact_name, email, phone, website, address, city, state, zip, primary_color, secondary_color, is_active, created_at')
           .order('company_name', { ascending: true }),
         supabase
           .from('leads')
@@ -55,5 +65,5 @@ export function useAdminData(): AdminDataState {
     }
   }, [refreshVersion])
 
-  return { dealers, leads, isLoading, error, refresh }
+  return { dealers, leads, isLoading, error, refresh, replaceDealer }
 }
