@@ -1,25 +1,21 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { BrowserRouter } from 'react-router-dom'
+import { AdminLayout } from './components/AdminLayout'
 import { LoginPage } from './components/LoginPage'
 import { PortalLayout } from './components/PortalLayout'
+import { useAccountAccess } from './hooks/useAccountAccess'
 import { supabase } from './lib/supabase'
 import './App.css'
 
-type Dealer = {
-  company_name: string
-}
-
 function App() {
   const [user, setUser] = useState<User | null>(null)
-  const [dealer, setDealer] = useState<Dealer | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const [membershipMessage, setMembershipMessage] = useState('')
   const [isLoadingSession, setIsLoadingSession] = useState(true)
-  const [isLoadingDealer, setIsLoadingDealer] = useState(false)
   const [isSigningIn, setIsSigningIn] = useState(false)
+  const { access, isLoading: isLoadingAccess } = useAccountAccess(user)
 
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => {
@@ -36,63 +32,6 @@ function App() {
 
     return () => subscription.unsubscribe()
   }, [])
-
-  useEffect(() => {
-    let isCurrent = true
-
-    async function loadDealer(authenticatedUser: User) {
-      setDealer(null)
-      setMembershipMessage('')
-      setIsLoadingDealer(true)
-
-      const { data: membership, error: membershipError } = await supabase
-        .from('dealer_users')
-        .select('dealer_id')
-        .eq('user_id', authenticatedUser.id)
-        .limit(1)
-        .maybeSingle()
-
-      if (!isCurrent) return
-
-      if (membershipError) {
-        setMembershipMessage('Unable to load your dealer membership.')
-        setIsLoadingDealer(false)
-        return
-      }
-
-      if (!membership) {
-        setMembershipMessage(
-          'Your account is signed in, but it is not associated with a dealer.',
-        )
-        setIsLoadingDealer(false)
-        return
-      }
-
-      const { data: dealerRecord, error: dealerError } = await supabase
-        .from('dealers')
-        .select('company_name')
-        .eq('id', membership.dealer_id)
-        .single()
-
-      if (!isCurrent) return
-
-      if (dealerError) {
-        setMembershipMessage('Unable to load your dealer information.')
-      } else {
-        setDealer(dealerRecord)
-      }
-
-      setIsLoadingDealer(false)
-    }
-
-    if (user) {
-      void loadDealer(user)
-    }
-
-    return () => {
-      isCurrent = false
-    }
-  }, [user])
 
   async function handleSignIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -138,11 +77,11 @@ function App() {
     )
   }
 
-  if (isLoadingDealer) {
-    return <div className="app-status">Loading dealer...</div>
+  if (isLoadingAccess) {
+    return <div className="app-status">Loading account...</div>
   }
 
-  if (!dealer) {
+  if (!access || access.type === 'none') {
     return (
       <main className="access-state">
         <section className="access-state__card">
@@ -150,7 +89,9 @@ function App() {
             HG
           </div>
           <h1>Home Guard Dealer Portal</h1>
-          <p className="message message--error">{membershipMessage}</p>
+          <p className="message message--error">
+            {access?.message ?? 'Unable to verify your account access.'}
+          </p>
           <p className="account-email">Signed in as: {user.email}</p>
           {error && <p className="message message--error">{error}</p>}
           <button className="button button--primary" onClick={handleSignOut}>
@@ -161,10 +102,22 @@ function App() {
     )
   }
 
+  if (access.type === 'admin') {
+    return (
+      <BrowserRouter>
+        <AdminLayout
+          email={user.email ?? ''}
+          signOutError={error}
+          onSignOut={handleSignOut}
+        />
+      </BrowserRouter>
+    )
+  }
+
   return (
     <BrowserRouter>
       <PortalLayout
-        dealerName={dealer.company_name}
+        dealerName={access.dealer.company_name}
         email={user.email ?? ''}
         signOutError={error}
         onSignOut={handleSignOut}

@@ -65,10 +65,16 @@ input:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,102
 .button--full { width: 100%; }
 
 .portal-shell { min-height: 100vh; background: var(--color-canvas); }
+.portal-shell--admin { background: #f0f3f2; }
 .sidebar {
   position: fixed; inset: 0 auto 0 0; z-index: 30; width: 276px; display: flex;
   flex-direction: column; padding: 28px 20px 20px; color: var(--color-white); background: var(--color-black);
 }
+.sidebar--admin { background: linear-gradient(180deg, #0a3438 0%, var(--color-black) 72%); }
+.sidebar--admin .sidebar-nav__link.is-active {
+  color: var(--color-black); background: var(--color-gold); box-shadow: inset 3px 0 0 var(--color-white);
+}
+.brand-mark--admin { box-shadow: 0 0 0 1px rgba(255,255,255,.18); }
 .sidebar__brand {
   display: flex; align-items: center; justify-content: space-between; padding: 0 8px 28px;
   border-bottom: 1px solid rgba(247,250,255,.1);
@@ -121,6 +127,7 @@ input:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,102
 }
 .metric-card { position: relative; min-height: 154px; padding: 24px; overflow: hidden; }
 .metric-card::before { content: ''; position: absolute; inset: 0 0 auto; height: 3px; background: var(--color-teal); }
+.metric-card--admin::before { background: var(--color-gold); }
 .metric-card p { color: var(--color-muted); font-size: 12px; font-weight: 600; }
 .metric-card strong { display: block; margin-top: 22px; color: var(--color-black); font-size: 38px; line-height: 1; }
 .content-card { margin-top: 22px; }
@@ -174,6 +181,8 @@ input:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,102
   font-size: 10px; font-weight: 700; white-space: nowrap;
 }
 .status-badge--sold { color: #285d2c; background: rgba(40,93,44,.1); }
+.status-badge--active { color: #285d2c; background: rgba(40,93,44,.1); }
+.status-badge--inactive { color: var(--color-muted); background: rgba(104,114,118,.12); }
 .status-badge--lost { color: var(--color-error); background: rgba(165,42,42,.09); }
 .status-badge--quoted, .status-badge--appointment-scheduled {
   color: #745f00; background: rgba(248,211,14,.18);
@@ -183,6 +192,7 @@ input:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,102
   display: grid; grid-template-columns: minmax(220px,1fr) 230px; gap: 18px;
   padding: 22px 26px; border-bottom: 1px solid var(--color-border);
 }
+.lead-filters--admin { grid-template-columns: minmax(240px,1fr) 220px 200px; }
 .filter-field { display: grid; gap: 7px; }
 .filter-field label { color: var(--color-muted); font-size: 11px; font-weight: 700; }
 .filter-field input, .filter-field select { min-height: 43px; }
