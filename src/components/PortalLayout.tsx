@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom'
+import { useLeads } from '../hooks/useLeads'
 import { DashboardPage } from '../pages/DashboardPage'
+import { LeadsPage } from '../pages/LeadsPage'
 import { PlaceholderPage } from '../pages/PlaceholderPage'
 
 const navigation = [
@@ -73,6 +75,7 @@ export function PortalLayout({
   onSignOut,
 }: PortalLayoutProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const leadData = useLeads()
 
   return (
     <div className="portal-shell">
@@ -164,8 +167,11 @@ export function PortalLayout({
 
       <main className="portal-main">
         <Routes>
-          <Route path="/dashboard" element={<DashboardPage dealerName={dealerName} />} />
-          <Route path="/leads" element={<PlaceholderPage title="Leads" />} />
+          <Route
+            path="/dashboard"
+            element={<DashboardPage dealerName={dealerName} {...leadData} />}
+          />
+          <Route path="/leads" element={<LeadsPage {...leadData} />} />
           <Route
             path="/marketing"
             element={<PlaceholderPage title="Marketing Tools" />}
