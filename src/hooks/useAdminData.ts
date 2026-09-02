@@ -35,7 +35,7 @@ export function useAdminData(): AdminDataState {
           .order('company_name', { ascending: true }),
         supabase
           .from('leads')
-          .select('id, dealer_id, first_name, last_name, email, phone, zip, status, created_at')
+          .select('id, dealer_id, first_name, last_name, email, phone, address, city, state, zip, status, source, visualizer_url, created_at')
           .order('created_at', { ascending: false }),
       ])
 

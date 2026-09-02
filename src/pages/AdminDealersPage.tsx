@@ -1,6 +1,28 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import type { AdminDataState } from '../types/admin'
+import type { AdminDataState, AdminDealer } from '../types/admin'
+import { dateStamp, exportCsv, type CsvColumn } from '../utils/csvExport'
+
+const dealerExportColumns: CsvColumn<AdminDealer>[] = [
+  { header: 'Company Name', value: (dealer) => dealer.company_name },
+  { header: 'Slug', value: (dealer) => dealer.slug },
+  { header: 'Primary Contact', value: (dealer) => dealer.primary_contact_name },
+  { header: 'Email', value: (dealer) => dealer.email },
+  { header: 'Phone', value: (dealer) => dealer.phone },
+  { header: 'Website', value: (dealer) => dealer.website },
+  { header: 'Address', value: (dealer) => dealer.address },
+  { header: 'City', value: (dealer) => dealer.city },
+  { header: 'State', value: (dealer) => dealer.state },
+  { header: 'ZIP', value: (dealer) => dealer.zip },
+  { header: 'Primary Brand Color', value: (dealer) => dealer.primary_color },
+  { header: 'Secondary Brand Color', value: (dealer) => dealer.secondary_color },
+  { header: 'Primary Logo URL', value: (dealer) => dealer.logo_url },
+  { header: 'Light Logo URL', value: (dealer) => dealer.logo_light_url },
+  { header: 'Status', value: (dealer) => dealer.is_active ? 'Active' : 'Disabled' },
+  { header: 'Requested Slug', value: (dealer) => dealer.requested_slug },
+  { header: 'Slug Request Status', value: (dealer) => dealer.slug_request_status },
+  { header: 'Created Date', value: (dealer) => dealer.created_at.slice(0, 10) },
+]
 
 type AdminDealersPageProps = AdminDataState & {
   successMessage: string
@@ -47,6 +69,14 @@ export function AdminDealersPage({
 
       <section className="content-card leads-card">
         <div className="dealer-list-toolbar">
+          <button
+            className="button button--outline"
+            type="button"
+            disabled={isLoading || Boolean(error) || filteredDealers.length === 0}
+            onClick={() => exportCsv(`home-guard-dealers-${dateStamp()}.csv`, filteredDealers, dealerExportColumns)}
+          >
+            Export Dealers
+          </button>
           <div className="filter-field">
             <label htmlFor="dealer-status-filter">Status</label>
             <select

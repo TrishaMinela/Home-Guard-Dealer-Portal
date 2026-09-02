@@ -13,7 +13,7 @@ export function useLeads(): LeadDataState {
     async function loadLeads() {
       const { data, error: queryError } = await supabase
         .from('leads')
-        .select('id, first_name, last_name, email, phone, zip, status, created_at')
+        .select('id, first_name, last_name, email, phone, address, city, state, zip, status, source, visualizer_url, created_at')
         .order('created_at', { ascending: false })
 
       if (!isCurrent) return

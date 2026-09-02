@@ -262,10 +262,12 @@ input:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,102
 }
 .leads-card { overflow: hidden; }
 .lead-filters {
-  display: grid; grid-template-columns: minmax(220px,1fr) 230px; gap: 18px;
+  display: grid; grid-template-columns: minmax(220px,1fr) 230px auto; gap: 18px;
   padding: 22px 26px; border-bottom: 1px solid var(--color-border);
 }
-.lead-filters--admin { grid-template-columns: minmax(240px,1fr) 220px 200px; }
+.lead-filters--admin { grid-template-columns: minmax(240px,1fr) 220px 200px auto; }
+.lead-filters__action { display: flex; align-items: end; }
+.lead-filters__action .button { white-space: nowrap; }
 .filter-field { display: grid; gap: 7px; }
 .filter-field label { color: var(--color-muted); font-size: 11px; font-weight: 700; }
 .filter-field input, .filter-field select { min-height: 43px; }
@@ -286,7 +288,8 @@ select:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,10
 .leads-table td strong { color: var(--color-ink); }
 .leads-table tbody tr:last-child td { border-bottom: 0; }
 .dealer-list-toolbar {
-  display: flex; justify-content: flex-end; padding: 18px 20px; border-bottom: 1px solid var(--color-border);
+  display: flex; align-items: end; justify-content: space-between; gap: 16px;
+  padding: 18px 20px; border-bottom: 1px solid var(--color-border);
 }
 .dealer-list-toolbar .filter-field { width: min(100%,220px); }
 .dealer-row { cursor: pointer; transition: background 150ms ease; }
@@ -438,6 +441,8 @@ select:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,10
   .recent-lead .status-badge { grid-column: 2; }
   .recent-lead time { grid-column: 3; grid-row: 2; }
   .lead-filters { grid-template-columns: 1fr; gap: 13px; padding: 18px; }
+  .dealer-list-toolbar { align-items: stretch; flex-direction: column-reverse; }
+  .dealer-list-toolbar .filter-field, .dealer-list-toolbar .button { width: 100%; }
   .dealer-form__section { padding: 22px 18px; }
   .form-grid, .form-grid--location { grid-template-columns: 1fr; gap: 14px; }
   .form-field--wide { grid-column: auto; }

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import type { LeadDataState } from '../types/lead'
+import type { Lead, LeadDataState } from '../types/lead'
+import { dateStamp, exportCsv, type CsvColumn } from '../utils/csvExport'
 
 const statusOptions = [
   'All',
@@ -27,7 +28,24 @@ function formatDate(date: string) {
   }).format(new Date(date))
 }
 
-export function LeadsPage({ leads, isLoading, error }: LeadDataState) {
+const dealerExportColumns: CsvColumn<Lead>[] = [
+  { header: 'First Name', value: (lead) => lead.first_name },
+  { header: 'Last Name', value: (lead) => lead.last_name },
+  { header: 'Email', value: (lead) => lead.email },
+  { header: 'Phone', value: (lead) => lead.phone },
+  { header: 'Address', value: (lead) => lead.address },
+  { header: 'City', value: (lead) => lead.city },
+  { header: 'State', value: (lead) => lead.state },
+  { header: 'ZIP', value: (lead) => lead.zip },
+  { header: 'Lead Date', value: (lead) => lead.created_at.slice(0, 10) },
+  { header: 'Lead Status', value: (lead) => formatStatus(lead.status) },
+  { header: 'Lead Source', value: (lead) => lead.source },
+  { header: 'Visualizer URL', value: (lead) => lead.visualizer_url },
+]
+
+type LeadsPageProps = LeadDataState & { dealerSlug: string }
+
+export function LeadsPage({ leads, isLoading, error, dealerSlug }: LeadsPageProps) {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('All')
 
@@ -79,6 +97,16 @@ export function LeadsPage({ leads, isLoading, error }: LeadDataState) {
                 <option key={option}>{option}</option>
               ))}
             </select>
+          </div>
+          <div className="lead-filters__action">
+            <button
+              className="button button--outline"
+              type="button"
+              disabled={isLoading || Boolean(error) || filteredLeads.length === 0}
+              onClick={() => exportCsv(`${dealerSlug}-leads-${dateStamp()}.csv`, filteredLeads, dealerExportColumns)}
+            >
+              Export Leads
+            </button>
           </div>
         </div>
 

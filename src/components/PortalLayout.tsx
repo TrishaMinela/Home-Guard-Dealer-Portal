@@ -139,7 +139,7 @@ export function PortalLayout({
             path="/dashboard"
             element={<DashboardPage dealerName={dealer.company_name} {...leadData} />}
           />
-          <Route path="/leads" element={<LeadsPage {...leadData} />} />
+          <Route path="/leads" element={<LeadsPage {...leadData} dealerSlug={dealer.slug} />} />
           <Route
             path="/marketing"
             element={<PlaceholderPage title="Marketing Tools" />}

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import type { AdminDataState } from '../types/admin'
+import type { AdminDataState, AdminLead } from '../types/admin'
+import { dateStamp, exportCsv, type CsvColumn } from '../utils/csvExport'
 
 const statusOptions = [
   'All',
@@ -63,6 +64,22 @@ export function AdminLeadsPage({ dealers, leads, isLoading, error }: AdminDataSt
     })
   }, [dealerId, dealerNames, leads, search, status])
 
+  const exportColumns: CsvColumn<AdminLead>[] = [
+    { header: 'Dealer Company', value: (lead) => dealerNames.get(lead.dealer_id) ?? 'Unknown Dealer' },
+    { header: 'First Name', value: (lead) => lead.first_name },
+    { header: 'Last Name', value: (lead) => lead.last_name },
+    { header: 'Email', value: (lead) => lead.email },
+    { header: 'Phone', value: (lead) => lead.phone },
+    { header: 'Address', value: (lead) => lead.address },
+    { header: 'City', value: (lead) => lead.city },
+    { header: 'State', value: (lead) => lead.state },
+    { header: 'ZIP', value: (lead) => lead.zip },
+    { header: 'Lead Date', value: (lead) => lead.created_at.slice(0, 10) },
+    { header: 'Lead Status', value: (lead) => formatStatus(lead.status) },
+    { header: 'Lead Source', value: (lead) => lead.source },
+    { header: 'Visualizer URL', value: (lead) => lead.visualizer_url },
+  ]
+
   return (
     <div className="page-content">
       <header className="page-header admin-page-header">
@@ -105,6 +122,16 @@ export function AdminLeadsPage({ dealers, leads, isLoading, error }: AdminDataSt
             >
               {statusOptions.map((option) => <option key={option}>{option}</option>)}
             </select>
+          </div>
+          <div className="lead-filters__action">
+            <button
+              className="button button--outline"
+              type="button"
+              disabled={isLoading || Boolean(error) || filteredLeads.length === 0}
+              onClick={() => exportCsv(`home-guard-leads-${dateStamp()}.csv`, filteredLeads, exportColumns)}
+            >
+              Export Leads
+            </button>
           </div>
         </div>
 
