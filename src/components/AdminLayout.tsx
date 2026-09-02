@@ -5,9 +5,9 @@ import { AdminDashboardPage } from '../pages/AdminDashboardPage'
 import { AddDealerPage } from '../pages/AddDealerPage'
 import { AdminDealersPage } from '../pages/AdminDealersPage'
 import { AdminLeadsPage } from '../pages/AdminLeadsPage'
+import { AdminSettingsPage } from '../pages/AdminSettingsPage'
 import { DealerDetailPage } from '../pages/DealerDetailPage'
 import { EditDealerPage } from '../pages/EditDealerPage'
-import { PlaceholderPage } from '../pages/PlaceholderPage'
 import type { AdminDealer } from '../types/admin'
 import { NavIcon } from './NavIcon'
 import { NotificationLauncher, type PortalNotification } from './NotificationLauncher'
@@ -189,7 +189,7 @@ export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps
           <Route path="/admin/leads" element={<AdminLeadsPage {...adminData} />} />
           <Route
             path="/admin/settings"
-            element={<PlaceholderPage title="Settings" eyebrow="Home Guard Admin" />}
+            element={<AdminSettingsPage />}
           />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
