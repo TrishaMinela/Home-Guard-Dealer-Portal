@@ -12,7 +12,6 @@ export type HomeGuardSettings = {
   zip: string | null
   primary_color: string | null
   secondary_color: string | null
-  visualizer_domain: string | null
   created_at: string
   updated_at: string
 }
@@ -28,5 +27,4 @@ export type HomeGuardSettingsForm = {
   zip: string
   primaryColor: string
   secondaryColor: string
-  visualizerDomain: string
 }

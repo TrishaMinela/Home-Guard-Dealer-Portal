@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import type { HomeGuardSettings, HomeGuardSettingsForm } from '../types/settings'
 
-const settingsColumns = 'id, company_name, logo_url, logo_light_url, email, phone, website, address, city, state, zip, primary_color, secondary_color, visualizer_domain, created_at, updated_at'
+const settingsColumns = 'id, company_name, logo_url, logo_light_url, email, phone, website, address, city, state, zip, primary_color, secondary_color, created_at, updated_at'
 
 function toForm(settings: HomeGuardSettings): HomeGuardSettingsForm {
   return {
@@ -16,7 +16,6 @@ function toForm(settings: HomeGuardSettings): HomeGuardSettingsForm {
     zip: settings.zip ?? '',
     primaryColor: settings.primary_color ?? '',
     secondaryColor: settings.secondary_color ?? '',
-    visualizerDomain: settings.visualizer_domain ?? '',
   }
 }
 
@@ -88,7 +87,6 @@ export function AdminSettingsPage() {
         zip: optionalValue(form.zip),
         primary_color: optionalValue(form.primaryColor),
         secondary_color: optionalValue(form.secondaryColor),
-        visualizer_domain: optionalValue(form.visualizerDomain),
         updated_at: new Date().toISOString(),
       })
       .eq('id', settings.id)
@@ -155,11 +153,6 @@ export function AdminSettingsPage() {
             <div className="settings-logo-item"><div className="profile-logo-preview">{settings.logo_url ? <img src={settings.logo_url} alt="Home Guard primary logo" /> : <span>HG</span>}</div><div><h3>Primary Logo</h3><p>Standard Home Guard logo for use on light or white backgrounds.</p></div></div>
             <div className="settings-logo-item"><div className="profile-logo-preview profile-logo-preview--dark">{settings.logo_light_url ? <img src={settings.logo_light_url} alt="Home Guard light logo" /> : <span>HG</span>}</div><div><h3>Light Logo</h3><p>White or light-colored Home Guard logo for use on dark backgrounds.</p></div></div>
           </div>
-        </section>
-
-        <section className="content-card settings-card">
-          <div className="content-card__header"><p className="eyebrow">Visualizer</p><h2>Visualizer Domain</h2></div>
-          <div className="settings-card__body"><div className="filter-field"><label htmlFor="hg-visualizer-domain">Main Visualizer Domain</label><input id="hg-visualizer-domain" value={form.visualizerDomain} placeholder="homeguardvisualizer.com" onChange={(event) => updateField('visualizerDomain', event.target.value)} /><p className="field-help">This is the main customer-facing Home Guard Visualizer domain. Dealer URLs will eventually use this domain, for example homeguardvisualizer.com/beewindow.</p></div></div>
         </section>
 
         <div className="settings-form__actions"><button className="button button--primary" type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : 'Save Changes'}</button></div>
