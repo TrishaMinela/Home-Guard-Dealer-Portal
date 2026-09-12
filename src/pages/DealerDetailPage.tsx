@@ -2,6 +2,7 @@ import { useState, type ChangeEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { AdminDealer } from '../types/admin'
+import { getDealerVisualizerDisplayUrl } from '../config/visualizer'
 
 const logoExtensions: Record<string, string> = {
   'image/png': 'png',
@@ -189,7 +190,7 @@ export function DealerDetailPage({
         <div>
           <p className="eyebrow">Dealer company</p>
           <h1>{dealer.company_name}</h1>
-          <p>homeguardvisualizer.com/{dealer.slug}</p>
+          <p>{getDealerVisualizerDisplayUrl(dealer.slug)}</p>
         </div>
         <div className="page-actions">
           <Link
@@ -299,7 +300,7 @@ export function DealerDetailPage({
         <dl className="dealer-detail__grid">
           <DetailItem label="Company Name" value={dealer.company_name} />
           <DetailItem label="Slug" value={dealer.slug} />
-          <DetailItem label="Visualizer URL" value={`homeguardvisualizer.com/${dealer.slug}`} />
+          <DetailItem label="Visualizer URL" value={getDealerVisualizerDisplayUrl(dealer.slug)} />
           <DetailItem label="Primary Contact Name" value={dealer.primary_contact_name} />
           <DetailItem label="Email" value={dealer.email} />
           <DetailItem label="Phone" value={dealer.phone} />
@@ -325,8 +326,8 @@ export function DealerDetailPage({
         {dealer.slug_request_status === 'pending' && dealer.requested_slug ? (
           <div className="slug-review-card__body">
             <dl className="slug-review-details">
-              <DetailItem label="Current URL" value={`homeguardvisualizer.com/${dealer.slug}`} />
-              <DetailItem label="Requested URL" value={`homeguardvisualizer.com/${dealer.requested_slug}`} />
+              <DetailItem label="Current URL" value={getDealerVisualizerDisplayUrl(dealer.slug)} />
+              <DetailItem label="Requested URL" value={getDealerVisualizerDisplayUrl(dealer.requested_slug)} />
               <DetailItem
                 label="Requested Date"
                 value={dealer.slug_requested_at ? formatDate(dealer.slug_requested_at) : '—'}

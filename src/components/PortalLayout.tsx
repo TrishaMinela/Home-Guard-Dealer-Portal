@@ -3,6 +3,7 @@ import { Navigate, NavLink, Route, Routes } from 'react-router-dom'
 import { useLeads } from '../hooks/useLeads'
 import { DashboardPage } from '../pages/DashboardPage'
 import { LeadsPage } from '../pages/LeadsPage'
+import { MarketingToolsPage } from '../pages/MarketingToolsPage'
 import { DealerCompanyProfilePage } from '../pages/DealerCompanyProfilePage'
 import { PlaceholderPage } from '../pages/PlaceholderPage'
 import type { DealerAccount } from '../types/account'
@@ -142,7 +143,7 @@ export function PortalLayout({
           <Route path="/leads" element={<LeadsPage {...leadData} dealerSlug={dealer.slug} />} />
           <Route
             path="/marketing"
-            element={<PlaceholderPage title="Marketing Tools" />}
+            element={<MarketingToolsPage dealer={dealer} />}
           />
           <Route
             path="/company"

@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import type { DealerAccount } from '../types/account'
 import type { DealerFormValues } from '../types/admin'
 import { normalizeDealerSlug } from '../utils/dealerSlug'
+import { getDealerVisualizerDisplayUrl } from '../config/visualizer'
 
 type DealerCompanyProfilePageProps = {
   dealer: DealerAccount
@@ -289,13 +290,13 @@ export function DealerCompanyProfilePage({
         <div className="dealer-form__section-heading">
           <p className="eyebrow">Visualizer URL</p>
           <h2>Request New Visualizer URL</h2>
-          <p><strong>Current URL:</strong> homeguardvisualizer.com/{dealer.slug}</p>
+          <p><strong>Current URL:</strong> {getDealerVisualizerDisplayUrl(dealer.slug)}</p>
         </div>
 
         {dealer.slug_request_status === 'pending' ? (
           <div className="slug-request-state slug-request-state--pending">
             <strong>Pending Home Guard Approval</strong>
-            <span>homeguardvisualizer.com/{dealer.requested_slug}</span>
+            <span>{getDealerVisualizerDisplayUrl(dealer.requested_slug ?? '')}</span>
             <p>Your live URL will not change until Home Guard approves this request.</p>
           </div>
         ) : (
@@ -309,7 +310,7 @@ export function DealerCompanyProfilePage({
             <div className="filter-field">
               <label htmlFor="requested-slug">Requested slug</label>
               <input id="requested-slug" value={requestedSlug} onChange={(event) => setRequestedSlug(event.target.value)} onBlur={() => setRequestedSlug(normalizedRequestedSlug)} placeholder="new-dealer-url" required />
-              <p className="slug-preview"><strong>Preview:</strong> homeguardvisualizer.com/{normalizedRequestedSlug || '[requested-slug]'}</p>
+              <p className="slug-preview"><strong>Preview:</strong> {getDealerVisualizerDisplayUrl(normalizedRequestedSlug || '[requested-slug]')}</p>
             </div>
             <p className="visualizer-warning">Changing your Visualizer URL may affect existing website links, QR codes, and marketing materials.</p>
             <button className="button button--primary" type="submit" disabled={isRequestingSlug}>

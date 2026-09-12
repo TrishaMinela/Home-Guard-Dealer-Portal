@@ -49,7 +49,7 @@ export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps
         title: 'New Lead',
         message: `${lead.first_name} ${lead.last_name} submitted a request`,
         actionLabel: 'View Lead',
-        path: '/admin/leads',
+        path: `/admin/leads/${lead.id}`,
       })),
   ]
 
@@ -186,7 +186,7 @@ export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps
               />
             }
           />
-          <Route path="/admin/leads" element={<AdminLeadsPage {...adminData} />} />
+          <Route path="/admin/leads/:leadId?" element={<AdminLeadsPage {...adminData} />} />
           <Route
             path="/admin/settings"
             element={<AdminSettingsPage />}

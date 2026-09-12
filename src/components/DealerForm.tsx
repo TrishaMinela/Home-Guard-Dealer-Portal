@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import type { DealerFormValues } from '../types/admin'
+import { getDealerVisualizerDisplayUrl } from '../config/visualizer'
 import { normalizeDealerSlug } from '../utils/dealerSlug'
 
 type DealerFormProps = {
@@ -64,7 +65,7 @@ export function DealerForm({
             />
             <p className="slug-preview">
               <strong>Visualizer URL:</strong>{' '}
-              homeguardvisualizer.com/{normalizedSlug || '[slug]'}
+              {getDealerVisualizerDisplayUrl(normalizedSlug || '[slug]')}
             </p>
           </div>
           <div className="filter-field">

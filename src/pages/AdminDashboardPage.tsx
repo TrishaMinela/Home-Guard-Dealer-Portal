@@ -81,7 +81,7 @@ export function AdminDashboardPage({
                   <p>New Lead</p>
                   <strong>{lead.first_name} {lead.last_name} submitted a request</strong>
                 </div>
-                <Link className="button button--outline" to="/admin/leads">
+                <Link className="button button--outline" to={`/admin/leads/${lead.id}`}>
                   View Lead
                 </Link>
               </article>

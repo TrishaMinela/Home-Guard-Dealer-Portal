@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { AdminLeadDetail } from '../components/AdminLeadDetail'
 import type { AdminDataState, AdminLead } from '../types/admin'
 import { dateStamp, exportCsv, type CsvColumn } from '../utils/csvExport'
 
@@ -28,7 +30,13 @@ function formatDate(date: string) {
   }).format(new Date(date))
 }
 
+function getLeadOwner(lead: AdminLead, dealerNames: Map<string, string>) {
+  return lead.dealer_id === null ? 'HGI' : dealerNames.get(lead.dealer_id) ?? 'Unknown Dealer'
+}
+
 export function AdminLeadsPage({ dealers, leads, isLoading, error }: AdminDataState) {
+  const navigate = useNavigate()
+  const { leadId } = useParams()
   const [search, setSearch] = useState('')
   const [dealerId, setDealerId] = useState('all')
   const [status, setStatus] = useState('All')
@@ -37,13 +45,22 @@ export function AdminLeadsPage({ dealers, leads, isLoading, error }: AdminDataSt
     () => new Map(dealers.map((dealer) => [dealer.id, dealer.company_name])),
     [dealers],
   )
+  const selectedLead = leadId ? leads.find((lead) => lead.id === leadId) ?? null : null
+
+  function openLead(lead: AdminLead) {
+    navigate(`/admin/leads/${lead.id}`)
+  }
+
+  function closeLead() {
+    navigate('/admin/leads')
+  }
 
   const filteredLeads = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
     const normalizedFilter = normalizeStatus(status)
 
     return leads.filter((lead) => {
-      const dealerName = dealerNames.get(lead.dealer_id) ?? ''
+      const dealerName = getLeadOwner(lead, dealerNames)
       const matchesSearch =
         !normalizedSearch ||
         [
@@ -56,7 +73,9 @@ export function AdminLeadsPage({ dealers, leads, isLoading, error }: AdminDataSt
         ]
           .filter(Boolean)
           .some((value) => value?.toLowerCase().includes(normalizedSearch))
-      const matchesDealer = dealerId === 'all' || lead.dealer_id === dealerId
+      const matchesDealer =
+        dealerId === 'all' ||
+        (dealerId === 'hgi' ? lead.dealer_id === null : lead.dealer_id === dealerId)
       const matchesStatus =
         status === 'All' || normalizeStatus(lead.status) === normalizedFilter
 
@@ -65,7 +84,7 @@ export function AdminLeadsPage({ dealers, leads, isLoading, error }: AdminDataSt
   }, [dealerId, dealerNames, leads, search, status])
 
   const exportColumns: CsvColumn<AdminLead>[] = [
-    { header: 'Dealer Company', value: (lead) => dealerNames.get(lead.dealer_id) ?? 'Unknown Dealer' },
+    { header: 'Lead Owner', value: (lead) => getLeadOwner(lead, dealerNames) },
     { header: 'First Name', value: (lead) => lead.first_name },
     { header: 'Last Name', value: (lead) => lead.last_name },
     { header: 'Email', value: (lead) => lead.email },
@@ -85,7 +104,7 @@ export function AdminLeadsPage({ dealers, leads, isLoading, error }: AdminDataSt
       <header className="page-header admin-page-header">
         <p className="eyebrow">Home Guard</p>
         <h1>All Leads</h1>
-        <p>View customer inquiries across every authorized dealer.</p>
+        <p>View customer inquiries submitted directly to HGI or through a dealer.</p>
       </header>
 
       <section className="content-card leads-card">
@@ -108,6 +127,7 @@ export function AdminLeadsPage({ dealers, leads, isLoading, error }: AdminDataSt
               onChange={(event) => setDealerId(event.target.value)}
             >
               <option value="all">All Dealers</option>
+              <option value="hgi">HGI</option>
               {dealers.map((dealer) => (
                 <option key={dealer.id} value={dealer.id}>{dealer.company_name}</option>
               ))}
@@ -154,13 +174,25 @@ export function AdminLeadsPage({ dealers, leads, isLoading, error }: AdminDataSt
                   <th>ZIP</th>
                   <th>Date</th>
                   <th>Status</th>
+                  <th><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody>
                 {filteredLeads.map((lead) => (
-                  <tr key={lead.id}>
+                  <tr
+                    className="lead-row"
+                    key={lead.id}
+                    tabIndex={0}
+                    onClick={() => openLead(lead)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        openLead(lead)
+                      }
+                    }}
+                  >
                     <td data-label="Name"><strong>{lead.first_name} {lead.last_name}</strong></td>
-                    <td data-label="Dealer">{dealerNames.get(lead.dealer_id) ?? 'Unknown Dealer'}</td>
+                    <td data-label="Dealer">{getLeadOwner(lead, dealerNames)}</td>
                     <td data-label="Email">{lead.email}</td>
                     <td data-label="Phone">{lead.phone || '—'}</td>
                     <td data-label="ZIP">{lead.zip || '—'}</td>
@@ -170,6 +202,12 @@ export function AdminLeadsPage({ dealers, leads, isLoading, error }: AdminDataSt
                         {formatStatus(lead.status)}
                       </span>
                     </td>
+                    <td data-label="Action">
+                      <button className="lead-view-button" type="button" onClick={(event) => {
+                        event.stopPropagation()
+                        openLead(lead)
+                      }}>View</button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -177,6 +215,13 @@ export function AdminLeadsPage({ dealers, leads, isLoading, error }: AdminDataSt
           </div>
         )}
       </section>
+      {selectedLead && (
+        <AdminLeadDetail
+          lead={selectedLead}
+          dealerName={getLeadOwner(selectedLead, dealerNames)}
+          onClose={closeLead}
+        />
+      )}
     </div>
   )
 }
