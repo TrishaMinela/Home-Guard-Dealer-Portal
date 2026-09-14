@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom'
 import { useAdminData } from '../hooks/useAdminData'
+import { useAdminNotifications, type PersistedAdminNotification } from '../hooks/useAdminNotifications'
 import { AdminDashboardPage } from '../pages/AdminDashboardPage'
 import { AddDealerPage } from '../pages/AddDealerPage'
 import { AdminDealersPage } from '../pages/AdminDealersPage'
@@ -30,7 +31,7 @@ export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps
   const [dealerSuccess, setDealerSuccess] = useState('')
   const [dealerDetailSuccess, setDealerDetailSuccess] = useState('')
   const adminData = useAdminData()
-  const notifications: PortalNotification[] = [
+  const allNotifications: PersistedAdminNotification[] = [
     ...adminData.dealers
       .filter((dealer) => dealer.slug_request_status === 'pending' && dealer.requested_slug)
       .map((dealer) => ({
@@ -40,6 +41,11 @@ export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps
         message: `${dealer.company_name} requested /${dealer.requested_slug}`,
         actionLabel: 'View Request',
         path: `/admin/dealers/${dealer.id}`,
+        receipt: {
+          notificationType: 'slug_request' as const,
+          sourceId: dealer.id,
+          sourceVersion: dealer.slug_requested_at ?? dealer.requested_slug ?? '',
+        },
       })),
     ...adminData.leads
       .filter((lead) => lead.status.trim().toLowerCase() === 'new')
@@ -50,8 +56,19 @@ export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps
         message: `${lead.first_name} ${lead.last_name} submitted a request`,
         actionLabel: 'View Lead',
         path: `/admin/leads/${lead.id}`,
+        receipt: {
+          notificationType: 'lead' as const,
+          sourceId: lead.id,
+          sourceVersion: '',
+        },
       })),
   ]
+  const notificationState = useAdminNotifications(allNotifications)
+
+  function handleNotificationOpen(notification: PortalNotification) {
+    const persistedNotification = allNotifications.find((item) => item.id === notification.id)
+    if (persistedNotification) notificationState.markAsRead(persistedNotification)
+  }
 
   function handleDealerCreated(companyName: string) {
     adminData.refresh()
@@ -147,7 +164,18 @@ export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps
 
       <main className="portal-main">
         <Routes>
-          <Route path="/admin" element={<AdminDashboardPage {...adminData} />} />
+          <Route
+            path="/admin"
+            element={
+              <AdminDashboardPage
+                {...adminData}
+                notifications={notificationState.notifications}
+                notificationsLoading={notificationState.isLoading}
+                notificationError={notificationState.error}
+                onNotificationOpen={notificationState.markAsRead}
+              />
+            }
+          />
           <Route
             path="/admin/dealers"
             element={
@@ -194,7 +222,11 @@ export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </main>
-      <NotificationLauncher notifications={notifications} />
+      <NotificationLauncher
+        notifications={notificationState.notifications}
+        error={notificationState.error}
+        onNotificationOpen={handleNotificationOpen}
+      />
     </div>
   )
 }

@@ -1,12 +1,25 @@
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import type { PersistedAdminNotification } from '../hooks/useAdminNotifications'
 import type { AdminDataState } from '../types/admin'
+
+type AdminDashboardPageProps = AdminDataState & {
+  notifications: PersistedAdminNotification[]
+  notificationsLoading: boolean
+  notificationError: string
+  onNotificationOpen: (notification: PersistedAdminNotification) => void
+}
 
 export function AdminDashboardPage({
   dealers,
   leads,
   isLoading,
   error,
-}: AdminDataState) {
+  notifications,
+  notificationsLoading,
+  notificationError,
+  onNotificationOpen,
+}: AdminDashboardPageProps) {
+  const navigate = useNavigate()
   const metrics = [
     { label: 'Total Dealers', value: dealers.length },
     {
@@ -23,13 +36,12 @@ export function AdminDashboardPage({
       value: dealers.filter((dealer) => dealer.slug_request_status === 'pending').length,
     },
   ]
-  const pendingRequests = dealers.filter(
-    (dealer) => dealer.slug_request_status === 'pending' && dealer.requested_slug,
-  )
-  const newLeads = leads.filter(
-    (lead) => lead.status.trim().toLowerCase() === 'new',
-  )
-  const hasNotifications = pendingRequests.length > 0 || newLeads.length > 0
+  const hasNotifications = notifications.length > 0
+
+  function openNotification(notification: PersistedAdminNotification) {
+    onNotificationOpen(notification)
+    navigate(notification.path)
+  }
 
   return (
     <div className="page-content">
@@ -56,34 +68,40 @@ export function AdminDashboardPage({
           <h2 id="notifications-title">Notifications</h2>
         </div>
 
-        {isLoading && <div className="data-state data-state--compact">Loading notifications...</div>}
-        {!isLoading && !hasNotifications && (
+        {notificationError && <div className="notification-inline-error" role="alert">{notificationError}</div>}
+        {(isLoading || notificationsLoading) && <div className="data-state data-state--compact">Loading notifications...</div>}
+        {!isLoading && !notificationsLoading && !hasNotifications && (
           <div className="data-state data-state--compact">No new notifications.</div>
         )}
-        {!isLoading && hasNotifications && (
+        {!isLoading && !notificationsLoading && hasNotifications && (
           <div className="notification-list">
-            {pendingRequests.map((dealer) => (
-              <article className="notification-item" key={`slug-${dealer.id}`}>
-                <div className="notification-icon notification-icon--request" aria-hidden="true">URL</div>
-                <div className="notification-copy">
-                  <p>Visualizer URL request</p>
-                  <strong>{dealer.company_name} requested /{dealer.requested_slug}</strong>
+            {notifications.map((notification) => (
+              <article
+                className="notification-item notification-item--clickable"
+                key={notification.id}
+                role="link"
+                tabIndex={0}
+                onClick={() => openNotification(notification)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    openNotification(notification)
+                  }
+                }}
+              >
+                <div className={`notification-icon notification-icon--${notification.type}`} aria-hidden="true">
+                  {notification.type === 'request' ? 'URL' : 'Lead'}
                 </div>
-                <Link className="button button--outline" to={`/admin/dealers/${dealer.id}`}>
-                  View Request
-                </Link>
-              </article>
-            ))}
-            {newLeads.map((lead) => (
-              <article className="notification-item" key={`lead-${lead.id}`}>
-                <div className="notification-icon notification-icon--lead" aria-hidden="true">Lead</div>
                 <div className="notification-copy">
-                  <p>New Lead</p>
-                  <strong>{lead.first_name} {lead.last_name} submitted a request</strong>
+                  <p>{notification.title}</p>
+                  <strong>{notification.message}</strong>
                 </div>
-                <Link className="button button--outline" to={`/admin/leads/${lead.id}`}>
-                  View Lead
-                </Link>
+                <button className="button button--outline" type="button" onClick={(event) => {
+                  event.stopPropagation()
+                  openNotification(notification)
+                }}>
+                  {notification.actionLabel}
+                </button>
               </article>
             ))}
           </div>
