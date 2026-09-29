@@ -43,6 +43,21 @@ input {
   font: inherit; outline: none; transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 input:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,102,108,.12); }
+.password-field { position: relative; }
+.password-field input { padding-right: 48px; }
+.password-field__toggle {
+  position: absolute; top: 50%; right: 6px; width: 36px; height: 36px;
+  display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%;
+  color: var(--color-muted); background: transparent; cursor: pointer; transform: translateY(-50%);
+}
+.password-field__toggle:hover { color: var(--color-teal-dark); background: rgba(13,102,108,.07); }
+.password-field__toggle:focus-visible {
+  color: var(--color-teal-dark); outline: 3px solid rgba(248,211,14,.7); outline-offset: 1px;
+}
+.password-field__toggle svg {
+  width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round;
+}
 .form-message { min-height: 22px; margin-top: 3px; }
 .message { font-size: 13px; line-height: 1.5; }
 .message--error { color: var(--color-error); }

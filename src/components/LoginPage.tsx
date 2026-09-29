@@ -1,4 +1,4 @@
-import type { FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 
 type LoginPageProps = {
   email: string
@@ -19,6 +19,8 @@ export function LoginPage({
   onPasswordChange,
   onSubmit,
 }: LoginPageProps) {
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false)
+
   return (
     <main className="login-page">
       <section className="login-card">
@@ -50,14 +52,37 @@ export function LoginPage({
           />
 
           <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => onPasswordChange(event.target.value)}
-            required
-          />
+          <div className="password-field">
+            <input
+              id="password"
+              type={isPasswordVisible ? 'text' : 'password'}
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => onPasswordChange(event.target.value)}
+              required
+            />
+            <button
+              className="password-field__toggle"
+              type="button"
+              aria-label={isPasswordVisible ? 'Hide password' : 'Show password'}
+              aria-pressed={isPasswordVisible}
+              onClick={() => setIsPasswordVisible((visible) => !visible)}
+            >
+              {isPasswordVisible ? (
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m3 3 18 18" />
+                  <path d="M10.6 10.7a2 2 0 0 0 2.7 2.7" />
+                  <path d="M9.9 4.2A10.5 10.5 0 0 1 12 4c5.5 0 9 6 9 6a17.5 17.5 0 0 1-2.1 2.8" />
+                  <path d="M6.6 6.6C4.3 8.1 3 10 3 10s3.5 6 9 6a9.7 9.7 0 0 0 4.2-.9" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z" />
+                  <circle cx="12" cy="12" r="2.5" />
+                </svg>
+              )}
+            </button>
+          </div>
 
           <div className="form-message" aria-live="polite">
             {error && <p className="message message--error">{error}</p>}
