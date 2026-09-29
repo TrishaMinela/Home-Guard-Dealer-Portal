@@ -7,6 +7,7 @@ import { AddDealerPage } from '../pages/AddDealerPage'
 import { AdminDealersPage } from '../pages/AdminDealersPage'
 import { AdminLeadsPage } from '../pages/AdminLeadsPage'
 import { AdminSettingsPage } from '../pages/AdminSettingsPage'
+import { AdminAiUsagePage } from '../pages/AdminAiUsagePage'
 import { DealerDetailPage } from '../pages/DealerDetailPage'
 import { EditDealerPage } from '../pages/EditDealerPage'
 import type { AdminDealer } from '../types/admin'
@@ -17,6 +18,7 @@ const navigation = [
   { label: 'Dashboard', path: '/admin', icon: 'grid', end: true },
   { label: 'Dealers', path: '/admin/dealers', icon: 'building' },
   { label: 'All Leads', path: '/admin/leads', icon: 'users' },
+  { label: 'AI Usage', path: '/admin/ai-usage', icon: 'activity' },
   { label: 'Settings', path: '/admin/settings', icon: 'settings' },
 ]
 
@@ -215,6 +217,7 @@ export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps
             }
           />
           <Route path="/admin/leads/:leadId?" element={<AdminLeadsPage {...adminData} />} />
+          <Route path="/admin/ai-usage" element={<AdminAiUsagePage />} />
           <Route
             path="/admin/settings"
             element={<AdminSettingsPage />}
