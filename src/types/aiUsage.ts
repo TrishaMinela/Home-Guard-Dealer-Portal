@@ -22,5 +22,25 @@ export type AiGenerationUsage = {
   error_code: string | null
 }
 
+export type AiEntranceDetectionUsage = {
+  id: string
+  created_at: string
+  completed_at: string | null
+  status: 'succeeded' | 'failed'
+  environment: 'production' | 'preview' | 'development'
+  model: string
+  pass_type: 'primary' | 'verification'
+  input_tokens: number | null
+  cached_input_tokens: number | null
+  output_tokens: number | null
+  reasoning_tokens: number | null
+  total_tokens: number | null
+  estimated_cost_usd: number | null
+  detection_duration_ms: number | null
+  request_id: string
+  workflow_request_id: string
+  error_code: string | null
+}
+
 export type AiUsagePeriod = 'today' | '7-days' | '30-days' | 'this-month'
 export type AiUsageEnvironment = 'all' | 'production' | 'preview' | 'development'
