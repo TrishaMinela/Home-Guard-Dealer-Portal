@@ -17,6 +17,7 @@ export type AiGenerationUsage = {
   openai_generation_duration_ms: number | null
   total_api_duration_ms: number | null
   total_visualization_duration_ms: number | null
+  entrance_stage_duration_ms: number | null
   environment: 'production' | 'preview' | 'development' | null
   request_id: string
   error_code: string | null
