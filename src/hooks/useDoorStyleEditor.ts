@@ -14,6 +14,27 @@ export type EditableDoorVariant = {
   relationshipExists: boolean
   requiresConfigurationReview: boolean
 }
+export type ManagedDoorAsset = {
+  bindingId: string
+  assetId: string
+  role: 'slab_render' | 'mask'
+  viewKey: string
+  contextLabel: string
+  contextKey: string
+  previewUrl: string | null
+  sourcePath: string
+  storageBucket: string | null
+  storageObjectPath: string | null
+  mimeType: string | null
+  width: number | null
+  height: number | null
+  byteSize: number | null
+  checksum: string | null
+  contentVersion: number
+  nextContentVersion: number
+  usageCount: number
+  styleUsageCount: number
+}
 export type DoorStyleEditorData = {
   id: string; revisionId: string; revisionStatus: 'draft' | 'published' | 'retired'; name: string
   legacyId: string | null; internalCode: string | null; productCode: string | null
@@ -25,6 +46,7 @@ export type DoorStyleEditorData = {
   thumbnailStorageAvailable: boolean
   thumbnailCount: number; renderCount: number; maskCount: number
   localAssetCount: number; storageAssetCount: number; missingAssetCount: number
+  managedAssets: ManagedDoorAsset[]
 }
 type State = { data: DoorStyleEditorData | null; isLoading: boolean; error: string }
 
@@ -39,12 +61,12 @@ export function useDoorStyleEditor(styleId: string | undefined) {
     const results = await Promise.all([
       supabase.from('catalog_revisions').select('status').eq('id', revisionId).single(),
       supabase.from('door_variants').select('id,display_name,door_line_id,grain_id,customer_selectable,display_order').eq('door_style_id', styleId).order('display_order'),
-      supabase.from('door_variants').select('door_line_id,grain_id').eq('catalog_revision_id', revisionId),
-      supabase.from('door_lines').select('id,material_id,series_id').eq('catalog_revision_id', revisionId).eq('status', 'active').eq('customer_selectable', true).order('display_order'),
+      supabase.from('door_variants').select('id,door_style_id,door_line_id,grain_id').eq('catalog_revision_id', revisionId),
+      supabase.from('door_lines').select('id,material_id,series_id,display_name').eq('catalog_revision_id', revisionId).eq('status', 'active').eq('customer_selectable', true).order('display_order'),
       supabase.from('materials').select('id,display_name').eq('catalog_revision_id', revisionId),
       supabase.from('series').select('id,display_name').eq('catalog_revision_id', revisionId),
       supabase.from('grains').select('id,display_name').eq('catalog_revision_id', revisionId),
-      supabase.from('door_variant_assets').select('door_variant_id,asset_id,role,display_order').eq('catalog_revision_id', revisionId),
+      supabase.from('door_variant_assets').select('id,door_variant_id,asset_id,role,view_key,display_order').eq('catalog_revision_id', revisionId),
       supabase.from('assets').select('id,current_path,storage_bucket,storage_object_path,mime_type,width,height,byte_size,checksum,content_version').eq('catalog_revision_id', revisionId),
     ])
     const failure = results.find((result) => result.error)
@@ -55,9 +77,12 @@ export function useDoorStyleEditor(styleId: string | undefined) {
     const series = new Map((seriesResult.data ?? []).map((item) => [item.id, item.display_name]))
     const grains = new Map((grainsResult.data ?? []).map((item) => [item.id, item.display_name]))
     const variantRows = variantsResult.data ?? []
+    const catalogVariantRows = catalogVariantsResult.data ?? []
     const variantIds = new Set(variantRows.map((variant) => variant.id))
     const bindings = (bindingsResult.data ?? []).filter((binding) => variantIds.has(binding.door_variant_id))
     const assetById = new Map((assetsResult.data ?? []).map((asset) => [asset.id, asset]))
+    const maxVersionBySourcePath = new Map<string, number>()
+    for (const asset of assetsResult.data ?? []) maxVersionBySourcePath.set(asset.current_path, Math.max(maxVersionBySourcePath.get(asset.current_path) ?? 0, asset.content_version))
     const assets = [...new Set(bindings.map((binding) => binding.asset_id))].map((id) => assetById.get(id))
     const thumbnailBindings = bindings.filter((binding) => binding.role === 'thumbnail').sort((a, b) => a.display_order - b.display_order)
     const thumbnailAsset = thumbnailBindings.map((binding) => assetById.get(binding.asset_id)).find(Boolean)
@@ -67,6 +92,36 @@ export function useDoorStyleEditor(styleId: string | undefined) {
       if (signedAssetError) console.error('Unable to create the DRAFT thumbnail preview URL.', signedAssetError)
       else thumbnailUrl = signedAsset.signedUrl
     }
+    const managedBindings = bindings.filter((binding) => binding.role === 'slab_render' || binding.role === 'mask')
+    const managedPaths = [...new Set(managedBindings.map((binding) => assetById.get(binding.asset_id)?.storage_object_path).filter((path): path is string => Boolean(path)))]
+    const managedSignedUrls = new Map<string, string>()
+    if (managedPaths.length) {
+      const { data: signedAssets, error: signedAssetsError } = await supabase.storage.from('door-catalog-assets').createSignedUrls(managedPaths, 3600)
+      if (signedAssetsError) console.error('Unable to create DRAFT render/mask preview URLs.', signedAssetsError)
+      else for (const signed of signedAssets ?? []) if (signed.path && signed.signedUrl) managedSignedUrls.set(signed.path, signed.signedUrl)
+    }
+    const lineById = new Map(lines.map((line) => [line.id, line]))
+    const catalogVariantById = new Map(catalogVariantRows.map((variant) => [variant.id, variant]))
+    const managedAssets: ManagedDoorAsset[] = managedBindings.map((binding) => {
+      const asset = assetById.get(binding.asset_id)!
+      const variant = catalogVariantById.get(binding.door_variant_id)
+      const line = variant ? lineById.get(variant.door_line_id) : undefined
+      const material = line ? materials.get(line.material_id) ?? line.display_name : 'Unknown material'
+      const lineSeries = line?.series_id ? series.get(line.series_id) ?? line.display_name : line?.display_name ?? material
+      const grain = variant?.grain_id ? grains.get(variant.grain_id) : null
+      const contextLabel = [lineSeries, grain, binding.view_key || null].filter(Boolean).join(' · ')
+      const allAssetBindings = (bindingsResult.data ?? []).filter((candidate) => candidate.asset_id === binding.asset_id)
+      const styleIds = new Set(allAssetBindings.map((candidate) => catalogVariantById.get(candidate.door_variant_id)?.door_style_id).filter(Boolean))
+      return {
+        bindingId: binding.id, assetId: binding.asset_id, role: binding.role as 'slab_render' | 'mask', viewKey: binding.view_key,
+        contextLabel, contextKey: `${line?.display_name ?? material}-${grain ?? 'standard'}-${binding.view_key || 'default'}`,
+        previewUrl: asset.storage_object_path ? managedSignedUrls.get(asset.storage_object_path) ?? asset.current_path : asset.current_path,
+        sourcePath: asset.current_path, storageBucket: asset.storage_bucket, storageObjectPath: asset.storage_object_path,
+        mimeType: asset.mime_type, width: asset.width, height: asset.height, byteSize: asset.byte_size,
+        checksum: asset.checksum, contentVersion: asset.content_version, nextContentVersion: (maxVersionBySourcePath.get(asset.current_path) ?? asset.content_version) + 1,
+        usageCount: allAssetBindings.length, styleUsageCount: styleIds.size,
+      }
+    }).sort((a, b) => a.role.localeCompare(b.role) || a.contextLabel.localeCompare(b.contextLabel))
     const uniqueRoleCount = (role: string) => new Set(bindings.filter((binding) => binding.role === role).map((binding) => binding.asset_id)).size
     setState({ isLoading: false, error: '', data: {
       id: style.id, revisionId, revisionStatus: revisionResult.data!.status, name: style.display_name,
@@ -105,6 +160,7 @@ export function useDoorStyleEditor(styleId: string | undefined) {
       localAssetCount: assets.filter((asset) => Boolean(asset?.current_path)).length,
       storageAssetCount: assets.filter((asset) => Boolean(asset?.storage_bucket && asset.storage_object_path)).length,
       missingAssetCount: assets.filter((asset) => !asset?.current_path && !asset?.storage_object_path).length,
+      managedAssets,
     } })
   }, [styleId])
   // Loading is intentionally driven by the route-bound style ID.

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useDoorStyleEditor, type DoorStyleEditorData, type EditableDoorVariant } from '../hooks/useDoorStyleEditor'
 import { supabase } from '../lib/supabase'
 import { buildDoorThumbnailObjectPath, DOOR_ASSET_BUCKET, formatBytes, prepareDoorThumbnail, type PreparedDoorThumbnail } from '../lib/doorThumbnailUpload'
+import { DoorRenderMaskManager } from '../components/DoorRenderMaskManager'
 
 type FormState = { name: string; status: DoorStyleEditorData['status']; customerSelectable: boolean; displayOrder: string; variants: EditableDoorVariant[] }
 type SaveSummary = { enabled: string[]; disabled: string[]; created: string[]; reviewRequired: string[] }
@@ -129,6 +130,7 @@ export function AdminDoorStyleDetailPage() {
         {thumbnailError && <div className="portal-alert portal-alert--error" role="alert">{thumbnailError}</div>}
         <div className="door-thumbnail-manager__coverage"><span>Renders: {data.renderCount}</span><span>Masks: {data.maskCount}</span><span>Local/source: {data.localAssetCount}</span><span>Storage: {data.storageAssetCount}</span><span>Missing: {data.missingAssetCount}</span></div>
       </section>
+      <DoorRenderMaskManager data={data} refresh={refresh} announce={(nextMessage) => { setMessage(nextMessage); setSaveSummary(null) }} />
       <div className="door-style-editor__actions"><span>{data.revisionStatus === 'draft' ? 'Saving updates the DRAFT catalog only.' : 'This catalog is read only.'}</span><div><button className="button button--outline" type="button" disabled={isSaving} onClick={() => navigate('/admin/inventory/door-styles')}>Cancel</button><button className="button button--primary" type="submit" disabled={isSaving || data.revisionStatus !== 'draft'}>{isSaving ? 'Saving...' : 'Save Draft'}</button></div></div>
     </form>
   </div>
