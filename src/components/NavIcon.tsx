@@ -44,6 +44,12 @@ export function NavIcon({ name }: NavIconProps) {
         <path d="M3 12h4l2-7 4 14 2-7h6" />
       </>
     ),
+    inventory: (
+      <>
+        <path d="M4 7.5 12 3l8 4.5-8 4.5-8-4.5Z" />
+        <path d="m4 12 8 4.5 8-4.5M4 16.5 12 21l8-4.5" />
+      </>
+    ),
   }
 
   return (
