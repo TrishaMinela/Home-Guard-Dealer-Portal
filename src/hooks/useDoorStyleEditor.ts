@@ -12,6 +12,7 @@ export type EditableDoorVariant = {
   grain: string | null
   customerSelectable: boolean
   relationshipExists: boolean
+  requiresConfigurationReview: boolean
 }
 export type DoorStyleEditorData = {
   id: string; revisionId: string; revisionStatus: 'draft' | 'published' | 'retired'; name: string
@@ -67,12 +68,14 @@ export function useDoorStyleEditor(styleId: string | undefined) {
         return grainIds.map((grainId) => {
           const existing = variantRows.find((variant) => variant.door_line_id === line.id && variant.grain_id === grainId)
           const grain = grainId ? grains.get(grainId) ?? 'Unknown grain' : null
-          const lineSeries = line.series_id ? series.get(line.series_id) ?? 'Unknown series' : 'No series'
+          const rawSeries = line.series_id ? series.get(line.series_id) ?? 'Unknown series' : 'No series'
+          const lineSeries = rawSeries.startsWith('Signature Series') ? 'Signature Series' : rawSeries
           return {
             id: `${line.id}:${grainId ?? 'none'}`, variantId: existing?.id ?? null,
             doorLineId: line.id, grainId, name: existing?.display_name ?? `${style.display_name} — ${lineSeries}${grain ? ` · ${grain}` : ''}`,
             material: materials.get(line.material_id) ?? 'Unknown material', series: lineSeries, grain,
             customerSelectable: existing?.customer_selectable ?? false, relationshipExists: Boolean(existing),
+            requiresConfigurationReview: !existing,
           }
         })
       }),
