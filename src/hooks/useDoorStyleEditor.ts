@@ -18,7 +18,11 @@ export type DoorStyleEditorData = {
   id: string; revisionId: string; revisionStatus: 'draft' | 'published' | 'retired'; name: string
   legacyId: string | null; internalCode: string | null; productCode: string | null
   status: 'active' | 'legacy_only' | 'discontinued'; customerSelectable: boolean; displayOrder: number
-  variants: EditableDoorVariant[]; thumbnailPath: string | null; thumbnailStorageAvailable: boolean
+  variants: EditableDoorVariant[]; thumbnailPath: string | null; thumbnailSourcePath: string | null
+  thumbnailAssetId: string | null; thumbnailStorageBucket: string | null; thumbnailStorageObjectPath: string | null
+  thumbnailMimeType: string | null; thumbnailWidth: number | null; thumbnailHeight: number | null
+  thumbnailByteSize: number | null; thumbnailChecksum: string | null; thumbnailContentVersion: number
+  thumbnailStorageAvailable: boolean
   thumbnailCount: number; renderCount: number; maskCount: number
   localAssetCount: number; storageAssetCount: number; missingAssetCount: number
 }
@@ -41,7 +45,7 @@ export function useDoorStyleEditor(styleId: string | undefined) {
       supabase.from('series').select('id,display_name').eq('catalog_revision_id', revisionId),
       supabase.from('grains').select('id,display_name').eq('catalog_revision_id', revisionId),
       supabase.from('door_variant_assets').select('door_variant_id,asset_id,role,display_order').eq('catalog_revision_id', revisionId),
-      supabase.from('assets').select('id,current_path,storage_bucket,storage_object_path').eq('catalog_revision_id', revisionId),
+      supabase.from('assets').select('id,current_path,storage_bucket,storage_object_path,mime_type,width,height,byte_size,checksum,content_version').eq('catalog_revision_id', revisionId),
     ])
     const failure = results.find((result) => result.error)
     if (failure?.error) { console.error('Unable to load Door Style editor relationships.', failure.error); setState({ data: null, isLoading: false, error: 'The Door Style relationships could not be loaded.' }); return }
@@ -57,6 +61,12 @@ export function useDoorStyleEditor(styleId: string | undefined) {
     const assets = [...new Set(bindings.map((binding) => binding.asset_id))].map((id) => assetById.get(id))
     const thumbnailBindings = bindings.filter((binding) => binding.role === 'thumbnail').sort((a, b) => a.display_order - b.display_order)
     const thumbnailAsset = thumbnailBindings.map((binding) => assetById.get(binding.asset_id)).find(Boolean)
+    let thumbnailUrl = thumbnailAsset?.current_path ?? null
+    if (thumbnailAsset?.storage_bucket && thumbnailAsset.storage_object_path) {
+      const { data: signedAsset, error: signedAssetError } = await supabase.storage.from(thumbnailAsset.storage_bucket).createSignedUrl(thumbnailAsset.storage_object_path, 3600)
+      if (signedAssetError) console.error('Unable to create the DRAFT thumbnail preview URL.', signedAssetError)
+      else thumbnailUrl = signedAsset.signedUrl
+    }
     const uniqueRoleCount = (role: string) => new Set(bindings.filter((binding) => binding.role === role).map((binding) => binding.asset_id)).size
     setState({ isLoading: false, error: '', data: {
       id: style.id, revisionId, revisionStatus: revisionResult.data!.status, name: style.display_name,
@@ -79,7 +89,17 @@ export function useDoorStyleEditor(styleId: string | undefined) {
           }
         })
       }),
-      thumbnailPath: thumbnailAsset?.current_path ?? null,
+      thumbnailPath: thumbnailUrl,
+      thumbnailSourcePath: thumbnailAsset?.current_path ?? null,
+      thumbnailAssetId: thumbnailAsset?.id ?? null,
+      thumbnailStorageBucket: thumbnailAsset?.storage_bucket ?? null,
+      thumbnailStorageObjectPath: thumbnailAsset?.storage_object_path ?? null,
+      thumbnailMimeType: thumbnailAsset?.mime_type ?? null,
+      thumbnailWidth: thumbnailAsset?.width ?? null,
+      thumbnailHeight: thumbnailAsset?.height ?? null,
+      thumbnailByteSize: thumbnailAsset?.byte_size ?? null,
+      thumbnailChecksum: thumbnailAsset?.checksum ?? null,
+      thumbnailContentVersion: thumbnailAsset?.content_version ?? 1,
       thumbnailStorageAvailable: Boolean(thumbnailAsset?.storage_bucket && thumbnailAsset.storage_object_path),
       thumbnailCount: uniqueRoleCount('thumbnail'), renderCount: uniqueRoleCount('slab_render'), maskCount: uniqueRoleCount('mask'),
       localAssetCount: assets.filter((asset) => Boolean(asset?.current_path)).length,

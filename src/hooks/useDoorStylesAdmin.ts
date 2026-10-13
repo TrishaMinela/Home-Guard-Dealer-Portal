@@ -82,6 +82,14 @@ export function useDoorStylesAdmin() {
     const seriesById = new Map(series.map((item) => [item.id, item.display_name]))
     const grainById = new Map(grains.map((item) => [item.id, item.display_name]))
     const assetById = new Map(assets.map((asset) => [asset.id, asset]))
+    const thumbnailStoragePaths = [...new Set(bindings.filter((binding) => binding.role === 'thumbnail')
+      .map((binding) => assetById.get(binding.asset_id)?.storage_object_path).filter((path): path is string => Boolean(path)))]
+    const signedThumbnailByPath = new Map<string, string>()
+    if (thumbnailStoragePaths.length) {
+      const { data: signedThumbnails, error: signedThumbnailError } = await supabase.storage.from('door-catalog-assets').createSignedUrls(thumbnailStoragePaths, 3600)
+      if (signedThumbnailError) console.error('Unable to create DRAFT thumbnail preview URLs.', signedThumbnailError)
+      else for (const signed of signedThumbnails ?? []) if (signed.path && signed.signedUrl) signedThumbnailByPath.set(signed.path, signed.signedUrl)
+    }
     const bindingsByVariant = new Map<string, DoorAssetBinding[]>()
     for (const binding of bindings) bindingsByVariant.set(binding.door_variant_id, [...(bindingsByVariant.get(binding.door_variant_id) ?? []), binding])
 
@@ -96,7 +104,7 @@ export function useDoorStylesAdmin() {
       const styleAssetIds = [...new Set(styleBindings.map((binding) => binding.asset_id))]
       const styleAssets = styleAssetIds.map((assetId) => assetById.get(assetId))
       const thumbnailPath = thumbnailBindings.sort((a, b) => a.display_order - b.display_order)
-        .map((binding) => assetById.get(binding.asset_id)?.current_path).find(Boolean) ?? null
+        .map((binding) => assetById.get(binding.asset_id)).map((asset) => asset?.storage_object_path ? signedThumbnailByPath.get(asset.storage_object_path) ?? asset.current_path : asset?.current_path).find(Boolean) ?? null
       const signatureGrains = uniqueSorted(styleVariants.map((variant) => {
         const line = lineById.get(variant.door_line_id)
         const seriesName = line?.series_id ? seriesById.get(line.series_id) : undefined
