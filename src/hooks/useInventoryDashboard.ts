@@ -78,6 +78,7 @@ export function useInventoryDashboard() {
     const { data: revisionData, error: revisionError } = await supabase
       .from('catalog_revisions')
       .select('id, status, source_commit, created_at, updated_at, published_at')
+      .eq('status', 'draft')
       .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle()

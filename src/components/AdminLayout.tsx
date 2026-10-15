@@ -10,6 +10,7 @@ import { AdminSettingsPage } from '../pages/AdminSettingsPage'
 import { AdminAiUsagePage } from '../pages/AdminAiUsagePage'
 import { AdminInventoryCategoryPage } from '../pages/AdminInventoryCategoryPage'
 import { AdminInventoryPage } from '../pages/AdminInventoryPage'
+import { AdminInventoryReviewPage } from '../pages/AdminInventoryReviewPage'
 import { AdminDoorStylesPage } from '../pages/AdminDoorStylesPage'
 import { AdminDoorStyleDetailPage } from '../pages/AdminDoorStyleDetailPage'
 import { DealerDetailPage } from '../pages/DealerDetailPage'
@@ -224,6 +225,7 @@ export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps
           <Route path="/admin/leads/:leadId?" element={<AdminLeadsPage {...adminData} />} />
           <Route path="/admin/ai-usage" element={<AdminAiUsagePage />} />
           <Route path="/admin/inventory" element={<AdminInventoryPage />} />
+          <Route path="/admin/inventory/review" element={<AdminInventoryReviewPage />} />
           <Route path="/admin/inventory/door-styles" element={<AdminDoorStylesPage />} />
           <Route path="/admin/inventory/door-styles/:styleId" element={<AdminDoorStyleDetailPage />} />
           <Route path="/admin/inventory/:category" element={<AdminInventoryCategoryPage />} />

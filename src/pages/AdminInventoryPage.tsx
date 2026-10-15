@@ -20,6 +20,7 @@ export function AdminInventoryPage() {
         <p className="eyebrow">Home Guard</p>
         <h1>Inventory</h1>
         <p>Review the current Door Builder catalog and open each inventory category.</p>
+        <Link className="button button--primary" to="/admin/inventory/review">Review Changes</Link>
       </header>
 
       {isLoading && <div className="data-state">Loading inventory...</div>}
