@@ -240,8 +240,8 @@ export function AdminAiUsagePage() {
       {!isLoading && !error && (generationRows.length > 0 || detectionRows.length > 0) && (
         <>
           <section className="metric-grid ai-usage-metrics" aria-label="AI usage summary">
-            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="visualizations" /><p>Visualizations Generated</p><strong>{generationRows.length}</strong></article>
-            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="successful" /><p>Successful</p><strong>{metrics.succeeded}</strong></article>
+            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="visualizations" /><p>Visualizations Generated</p><strong>{metrics.succeeded}</strong></article>
+            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="successful" /><p>Generation Attempts</p><strong>{generationRows.length}</strong></article>
             <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="failed" /><p>Failed</p><strong>{metrics.failed}</strong></article>
             <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="usage" /><p>Total AI Usage</p><strong>{formatTokens(metrics.totalTokens)}</strong>{metrics.totalUsageIncomplete && <small>Known records only</small>}</article>
             <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="cost" /><p>Estimated AI Cost</p><strong>{formatCost(metrics.cost)}</strong><small>{metrics.costIncomplete ? 'Known records only' : 'Calculated estimate'}</small></article>
