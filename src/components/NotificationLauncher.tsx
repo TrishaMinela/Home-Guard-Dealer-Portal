@@ -3,11 +3,14 @@ import { useNavigate } from 'react-router-dom'
 
 export type PortalNotification = {
   id: string
-  type: 'request' | 'lead'
+  type: 'request' | 'lead' | 'ai_issue'
   title: string
   message: string
   actionLabel: string
   path: string
+  severity?: 'critical' | 'warning'
+  occurredAt?: string
+  occurrenceCount?: number
 }
 
 type NotificationLauncherProps = {
@@ -77,11 +80,13 @@ export function NotificationLauncher({ notifications, error = '', onNotification
                   }}
                 >
                   <div className={`notification-icon notification-icon--${notification.type}`} aria-hidden="true">
-                    {notification.type === 'request' ? 'URL' : 'Lead'}
+                    {notification.type === 'request' ? 'URL' : notification.type === 'ai_issue' ? 'AI' : 'Lead'}
                   </div>
                   <div className="notification-copy">
-                    <p>{notification.title}</p>
+                    <p>{notification.title}{notification.severity && <span className={`issue-severity issue-severity--${notification.severity}`}>{notification.severity}</span>}</p>
                     <strong>{notification.message}</strong>
+                    {notification.occurrenceCount && notification.occurrenceCount > 1 ? <small>Occurred {notification.occurrenceCount} times</small> : null}
+                    {notification.occurredAt && <small>{new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(notification.occurredAt))}</small>}
                     <button className="notification-action" type="button" onClick={(event) => {
                       event.stopPropagation()
                       openNotification(notification)

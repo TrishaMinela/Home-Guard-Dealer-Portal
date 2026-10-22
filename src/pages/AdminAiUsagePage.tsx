@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { AiEntranceDetectionUsage, AiGenerationUsage, AiUsagePeriod, AiVisualizationWorkflow } from '../types/aiUsage'
+import type { AiAdminIssue } from '../types/aiAdminIssue'
+
+const aiIssueFields = 'id, workflow_request_id, issue_type, severity, title, admin_summary, recommended_action, failure_stage, failure_category, environment, provider_request_id, occurred_at, first_seen_at, last_seen_at, occurrence_count, status, resolved_at, resolved_by'
 
 const periods: Array<{ value: AiUsagePeriod; label: string }> = [
   { value: 'today', label: 'Today' },
@@ -96,6 +100,8 @@ function formatDateTime(value: string) {
 }
 
 export function AdminAiUsagePage() {
+  const [searchParams] = useSearchParams()
+  const selectedIssueId = searchParams.get('issue')
   const [period, setPeriod] = useState<AiUsagePeriod>('this-month')
   const [generationRows, setGenerationRows] = useState<AiGenerationUsage[]>([])
   const [detectionRows, setDetectionRows] = useState<AiEntranceDetectionUsage[]>([])
@@ -105,7 +111,44 @@ export function AdminAiUsagePage() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState('')
   const [refreshError, setRefreshError] = useState('')
+  const [issues, setIssues] = useState<AiAdminIssue[]>([])
+  const [issuesError, setIssuesError] = useState('')
+  const [resolvingIssueId, setResolvingIssueId] = useState('')
   const requestSequence = useRef(0)
+
+  const loadIssues = useCallback(async () => {
+    const { data, error: queryError } = await supabase
+      .from('ai_admin_issues')
+      .select(aiIssueFields)
+      .order('last_seen_at', { ascending: false })
+      .limit(100)
+    if (queryError) {
+      console.error('Failed to load AI admin issues.', queryError)
+      setIssuesError('We could not load AI issue history right now.')
+    } else {
+      setIssues((data ?? []) as AiAdminIssue[])
+      setIssuesError('')
+    }
+  }, [])
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => void loadIssues(), 0)
+    return () => window.clearTimeout(timeoutId)
+  }, [loadIssues])
+
+  async function resolveIssue(issueId: string) {
+    setResolvingIssueId(issueId)
+    setIssuesError('')
+    const { error: mutationError } = await supabase.rpc('resolve_ai_admin_issue', { p_issue_id: issueId })
+    if (mutationError) {
+      console.error('Failed to resolve AI admin issue.', mutationError)
+      setIssuesError('We could not mark this issue resolved. Please try again.')
+    } else {
+      await loadIssues()
+      window.dispatchEvent(new Event('ai-admin-issues-changed'))
+    }
+    setResolvingIssueId('')
+  }
 
   const loadUsage = useCallback(async (background: boolean) => {
       const requestId = ++requestSequence.current
@@ -236,7 +279,7 @@ export function AdminAiUsagePage() {
         <div className="ai-usage-filters">
           <div className="filter-field ai-usage-period"><label htmlFor="ai-usage-period">Date range</label><select id="ai-usage-period" value={period} onChange={(event) => setPeriod(event.target.value as AiUsagePeriod)}>{periods.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
           <div className="ai-usage-refresh">
-            <button className="button ai-usage-refresh__button" type="button" disabled={isLoading || isRefreshing} onClick={() => void loadUsage(true)}>
+            <button className="button ai-usage-refresh__button" type="button" disabled={isLoading || isRefreshing} onClick={() => { void loadUsage(true); void loadIssues() }}>
               <RefreshIcon spinning={isRefreshing} />
               {isRefreshing ? 'Refreshing...' : 'Refresh'}
             </button>
@@ -245,6 +288,34 @@ export function AdminAiUsagePage() {
         </div>
       </header>
       {(trackingBegan.generation || trackingBegan.detection || trackingBegan.workflow) && <p className="ai-usage-tracking-note">Workflow-level attempts and failures are available from {trackingBegan.workflow ? formatDateTime(trackingBegan.workflow) : 'the workflow-tracking rollout'}. Image-generation tracking began {trackingBegan.generation ? formatDateTime(trackingBegan.generation) : 'after this period'}. Entrance-analysis tracking began {trackingBegan.detection ? formatDateTime(trackingBegan.detection) : 'after this period'}. Earlier workflow attempts are not inferred or fabricated.</p>}
+
+      <section className="content-card ai-issues-card" aria-labelledby="ai-issues-title">
+        <div className="content-card__header"><p className="eyebrow">Admin diagnostics</p><h2 id="ai-issues-title">AI Visualizer Issues</h2></div>
+        {issuesError && <div className="notification-inline-error" role="alert">{issuesError}</div>}
+        {issues.length === 0 && !issuesError && <div className="data-state data-state--compact">No AI system issues have been recorded.</div>}
+        {issues.length > 0 && <div className="ai-issue-list">
+          {issues.map((issue) => (
+            <article className={`ai-issue ${selectedIssueId === issue.id ? 'is-selected' : ''}`} id={`ai-issue-${issue.id}`} key={issue.id}>
+              <div className="ai-issue__heading">
+                <div><span className={`issue-severity issue-severity--${issue.severity}`}>{issue.severity}</span><span className={`status-badge status-badge--${issue.status === 'resolved' ? 'succeeded' : 'failed'}`}>{issue.status}</span><h3>{issue.title}</h3></div>
+                {issue.status === 'unresolved' && <button className="button button--secondary" type="button" disabled={resolvingIssueId === issue.id} onClick={() => void resolveIssue(issue.id)}>{resolvingIssueId === issue.id ? 'Resolving...' : 'Mark Resolved'}</button>}
+              </div>
+              <p>{issue.admin_summary}</p>
+              <dl className="ai-issue__details">
+                <div><dt>Category</dt><dd><code>{issue.failure_category}</code></dd></div>
+                <div><dt>Stage</dt><dd>{issue.failure_stage.replaceAll('_', ' ')}</dd></div>
+                <div><dt>Environment</dt><dd>{issue.environment}</dd></div>
+                <div><dt>Occurrences</dt><dd>{issue.occurrence_count}</dd></div>
+                <div><dt>Last seen</dt><dd>{formatDateTime(issue.last_seen_at)}</dd></div>
+                <div><dt>Workflow</dt><dd><code>{issue.workflow_request_id}</code></dd></div>
+                {issue.provider_request_id && <div><dt>Provider request</dt><dd><code>{issue.provider_request_id}</code></dd></div>}
+              </dl>
+              <div className="ai-issue__action"><strong>Recommended action</strong><p>{issue.recommended_action}</p></div>
+              {issue.resolved_at && <small>Resolved {formatDateTime(issue.resolved_at)}</small>}
+            </article>
+          ))}
+        </div>}
+      </section>
 
       {isLoading && <div className="data-state">Loading AI usage...</div>}
       {!isLoading && error && <div className="data-state data-state--error" role="alert">{error}</div>}

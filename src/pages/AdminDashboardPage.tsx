@@ -1,11 +1,14 @@
 import { useNavigate } from 'react-router-dom'
 import type { PersistedAdminNotification } from '../hooks/useAdminNotifications'
 import type { AdminDataState } from '../types/admin'
+import type { AiAdminIssue } from '../types/aiAdminIssue'
 
 type AdminDashboardPageProps = AdminDataState & {
   notifications: PersistedAdminNotification[]
   notificationsLoading: boolean
   notificationError: string
+  aiIssues: AiAdminIssue[]
+  aiIssuesLoading: boolean
   onNotificationOpen: (notification: PersistedAdminNotification) => void
 }
 
@@ -17,6 +20,8 @@ export function AdminDashboardPage({
   notifications,
   notificationsLoading,
   notificationError,
+  aiIssues,
+  aiIssuesLoading,
   onNotificationOpen,
 }: AdminDashboardPageProps) {
   const navigate = useNavigate()
@@ -37,6 +42,7 @@ export function AdminDashboardPage({
     },
   ]
   const hasNotifications = notifications.length > 0
+  const criticalIssues = aiIssues.filter((issue) => issue.severity === 'critical')
 
   function openNotification(notification: PersistedAdminNotification) {
     onNotificationOpen(notification)
@@ -52,6 +58,13 @@ export function AdminDashboardPage({
       </header>
 
       {error && <div className="portal-alert" role="alert">{error}</div>}
+
+      {!aiIssuesLoading && criticalIssues.length > 0 && (
+        <section className="ai-critical-alert" role="alert">
+          <div><strong>AI Visualizer needs attention</strong><span>{criticalIssues.length} unresolved critical {criticalIssues.length === 1 ? 'issue' : 'issues'}</span></div>
+          <button className="button button--secondary" type="button" onClick={() => navigate(`/admin/ai-usage?issue=${criticalIssues[0].id}`)}>View issue</button>
+        </section>
+      )}
 
       <section className="metric-grid metric-grid--admin" aria-label="Home Guard summary">
         {metrics.map((metric) => (
@@ -90,7 +103,7 @@ export function AdminDashboardPage({
                 }}
               >
                 <div className={`notification-icon notification-icon--${notification.type}`} aria-hidden="true">
-                  {notification.type === 'request' ? 'URL' : 'Lead'}
+                  {notification.type === 'request' ? 'URL' : notification.type === 'ai_issue' ? 'AI' : 'Lead'}
                 </div>
                 <div className="notification-copy">
                   <p>{notification.title}</p>

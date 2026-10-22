@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom'
 import { useAdminData } from '../hooks/useAdminData'
 import { useAdminNotifications, type PersistedAdminNotification } from '../hooks/useAdminNotifications'
+import { useAiAdminIssues } from '../hooks/useAiAdminIssues'
 import { AdminDashboardPage } from '../pages/AdminDashboardPage'
 import { AddDealerPage } from '../pages/AddDealerPage'
 import { AdminDealersPage } from '../pages/AdminDealersPage'
@@ -39,7 +40,19 @@ export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps
   const [dealerSuccess, setDealerSuccess] = useState('')
   const [dealerDetailSuccess, setDealerDetailSuccess] = useState('')
   const adminData = useAdminData()
+  const aiIssueState = useAiAdminIssues()
   const allNotifications: PersistedAdminNotification[] = [
+    ...aiIssueState.issues.map((issue) => ({
+      id: `ai-issue-${issue.id}`,
+      type: 'ai_issue' as const,
+      title: issue.title,
+      message: issue.admin_summary,
+      actionLabel: 'View Issue',
+      path: `/admin/ai-usage?issue=${issue.id}`,
+      severity: issue.severity,
+      occurredAt: issue.last_seen_at,
+      occurrenceCount: issue.occurrence_count,
+    })),
     ...adminData.dealers
       .filter((dealer) => dealer.slug_request_status === 'pending' && dealer.requested_slug)
       .map((dealer) => ({
@@ -75,7 +88,7 @@ export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps
 
   function handleNotificationOpen(notification: PortalNotification) {
     const persistedNotification = allNotifications.find((item) => item.id === notification.id)
-    if (persistedNotification) notificationState.markAsRead(persistedNotification)
+    if (persistedNotification?.receipt) notificationState.markAsRead(persistedNotification)
   }
 
   function handleDealerCreated(companyName: string) {
@@ -178,8 +191,10 @@ export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps
               <AdminDashboardPage
                 {...adminData}
                 notifications={notificationState.notifications}
-                notificationsLoading={notificationState.isLoading}
-                notificationError={notificationState.error}
+                notificationsLoading={notificationState.isLoading || aiIssueState.isLoading}
+                notificationError={notificationState.error || aiIssueState.error}
+                aiIssues={aiIssueState.issues}
+                aiIssuesLoading={aiIssueState.isLoading}
                 onNotificationOpen={notificationState.markAsRead}
               />
             }
@@ -238,7 +253,7 @@ export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps
       </main>
       <NotificationLauncher
         notifications={notificationState.notifications}
-        error={notificationState.error}
+        error={notificationState.error || aiIssueState.error}
         onNotificationOpen={handleNotificationOpen}
       />
     </div>

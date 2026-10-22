@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import type { PortalNotification } from '../components/NotificationLauncher'
 
 export type PersistedAdminNotification = PortalNotification & {
-  receipt: {
+  receipt?: {
     notificationType: 'lead' | 'slug_request'
     sourceId: string
     sourceVersion: string
@@ -16,7 +16,7 @@ type NotificationRead = {
   source_version: string
 }
 
-function receiptKey(receipt: PersistedAdminNotification['receipt']) {
+function receiptKey(receipt: NonNullable<PersistedAdminNotification['receipt']>) {
   return `${receipt.notificationType}:${receipt.sourceId}:${receipt.sourceVersion}`
 }
 
@@ -56,11 +56,12 @@ export function useAdminNotifications(allNotifications: PersistedAdminNotificati
   }, [])
 
   const notifications = useMemo(
-    () => allNotifications.filter((notification) => !readKeys.has(receiptKey(notification.receipt))),
+    () => allNotifications.filter((notification) => !notification.receipt || !readKeys.has(receiptKey(notification.receipt))),
     [allNotifications, readKeys],
   )
 
   const markAsRead = useCallback((notification: PersistedAdminNotification) => {
+    if (!notification.receipt) return
     const key = receiptKey(notification.receipt)
     if (readKeys.has(key)) return
 
