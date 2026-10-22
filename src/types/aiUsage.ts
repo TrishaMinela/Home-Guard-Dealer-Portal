@@ -43,5 +43,23 @@ export type AiEntranceDetectionUsage = {
   error_code: string | null
 }
 
+export type AiVisualizationWorkflow = {
+  id: string
+  workflow_request_id: string
+  started_at: string
+  completed_at: string | null
+  environment: 'production' | 'preview' | 'development'
+  status: 'started' | 'succeeded' | 'failed'
+  failure_stage: 'entrance_analysis' | 'image_generation' | 'application_infrastructure' | null
+  failure_category: string | null
+  analysis_request_id: string | null
+  analysis_provider_request_id: string | null
+  generation_request_id: string | null
+  generation_provider_request_id: string | null
+  estimated_total_cost_usd: number | null
+  duration_ms: number | null
+  created_at: string
+}
+
 export type AiUsagePeriod = 'today' | '7-days' | '30-days' | 'this-month'
 export type AiUsageEnvironment = 'all' | 'production' | 'preview' | 'development'

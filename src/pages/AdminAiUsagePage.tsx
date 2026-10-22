@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
-import type { AiEntranceDetectionUsage, AiGenerationUsage, AiUsagePeriod } from '../types/aiUsage'
+import type { AiEntranceDetectionUsage, AiGenerationUsage, AiUsagePeriod, AiVisualizationWorkflow } from '../types/aiUsage'
 
 const periods: Array<{ value: AiUsagePeriod; label: string }> = [
   { value: 'today', label: 'Today' },
@@ -99,7 +99,8 @@ export function AdminAiUsagePage() {
   const [period, setPeriod] = useState<AiUsagePeriod>('this-month')
   const [generationRows, setGenerationRows] = useState<AiGenerationUsage[]>([])
   const [detectionRows, setDetectionRows] = useState<AiEntranceDetectionUsage[]>([])
-  const [trackingBegan, setTrackingBegan] = useState<{ generation: string | null; detection: string | null }>({ generation: null, detection: null })
+  const [workflowRows, setWorkflowRows] = useState<AiVisualizationWorkflow[]>([])
+  const [trackingBegan, setTrackingBegan] = useState<{ generation: string | null; detection: string | null; workflow: string | null }>({ generation: null, detection: null, workflow: null })
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState('')
@@ -126,21 +127,28 @@ export function AdminAiUsagePage() {
         .select('id, created_at, completed_at, status, environment, model, pass_type, input_tokens, cached_input_tokens, output_tokens, reasoning_tokens, total_tokens, estimated_cost_usd, detection_duration_ms, request_id, workflow_request_id, error_code')
         .gte('created_at', periodStart(period).toISOString())
         .order('created_at', { ascending: false })
-      const [{ data: generationData, error: generationError }, { data: detectionData, error: detectionError }] = await Promise.all([generationQuery, detectionQuery])
+      const workflowQuery = supabase
+        .from('ai_visualization_workflows')
+        .select('id, workflow_request_id, started_at, completed_at, environment, status, failure_stage, failure_category, analysis_request_id, analysis_provider_request_id, generation_request_id, generation_provider_request_id, estimated_total_cost_usd, duration_ms, created_at')
+        .gte('started_at', periodStart(period).toISOString())
+        .order('started_at', { ascending: false })
+      const [{ data: generationData, error: generationError }, { data: detectionData, error: detectionError }, { data: workflowData, error: workflowError }] = await Promise.all([generationQuery, detectionQuery, workflowQuery])
 
       if (requestId !== requestSequence.current) return
-      if (generationError || detectionError) {
-        console.error('Failed to load AI usage.', { generationError, detectionError })
+      if (generationError || detectionError || workflowError) {
+        console.error('Failed to load AI usage.', { generationError, detectionError, workflowError })
         if (background) {
           setRefreshError('Could not refresh AI usage. Your previous data is still shown.')
         } else {
           setError('We could not load AI usage right now. Please try again later.')
           setGenerationRows([])
           setDetectionRows([])
+          setWorkflowRows([])
         }
       } else {
         setGenerationRows((generationData ?? []) as AiGenerationUsage[])
         setDetectionRows((detectionData ?? []) as AiEntranceDetectionUsage[])
+        setWorkflowRows((workflowData ?? []) as AiVisualizationWorkflow[])
       }
       if (background) setIsRefreshing(false)
       else setIsLoading(false)
@@ -156,28 +164,32 @@ export function AdminAiUsagePage() {
     void Promise.all([
       supabase.from('ai_generation_usage').select('created_at').order('created_at', { ascending: true }).limit(1).maybeSingle(),
       supabase.from('ai_entrance_detection_usage').select('created_at').order('created_at', { ascending: true }).limit(1).maybeSingle(),
-    ]).then(([generationResult, detectionResult]) => {
+      supabase.from('ai_visualization_workflows').select('started_at').order('started_at', { ascending: true }).limit(1).maybeSingle(),
+    ]).then(([generationResult, detectionResult, workflowResult]) => {
         if (!isCurrent) return
-        if (generationResult.error || detectionResult.error) console.error('Failed to load AI usage tracking start.', { generationError: generationResult.error, detectionError: detectionResult.error })
-        else setTrackingBegan({ generation: generationResult.data?.created_at ?? null, detection: detectionResult.data?.created_at ?? null })
+        if (generationResult.error || detectionResult.error || workflowResult.error) console.error('Failed to load AI usage tracking start.', { generationError: generationResult.error, detectionError: detectionResult.error, workflowError: workflowResult.error })
+        else setTrackingBegan({ generation: generationResult.data?.created_at ?? null, detection: detectionResult.data?.created_at ?? null, workflow: workflowResult.data?.started_at ?? null })
       })
     return () => { isCurrent = false }
   }, [])
 
   const metrics = useMemo(() => {
-    const succeeded = generationRows.filter((row) => row.status === 'succeeded')
-    const totalDurations = succeeded
-      .map((row) => row.total_visualization_duration_ms)
+    const succeededGenerations = generationRows.filter((row) => row.status === 'succeeded')
+    const successfulWorkflows = workflowRows.filter((row) => row.status === 'succeeded')
+    const failedWorkflows = workflowRows.filter((row) => row.status === 'failed')
+    const completedWorkflows = successfulWorkflows.length + failedWorkflows.length
+    const totalDurations = successfulWorkflows
+      .map((row) => row.duration_ms)
       .filter((value): value is number => value !== null)
-    const entranceStageDurations = succeeded
+    const entranceStageDurations = succeededGenerations
       .map((row) => row.entrance_stage_duration_ms)
       .filter((value): value is number => value !== null)
-    const sunburstStageDurations = succeeded
+    const sunburstStageDurations = succeededGenerations
       .map((row) => row.total_visualization_duration_ms !== null && row.entrance_stage_duration_ms !== null
         ? Math.max(0, row.total_visualization_duration_ms - row.entrance_stage_duration_ms)
         : null)
       .filter((value): value is number => value !== null)
-    const openAiDurations = succeeded.map((row) => row.openai_generation_duration_ms).filter((value): value is number => value !== null)
+    const openAiDurations = succeededGenerations.map((row) => row.openai_generation_duration_ms).filter((value): value is number => value !== null)
     const successfulDetections = detectionRows.filter((row) => row.status === 'succeeded')
     const detectionDurations = successfulDetections.map((row) => row.detection_duration_ms).filter((value): value is number => value !== null)
     const generationTokens = sumCanonicalTotals(generationRows)
@@ -185,9 +197,16 @@ export function AdminAiUsagePage() {
     const generationCost = sumAvailable(generationRows, 'estimated_cost_usd')
     const detectionCost = sumAvailable(detectionRows, 'estimated_cost_usd')
     return {
-      aiCalls: generationRows.length + detectionRows.length,
-      succeeded: succeeded.length,
-      failed: generationRows.filter((row) => row.status === 'failed').length,
+      attempts: workflowRows.length,
+      succeeded: successfulWorkflows.length,
+      failed: failedWorkflows.length,
+      started: workflowRows.filter((row) => row.status === 'started').length,
+      successRate: completedWorkflows ? successfulWorkflows.length / completedWorkflows * 100 : null,
+      analysisFailures: failedWorkflows.filter((row) => row.failure_stage === 'entrance_analysis').length,
+      generationFailures: failedWorkflows.filter((row) => row.failure_stage === 'image_generation').length,
+      infrastructureFailures: failedWorkflows.filter((row) => row.failure_stage === 'application_infrastructure').length,
+      generationCalls: generationRows.length,
+      analysisCalls: detectionRows.length,
       totalTokens: addKnown(generationTokens, detectionTokens),
       cost: addKnown(generationCost, detectionCost),
       costIncomplete: generationRows.some((row) => row.estimated_cost_usd === null) || detectionRows.some((row) => row.estimated_cost_usd === null),
@@ -204,7 +223,7 @@ export function AdminAiUsagePage() {
       averageOpenAiDuration: openAiDurations.length ? openAiDurations.reduce((sum, value) => sum + value, 0) / openAiDurations.length : null,
       averageDetectionDuration: detectionDurations.length ? detectionDurations.reduce((sum, value) => sum + value, 0) / detectionDurations.length : null,
     }
-  }, [generationRows, detectionRows])
+  }, [generationRows, detectionRows, workflowRows])
 
   return (
     <div className="page-content ai-usage-page">
@@ -225,11 +244,11 @@ export function AdminAiUsagePage() {
           </div>
         </div>
       </header>
-      {(trackingBegan.generation || trackingBegan.detection) && <p className="ai-usage-tracking-note">Image-generation tracking began {trackingBegan.generation ? formatDateTime(trackingBegan.generation) : 'after this period'}. Entrance-analysis tracking began {trackingBegan.detection ? formatDateTime(trackingBegan.detection) : 'after this period'}. Earlier untracked activity is not included.</p>}
+      {(trackingBegan.generation || trackingBegan.detection || trackingBegan.workflow) && <p className="ai-usage-tracking-note">Workflow-level attempts and failures are available from {trackingBegan.workflow ? formatDateTime(trackingBegan.workflow) : 'the workflow-tracking rollout'}. Image-generation tracking began {trackingBegan.generation ? formatDateTime(trackingBegan.generation) : 'after this period'}. Entrance-analysis tracking began {trackingBegan.detection ? formatDateTime(trackingBegan.detection) : 'after this period'}. Earlier workflow attempts are not inferred or fabricated.</p>}
 
       {isLoading && <div className="data-state">Loading AI usage...</div>}
       {!isLoading && error && <div className="data-state data-state--error" role="alert">{error}</div>}
-      {!isLoading && !error && generationRows.length === 0 && detectionRows.length === 0 && (
+      {!isLoading && !error && generationRows.length === 0 && detectionRows.length === 0 && workflowRows.length === 0 && (
         <section className="content-card empty-state ai-usage-empty">
           <div className="empty-state__icon" aria-hidden="true">AI</div>
           <strong>No AI usage has been recorded for this period yet.</strong>
@@ -237,21 +256,32 @@ export function AdminAiUsagePage() {
         </section>
       )}
 
-      {!isLoading && !error && (generationRows.length > 0 || detectionRows.length > 0) && (
+      {!isLoading && !error && (generationRows.length > 0 || detectionRows.length > 0 || workflowRows.length > 0) && (
         <>
           <section className="metric-grid ai-usage-metrics" aria-label="AI usage summary">
-            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="visualizations" /><p>Visualizations Generated</p><strong>{metrics.succeeded}</strong></article>
-            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="successful" /><p>Generation Attempts</p><strong>{generationRows.length}</strong></article>
-            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="failed" /><p>Failed</p><strong>{metrics.failed}</strong></article>
+            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="visualizations" /><p>Visualization Attempts</p><strong>{metrics.attempts}</strong>{metrics.started > 0 && <small>{metrics.started} currently started</small>}</article>
+            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="successful" /><p>Successful Visualizations</p><strong>{metrics.succeeded}</strong></article>
+            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="failed" /><p>Failed Visualizations</p><strong>{metrics.failed}</strong></article>
+            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="successful" /><p>Success Rate</p><strong>{metrics.successRate === null ? '—' : `${metrics.successRate.toFixed(1)}%`}</strong><small>Completed workflows</small></article>
             <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="usage" /><p>Total AI Usage</p><strong>{formatTokens(metrics.totalTokens)}</strong>{metrics.totalUsageIncomplete && <small>Known records only</small>}</article>
             <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="cost" /><p>Estimated AI Cost</p><strong>{formatCost(metrics.cost)}</strong><small>{metrics.costIncomplete ? 'Known records only' : 'Calculated estimate'}</small></article>
-            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="time" /><p>Average Full Visualization Time</p><strong>{formatDuration(metrics.averageTotalDuration)}</strong><small>Successful generations only</small></article>
+            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="time" /><p>Average Full Visualization Time</p><strong>{formatDuration(metrics.averageTotalDuration)}</strong><small>Successful workflows only</small></article>
+          </section>
+
+          <section className="content-card ai-usage-breakdown-card">
+            <div className="content-card__header"><p className="eyebrow">Workflow outcomes</p><h2>Failure Breakdown</h2></div>
+            <dl className="ai-combined-usage">
+              <div><dt>Analysis Failures</dt><dd>{metrics.analysisFailures}</dd></div>
+              <div><dt>Generation Failures</dt><dd>{metrics.generationFailures}</dd></div>
+              <div><dt>Infrastructure Failures</dt><dd>{metrics.infrastructureFailures}</dd></div>
+            </dl>
           </section>
 
           <section className="content-card ai-usage-breakdown-card">
             <div className="content-card__header"><p className="eyebrow">Complete AI workflow</p><h2>AI Usage</h2></div>
             <dl className="ai-combined-usage">
-              <div><dt>AI Calls</dt><dd>{new Intl.NumberFormat().format(metrics.aiCalls)}</dd></div>
+              <div><dt>Entrance Analysis Calls</dt><dd>{new Intl.NumberFormat().format(metrics.analysisCalls)}</dd></div>
+              <div><dt>Image Generation Calls</dt><dd>{new Intl.NumberFormat().format(metrics.generationCalls)}</dd></div>
               <div><dt>Total AI Usage</dt><dd>{formatTokens(metrics.totalTokens)}</dd>{metrics.totalUsageIncomplete && <small>Known records only</small>}</div>
               <div><dt>Estimated AI Cost</dt><dd>{formatCost(metrics.cost)}</dd><small>{metrics.costIncomplete ? 'Known records only' : 'Calculated estimate'}</small></div>
             </dl>
