@@ -61,5 +61,37 @@ export type AiVisualizationWorkflow = {
   created_at: string
 }
 
-export type AiUsagePeriod = 'today' | '7-days' | '30-days' | 'this-month'
+export type AiUsagePeriod = 'today' | '7-days' | '30-days' | 'this-month' | 'custom'
+
+export type AiProviderActivityDaily = {
+  id: string
+  provider: string
+  provider_project_id: string
+  usage_date: string
+  period_start_at: string
+  period_end_at: string
+  provider_model: string
+  telemetry_model: string
+  operation_type: 'image_generation' | 'entrance_analysis' | 'unclassified'
+  request_count: number
+  input_tokens: number
+  output_tokens: number
+  cached_input_tokens: number
+  text_input_tokens: number
+  text_output_tokens: number
+  image_input_tokens: number
+  image_output_tokens: number
+  calculated_estimated_cost_usd: number | null
+}
+
+export type AiProviderCostDaily = {
+  id: string
+  provider: string
+  reconciled_project_id: string
+  export_project_id: string | null
+  usage_date: string
+  actual_cost_usd: number
+  currency: string
+  scope_verification: string
+}
 export type AiUsageEnvironment = 'all' | 'production' | 'preview' | 'development'

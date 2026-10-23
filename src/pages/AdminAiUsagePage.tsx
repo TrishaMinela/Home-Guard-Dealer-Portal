@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import type { AiEntranceDetectionUsage, AiGenerationUsage, AiUsagePeriod, AiVisualizationWorkflow } from '../types/aiUsage'
+import type { AiEntranceDetectionUsage, AiGenerationUsage, AiProviderActivityDaily, AiProviderCostDaily, AiUsagePeriod, AiVisualizationWorkflow } from '../types/aiUsage'
 import type { AiAdminIssue } from '../types/aiAdminIssue'
 
 const aiIssueFields = 'id, workflow_request_id, issue_type, severity, title, admin_summary, recommended_action, failure_stage, failure_category, environment, provider_request_id, occurred_at, first_seen_at, last_seen_at, occurrence_count, status, resolved_at, resolved_by'
@@ -11,7 +11,10 @@ const periods: Array<{ value: AiUsagePeriod; label: string }> = [
   { value: '7-days', label: 'Last 7 Days' },
   { value: '30-days', label: 'Last 30 Days' },
   { value: 'this-month', label: 'This Month' },
+  { value: 'custom', label: 'Custom UTC Range' },
 ]
+
+const hgiOpenAiProjectId = 'proj_haRRNxvf4CVwa2jHugJ762SM'
 
 function RefreshIcon({ spinning }: { spinning: boolean }) {
   return (
@@ -36,13 +39,42 @@ function MetricIcon({ name }: { name: MetricIconName }) {
   return <span className="ai-metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24">{paths[name]}</svg></span>
 }
 
-function periodStart(period: AiUsagePeriod) {
+function utcDateKey(date: Date) {
+  return date.toISOString().slice(0, 10)
+}
+
+function utcDate(value: string) {
+  return new Date(`${value}T00:00:00.000Z`)
+}
+
+function addUtcDays(date: Date, days: number) {
+  const next = new Date(date)
+  next.setUTCDate(next.getUTCDate() + days)
+  return next
+}
+
+function periodBounds(period: AiUsagePeriod, customStart: string, customEnd: string) {
   const now = new Date()
-  if (period === 'today') return new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  if (period === 'this-month') return new Date(now.getFullYear(), now.getMonth(), 1)
-  const start = new Date(now)
-  start.setDate(start.getDate() - (period === '7-days' ? 7 : 30))
-  return start
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+  let start = today
+  let endInclusive = today
+  if (period === 'custom') {
+    start = utcDate(customStart)
+    endInclusive = utcDate(customEnd)
+  } else if (period === 'this-month') {
+    start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+  } else if (period === '7-days') {
+    start = addUtcDays(today, -6)
+  } else if (period === '30-days') {
+    start = addUtcDays(today, -29)
+  }
+  if (Number.isNaN(start.getTime()) || Number.isNaN(endInclusive.getTime()) || start > endInclusive) return null
+  return {
+    start,
+    endExclusive: addUtcDays(endInclusive, 1),
+    startDate: utcDateKey(start),
+    endDate: utcDateKey(endInclusive),
+  }
 }
 
 function sumAvailable<T, K extends keyof T>(rows: T[], field: K) {
@@ -88,6 +120,18 @@ function formatCost(value: number | null) {
   return value === null ? '—' : new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(value)
 }
 
+function formatProviderCost(value: number | null) {
+  return value === null ? '—' : new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)
+}
+
+function formatExactProviderCost(value: number | null) {
+  return value === null ? '—' : `$${value.toFixed(10)}`
+}
+
+function requestBucket(dateTime: string, model: string, operation: AiProviderActivityDaily['operation_type']) {
+  return `${dateTime.slice(0, 10)}|${model}|${operation}`
+}
+
 function formatDuration(value: number | null) {
   if (value === null) return '—'
   return value >= 1000 ? `${(value / 1000).toFixed(1)} sec` : `${value} ms`
@@ -103,9 +147,13 @@ export function AdminAiUsagePage() {
   const [searchParams] = useSearchParams()
   const selectedIssueId = searchParams.get('issue')
   const [period, setPeriod] = useState<AiUsagePeriod>('this-month')
+  const [customStart, setCustomStart] = useState('2026-10-05')
+  const [customEnd, setCustomEnd] = useState('2026-10-22')
   const [generationRows, setGenerationRows] = useState<AiGenerationUsage[]>([])
   const [detectionRows, setDetectionRows] = useState<AiEntranceDetectionUsage[]>([])
   const [workflowRows, setWorkflowRows] = useState<AiVisualizationWorkflow[]>([])
+  const [providerActivityRows, setProviderActivityRows] = useState<AiProviderActivityDaily[]>([])
+  const [providerCostRows, setProviderCostRows] = useState<AiProviderCostDaily[]>([])
   const [trackingBegan, setTrackingBegan] = useState<{ generation: string | null; detection: string | null; workflow: string | null }>({ generation: null, detection: null, workflow: null })
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -115,6 +163,7 @@ export function AdminAiUsagePage() {
   const [issuesError, setIssuesError] = useState('')
   const [resolvingIssueId, setResolvingIssueId] = useState('')
   const requestSequence = useRef(0)
+  const bounds = useMemo(() => periodBounds(period, customStart, customEnd), [period, customStart, customEnd])
 
   const loadIssues = useCallback(async () => {
     const { data, error: queryError } = await supabase
@@ -152,6 +201,12 @@ export function AdminAiUsagePage() {
 
   const loadUsage = useCallback(async (background: boolean) => {
       const requestId = ++requestSequence.current
+      if (!bounds) {
+        setError('Choose a valid UTC date range. The end date must be on or after the start date.')
+        setIsLoading(false)
+        setIsRefreshing(false)
+        return
+      }
       if (background) {
         setIsRefreshing(true)
         setRefreshError('')
@@ -163,23 +218,48 @@ export function AdminAiUsagePage() {
       const generationQuery = supabase
         .from('ai_generation_usage')
         .select('id, created_at, completed_at, status, model, quality, output_size, output_format, input_tokens, text_input_tokens, image_input_tokens, output_tokens, image_output_tokens, total_tokens, estimated_cost_usd, openai_generation_duration_ms, total_api_duration_ms, total_visualization_duration_ms, entrance_stage_duration_ms, environment, request_id, error_code')
-        .gte('created_at', periodStart(period).toISOString())
+        .gte('created_at', bounds.start.toISOString())
+        .lt('created_at', bounds.endExclusive.toISOString())
         .order('created_at', { ascending: false })
       const detectionQuery = supabase
         .from('ai_entrance_detection_usage')
         .select('id, created_at, completed_at, status, environment, model, pass_type, input_tokens, cached_input_tokens, output_tokens, reasoning_tokens, total_tokens, estimated_cost_usd, detection_duration_ms, request_id, workflow_request_id, error_code')
-        .gte('created_at', periodStart(period).toISOString())
+        .gte('created_at', bounds.start.toISOString())
+        .lt('created_at', bounds.endExclusive.toISOString())
         .order('created_at', { ascending: false })
       const workflowQuery = supabase
         .from('ai_visualization_workflows')
         .select('id, workflow_request_id, started_at, completed_at, environment, status, failure_stage, failure_category, analysis_request_id, analysis_provider_request_id, generation_request_id, generation_provider_request_id, estimated_total_cost_usd, duration_ms, created_at')
-        .gte('started_at', periodStart(period).toISOString())
+        .gte('started_at', bounds.start.toISOString())
+        .lt('started_at', bounds.endExclusive.toISOString())
         .order('started_at', { ascending: false })
-      const [{ data: generationData, error: generationError }, { data: detectionData, error: detectionError }, { data: workflowData, error: workflowError }] = await Promise.all([generationQuery, detectionQuery, workflowQuery])
+      const providerActivityQuery = supabase
+        .from('ai_provider_activity_daily')
+        .select('id, provider, provider_project_id, usage_date, period_start_at, period_end_at, provider_model, telemetry_model, operation_type, request_count, input_tokens, output_tokens, cached_input_tokens, text_input_tokens, text_output_tokens, image_input_tokens, image_output_tokens, calculated_estimated_cost_usd')
+        .eq('provider_project_id', hgiOpenAiProjectId)
+        .gte('usage_date', bounds.startDate)
+        .lte('usage_date', bounds.endDate)
+        .order('usage_date', { ascending: false })
+      const providerCostQuery = supabase
+        .from('ai_provider_cost_daily')
+        .select('id, provider, reconciled_project_id, export_project_id, usage_date, actual_cost_usd, currency, scope_verification')
+        .eq('reconciled_project_id', hgiOpenAiProjectId)
+        .gte('usage_date', bounds.startDate)
+        .lte('usage_date', bounds.endDate)
+        .order('usage_date', { ascending: false })
+      const [generationResult, detectionResult, workflowResult, providerActivityResult, providerCostResult] = await Promise.all([
+        generationQuery, detectionQuery, workflowQuery, providerActivityQuery, providerCostQuery,
+      ])
 
       if (requestId !== requestSequence.current) return
-      if (generationError || detectionError || workflowError) {
-        console.error('Failed to load AI usage.', { generationError, detectionError, workflowError })
+      if (generationResult.error || detectionResult.error || workflowResult.error || providerActivityResult.error || providerCostResult.error) {
+        console.error('Failed to load AI usage.', {
+          generationError: generationResult.error,
+          detectionError: detectionResult.error,
+          workflowError: workflowResult.error,
+          providerActivityError: providerActivityResult.error,
+          providerCostError: providerCostResult.error,
+        })
         if (background) {
           setRefreshError('Could not refresh AI usage. Your previous data is still shown.')
         } else {
@@ -187,15 +267,19 @@ export function AdminAiUsagePage() {
           setGenerationRows([])
           setDetectionRows([])
           setWorkflowRows([])
+          setProviderActivityRows([])
+          setProviderCostRows([])
         }
       } else {
-        setGenerationRows((generationData ?? []) as AiGenerationUsage[])
-        setDetectionRows((detectionData ?? []) as AiEntranceDetectionUsage[])
-        setWorkflowRows((workflowData ?? []) as AiVisualizationWorkflow[])
+        setGenerationRows((generationResult.data ?? []) as AiGenerationUsage[])
+        setDetectionRows((detectionResult.data ?? []) as AiEntranceDetectionUsage[])
+        setWorkflowRows((workflowResult.data ?? []) as AiVisualizationWorkflow[])
+        setProviderActivityRows((providerActivityResult.data ?? []) as AiProviderActivityDaily[])
+        setProviderCostRows((providerCostResult.data ?? []) as AiProviderCostDaily[])
       }
       if (background) setIsRefreshing(false)
       else setIsLoading(false)
-  }, [period])
+  }, [bounds])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => void loadUsage(false), 0)
@@ -239,6 +323,47 @@ export function AdminAiUsagePage() {
     const detectionTokens = sumDetectionTotals(detectionRows)
     const generationCost = sumAvailable(generationRows, 'estimated_cost_usd')
     const detectionCost = sumAvailable(detectionRows, 'estimated_cost_usd')
+    const recordedBuckets = new Map<string, number>()
+    for (const row of generationRows) {
+      const key = requestBucket(row.created_at, row.model, 'image_generation')
+      recordedBuckets.set(key, (recordedBuckets.get(key) ?? 0) + 1)
+    }
+    for (const row of detectionRows) {
+      const key = requestBucket(row.created_at, row.model, 'entrance_analysis')
+      recordedBuckets.set(key, (recordedBuckets.get(key) ?? 0) + 1)
+    }
+    const providerBuckets = new Map(providerActivityRows.map((row) => [
+      requestBucket(row.usage_date, row.telemetry_model, row.operation_type),
+      row.request_count,
+    ]))
+    let providerCoveredRecorded = 0
+    let historicalAggregateRequests = 0
+    let reconciledRequests = 0
+    for (const row of providerActivityRows) {
+      const recorded = recordedBuckets.get(requestBucket(row.usage_date, row.telemetry_model, row.operation_type)) ?? 0
+      providerCoveredRecorded += Math.min(recorded, row.request_count)
+      historicalAggregateRequests += Math.max(0, row.request_count - recorded)
+      reconciledRequests += Math.max(recorded, row.request_count)
+    }
+    let trackedOutsideProviderCoverage = 0
+    for (const [key, count] of recordedBuckets) {
+      if (!providerBuckets.has(key)) {
+        trackedOutsideProviderCoverage += count
+        reconciledRequests += count
+      }
+    }
+    const individuallyTrackedRequests = generationRows.length + detectionRows.length
+    const providerRequests = providerActivityRows.reduce((sum, row) => sum + row.request_count, 0)
+    const providerTokens = providerActivityRows.reduce((sum, row) => sum + row.input_tokens + row.output_tokens, 0)
+    const actualProviderCost = providerCostRows.length
+      ? providerCostRows.reduce((sum, row) => sum + row.actual_cost_usd, 0)
+      : null
+    const modelCounts = providerActivityRows.reduce<Record<string, number>>((counts, row) => {
+      counts[row.telemetry_model] = (counts[row.telemetry_model] ?? 0) + row.request_count
+      return counts
+    }, {})
+    const activityCoverageDates = providerActivityRows.map((row) => row.usage_date).sort()
+    const coverageDates = providerCostRows.map((row) => row.usage_date).sort()
     return {
       attempts: workflowRows.length,
       succeeded: successfulWorkflows.length,
@@ -254,6 +379,19 @@ export function AdminAiUsagePage() {
       cost: addKnown(generationCost, detectionCost),
       costIncomplete: generationRows.some((row) => row.estimated_cost_usd === null) || detectionRows.some((row) => row.estimated_cost_usd === null),
       totalUsageIncomplete: generationRows.some((row) => row.status === 'succeeded' && canonicalTotal(row) === null) || detectionRows.some((row) => canonicalDetectionTotal(row) === null),
+      providerRequests,
+      individuallyTrackedRequests,
+      historicalAggregateRequests,
+      trackedOutsideProviderCoverage,
+      reconciledRequests,
+      requestCoverage: providerRequests ? providerCoveredRecorded / providerRequests * 100 : null,
+      providerTokens: providerActivityRows.length ? providerTokens : null,
+      actualProviderCost,
+      modelCounts,
+      providerActivityStart: activityCoverageDates[0] ?? null,
+      providerActivityEnd: activityCoverageDates.at(-1) ?? null,
+      providerCostStart: coverageDates[0] ?? null,
+      providerCostEnd: coverageDates.at(-1) ?? null,
       averageTotalDuration: totalDurations.length
         ? totalDurations.reduce((sum, value) => sum + value, 0) / totalDurations.length
         : null,
@@ -266,7 +404,7 @@ export function AdminAiUsagePage() {
       averageOpenAiDuration: openAiDurations.length ? openAiDurations.reduce((sum, value) => sum + value, 0) / openAiDurations.length : null,
       averageDetectionDuration: detectionDurations.length ? detectionDurations.reduce((sum, value) => sum + value, 0) / detectionDurations.length : null,
     }
-  }, [generationRows, detectionRows, workflowRows])
+  }, [generationRows, detectionRows, workflowRows, providerActivityRows, providerCostRows])
 
   return (
     <div className="page-content ai-usage-page">
@@ -278,6 +416,10 @@ export function AdminAiUsagePage() {
         </div>
         <div className="ai-usage-filters">
           <div className="filter-field ai-usage-period"><label htmlFor="ai-usage-period">Date range</label><select id="ai-usage-period" value={period} onChange={(event) => setPeriod(event.target.value as AiUsagePeriod)}>{periods.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
+          {period === 'custom' && <div className="ai-usage-custom-range">
+            <div className="filter-field"><label htmlFor="ai-usage-start">Start (UTC)</label><input id="ai-usage-start" type="date" value={customStart} onChange={(event) => setCustomStart(event.target.value)} /></div>
+            <div className="filter-field"><label htmlFor="ai-usage-end">End (UTC)</label><input id="ai-usage-end" type="date" value={customEnd} onChange={(event) => setCustomEnd(event.target.value)} /></div>
+          </div>}
           <div className="ai-usage-refresh">
             <button className="button ai-usage-refresh__button" type="button" disabled={isLoading || isRefreshing} onClick={() => { void loadUsage(true); void loadIssues() }}>
               <RefreshIcon spinning={isRefreshing} />
@@ -287,6 +429,7 @@ export function AdminAiUsagePage() {
           </div>
         </div>
       </header>
+      <p className="ai-usage-timezone-note">Reporting boundaries use UTC dates. Times in activity tables are displayed in your local browser time.</p>
       {(trackingBegan.generation || trackingBegan.detection || trackingBegan.workflow) && <p className="ai-usage-tracking-note">Workflow-level attempts and failures are available from {trackingBegan.workflow ? formatDateTime(trackingBegan.workflow) : 'the workflow-tracking rollout'}. Image-generation tracking began {trackingBegan.generation ? formatDateTime(trackingBegan.generation) : 'after this period'}. Entrance-analysis tracking began {trackingBegan.detection ? formatDateTime(trackingBegan.detection) : 'after this period'}. Earlier workflow attempts are not inferred or fabricated.</p>}
 
       <section className="content-card ai-issues-card" aria-labelledby="ai-issues-title">
@@ -319,7 +462,7 @@ export function AdminAiUsagePage() {
 
       {isLoading && <div className="data-state">Loading AI usage...</div>}
       {!isLoading && error && <div className="data-state data-state--error" role="alert">{error}</div>}
-      {!isLoading && !error && generationRows.length === 0 && detectionRows.length === 0 && workflowRows.length === 0 && (
+      {!isLoading && !error && generationRows.length === 0 && detectionRows.length === 0 && workflowRows.length === 0 && providerActivityRows.length === 0 && providerCostRows.length === 0 && (
         <section className="content-card empty-state ai-usage-empty">
           <div className="empty-state__icon" aria-hidden="true">AI</div>
           <strong>No AI usage has been recorded for this period yet.</strong>
@@ -327,16 +470,38 @@ export function AdminAiUsagePage() {
         </section>
       )}
 
-      {!isLoading && !error && (generationRows.length > 0 || detectionRows.length > 0 || workflowRows.length > 0) && (
+      {!isLoading && !error && (generationRows.length > 0 || detectionRows.length > 0 || workflowRows.length > 0 || providerActivityRows.length > 0 || providerCostRows.length > 0) && (
         <>
           <section className="metric-grid ai-usage-metrics" aria-label="AI usage summary">
+            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="usage" /><p>Combined Known Requests</p><strong>{new Intl.NumberFormat().format(metrics.reconciledRequests)}</strong><small>Provider export plus non-overlapping tracked requests</small></article>
+            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="usage" /><p>Provider Export Requests</p><strong>{new Intl.NumberFormat().format(metrics.providerRequests)}</strong><small>{metrics.providerActivityStart ? `${metrics.providerActivityStart}–${metrics.providerActivityEnd} UTC` : 'No provider export coverage'}</small></article>
+            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="usage" /><p>Individually Tracked Requests</p><strong>{new Intl.NumberFormat().format(metrics.individuallyTrackedRequests)}</strong><small>Generation and entrance request rows</small></article>
+            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="usage" /><p>Tracked Outside Provider Export</p><strong>{new Intl.NumberFormat().format(metrics.trackedOutsideProviderCoverage)}</strong><small>Included in combined known requests, not provider billing</small></article>
+            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="usage" /><p>Historical Aggregate Gap</p><strong>{new Intl.NumberFormat().format(metrics.historicalAggregateRequests)}</strong><small>Recovered without fabricating request rows</small></article>
+            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="cost" /><p>Actual Provider Cost</p><strong>{formatProviderCost(metrics.actualProviderCost)}</strong><small>{metrics.actualProviderCost === null ? 'No verified provider cost export for this period' : `Verified export total: ${formatExactProviderCost(metrics.actualProviderCost)}`}</small></article>
+            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="cost" /><p>Internal Estimated Cost</p><strong>{formatCost(metrics.cost)}</strong><small>{metrics.costIncomplete ? 'Known request rows only' : 'Calculated from request telemetry'}</small></article>
+            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="successful" /><p>Provider Export Request Coverage</p><strong>{metrics.requestCoverage === null ? '—' : `${metrics.requestCoverage.toFixed(2)}%`}</strong><small>{metrics.providerActivityStart ? `Matched request rows within ${metrics.providerActivityStart}–${metrics.providerActivityEnd} UTC` : 'No provider export coverage'}</small></article>
             <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="visualizations" /><p>Visualization Attempts</p><strong>{metrics.attempts}</strong>{metrics.started > 0 && <small>{metrics.started} currently started</small>}</article>
             <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="successful" /><p>Successful Visualizations</p><strong>{metrics.succeeded}</strong></article>
             <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="failed" /><p>Failed Visualizations</p><strong>{metrics.failed}</strong></article>
             <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="successful" /><p>Success Rate</p><strong>{metrics.successRate === null ? '—' : `${metrics.successRate.toFixed(1)}%`}</strong><small>Completed workflows</small></article>
-            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="usage" /><p>Total AI Usage</p><strong>{formatTokens(metrics.totalTokens)}</strong>{metrics.totalUsageIncomplete && <small>Known records only</small>}</article>
-            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="cost" /><p>Estimated AI Cost</p><strong>{formatCost(metrics.cost)}</strong><small>{metrics.costIncomplete ? 'Known records only' : 'Calculated estimate'}</small></article>
+            <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="usage" /><p>Provider-Reported AI Usage</p><strong>{formatTokens(metrics.providerTokens)}</strong><small>{metrics.providerTokens === null ? 'No provider activity export for this period' : 'Imported aggregate token usage'}</small></article>
             <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="time" /><p>Average Full Visualization Time</p><strong>{formatDuration(metrics.averageTotalDuration)}</strong><small>Successful workflows only</small></article>
+          </section>
+
+          <section className="content-card ai-usage-breakdown-card ai-provider-reconciliation">
+            <div className="content-card__header"><p className="eyebrow">Provider reconciliation</p><h2>OpenAI Activity &amp; Cost</h2></div>
+            <dl className="ai-combined-usage ai-combined-usage--provider">
+              <div><dt>GPT-image 2.5</dt><dd>{new Intl.NumberFormat().format(metrics.modelCounts['gpt-image-2.5-sunburst'] ?? 0)}</dd><small>Image generation requests</small></div>
+              <div><dt>GPT-5.4 mini</dt><dd>{new Intl.NumberFormat().format(metrics.modelCounts['gpt-5.4-mini'] ?? 0)}</dd><small>Entrance-analysis requests</small></div>
+              <div><dt>GPT-4o mini</dt><dd>{new Intl.NumberFormat().format(metrics.modelCounts['gpt-4o-mini'] ?? 0)}</dd><small>Historical / unclassified</small></div>
+            </dl>
+            <div className="ai-provider-reconciliation__note">
+              <strong>{metrics.providerRequests ? `${new Intl.NumberFormat().format(metrics.providerRequests)} provider requests reconciled` : 'No imported provider activity in this range'}</strong>
+              <p>{metrics.actualProviderCost === null
+                ? 'No verified provider cost export covers the selected period. Internal estimates remain estimates and are not presented as provider billing.'
+                : `Actual provider cost is verified only for imported UTC dates ${metrics.providerCostStart} through ${metrics.providerCostEnd}. ${metrics.trackedOutsideProviderCoverage ? `${new Intl.NumberFormat().format(metrics.trackedOutsideProviderCoverage)} additional tracked requests fall outside that provider-export coverage and are excluded from actual provider cost.` : ''} Internal estimates are shown separately and are never substituted for provider charges.`}</p>
+            </div>
           </section>
 
           <section className="content-card ai-usage-breakdown-card">
@@ -349,12 +514,12 @@ export function AdminAiUsagePage() {
           </section>
 
           <section className="content-card ai-usage-breakdown-card">
-            <div className="content-card__header"><p className="eyebrow">Complete AI workflow</p><h2>AI Usage</h2></div>
+            <div className="content-card__header"><p className="eyebrow">Request-level telemetry</p><h2>Individually Tracked Usage</h2></div>
             <dl className="ai-combined-usage">
-              <div><dt>Entrance Analysis Calls</dt><dd>{new Intl.NumberFormat().format(metrics.analysisCalls)}</dd></div>
-              <div><dt>Image Generation Calls</dt><dd>{new Intl.NumberFormat().format(metrics.generationCalls)}</dd></div>
-              <div><dt>Total AI Usage</dt><dd>{formatTokens(metrics.totalTokens)}</dd>{metrics.totalUsageIncomplete && <small>Known records only</small>}</div>
-              <div><dt>Estimated AI Cost</dt><dd>{formatCost(metrics.cost)}</dd><small>{metrics.costIncomplete ? 'Known records only' : 'Calculated estimate'}</small></div>
+              <div><dt>Entrance Analysis Requests</dt><dd>{new Intl.NumberFormat().format(metrics.analysisCalls)}</dd><small>Individual rows only</small></div>
+              <div><dt>Image Generation Requests</dt><dd>{new Intl.NumberFormat().format(metrics.generationCalls)}</dd><small>Individual rows only</small></div>
+              <div><dt>Tracked AI Usage</dt><dd>{formatTokens(metrics.totalTokens)}</dd>{metrics.totalUsageIncomplete && <small>Known request rows only</small>}</div>
+              <div><dt>Internal Estimated Cost</dt><dd>{formatCost(metrics.cost)}</dd><small>{metrics.costIncomplete ? 'Known request rows only' : 'Calculated estimate, not provider billing'}</small></div>
             </dl>
           </section>
 
