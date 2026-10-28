@@ -166,6 +166,7 @@ export function AdminAiUsagePage() {
   const [openAiVerificationReport, setOpenAiVerificationReport] = useState('')
   const [openAiVerificationError, setOpenAiVerificationError] = useState('')
   const [providerRecoveryRange, setProviderRecoveryRange] = useState('')
+  const [providerImportRange, setProviderImportRange] = useState('')
   const [providerRecoveryReport, setProviderRecoveryReport] = useState('')
   const [providerRecoveryError, setProviderRecoveryError] = useState('')
   const requestSequence = useRef(0)
@@ -252,6 +253,35 @@ export function AdminAiUsagePage() {
       setProviderRecoveryError(recoveryError instanceof Error ? recoveryError.message : 'Provider recovery dry run could not be completed.')
     } finally {
       setProviderRecoveryRange('')
+    }
+  }
+
+  async function importProviderRecovery(start: string, endExclusive: string) {
+    const rangeKey = `${start}:${endExclusive}`
+    setProviderImportRange(rangeKey)
+    setProviderRecoveryError('')
+    setProviderRecoveryReport('')
+    try {
+      const { data, error: sessionError } = await supabase.auth.getSession()
+      const accessToken = data.session?.access_token
+      if (sessionError || !accessToken) throw new Error('Your admin session is unavailable. Sign in again and retry.')
+      const response = await fetch('/api/openai-provider-recovery-import', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ start, endExclusive }),
+      })
+      const report: unknown = await response.json()
+      if (!response.ok) {
+        const message = report && typeof report === 'object' && 'error' in report && typeof report.error === 'string'
+          ? report.error
+          : 'Provider recovery import could not be completed.'
+        throw new Error(message)
+      }
+      setProviderRecoveryReport(JSON.stringify(report, null, 2))
+    } catch (importError) {
+      setProviderRecoveryError(importError instanceof Error ? importError.message : 'Provider recovery import could not be completed.')
+    } finally {
+      setProviderImportRange('')
     }
   }
 
@@ -489,6 +519,12 @@ export function AdminAiUsagePage() {
             </button>
             <button className="button button--secondary" type="button" disabled={Boolean(providerRecoveryRange)} onClick={() => void runProviderRecoveryDryRun('2026-10-23', '2026-10-29')}>
               {providerRecoveryRange === '2026-10-23:2026-10-29' ? 'Checking Oct 23–28...' : 'Dry Run Oct 23–28'}
+            </button>
+            <button className="button button--secondary" type="button" disabled={Boolean(providerImportRange)} onClick={() => void importProviderRecovery('2026-10-01', '2026-10-05')}>
+              {providerImportRange === '2026-10-01:2026-10-05' ? 'Importing Oct 1–4...' : 'Import Oct 1–4'}
+            </button>
+            <button className="button button--secondary" type="button" disabled={Boolean(providerImportRange)} onClick={() => void importProviderRecovery('2026-10-23', '2026-10-29')}>
+              {providerImportRange === '2026-10-23:2026-10-29' ? 'Importing Oct 23–28...' : 'Import Oct 23–28'}
             </button>
             {refreshError && <small className="ai-usage-refresh__error" role="alert">{refreshError}</small>}
           </div>

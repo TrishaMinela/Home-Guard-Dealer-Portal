@@ -18,20 +18,37 @@ type ActivityRow = {
   provider: 'openai'
   provider_project_id: string
   usage_date: string
+  period_start_at: string
+  period_end_at: string
   provider_model: string
   telemetry_model: string
   operation_type: 'image_generation' | 'entrance_analysis' | 'unclassified'
   request_count: number
+  input_tokens: number
+  output_tokens: number
+  cached_input_tokens: number
+  text_input_tokens: number
+  text_output_tokens: number
+  image_input_tokens: number
+  image_output_tokens: number
+  calculated_estimated_cost_usd: number | null
+  source_file_name: string
+  source_file_sha256: string
   source_row_sha256: string
 }
 
 type CostRow = {
   provider: 'openai'
   reconciled_project_id: string
+  export_project_id: string | null
   usage_date: string
+  period_start_at: string
+  period_end_at: string
   currency: 'usd'
   actual_cost_usd: number
-  attribution: 'provider_project_id' | 'daily_activity_exact_match'
+  scope_verification: 'export_project_id' | 'daily_activity_exact_match'
+  source_file_name: string
+  source_file_sha256: string
   source_row_sha256: string
 }
 
@@ -65,6 +82,24 @@ export type ProviderRecoveryDryRunReport = {
   }
 }
 
+export type ProviderRecoveryApplyReport = Omit<ProviderRecoveryDryRunReport, 'readOnly' | 'writesPerformed'> & {
+  readOnly: false
+  writesPerformed: boolean
+  inserted: { activity: number; costs: number }
+  postApply: { activityRows: number; costRows: number; verified: boolean }
+}
+
+type RecoveryOptions = {
+  start: string
+  endExclusive: string
+  adminApiKey: string
+  supabaseUrl: string
+  supabasePublishableKey: string
+  accessToken: string
+  fetchImpl?: typeof fetch
+  onPrepared?: (activity: ActivityRow[], costs: CostRow[], activityInserts: ActivityRow[], costInserts: CostRow[]) => void
+}
+
 export function allowedRecoveryWindow(start: string, endExclusive: string): RecoveryWindow | null {
   return PROVIDER_RECOVERY_WINDOWS.find((window) => window.start === start && window.endExclusive === endExclusive) ?? null
 }
@@ -83,6 +118,19 @@ const nonNegativeInteger = (value: unknown): number => {
 const iso = (unixSeconds: number): string => new Date(unixSeconds * 1000).toISOString()
 const dateFromUnix = (unixSeconds: number): string => iso(unixSeconds).slice(0, 10)
 const roundUsd = (value: number): number => Number(value.toFixed(10))
+
+function calculatedCost(row: Omit<ActivityRow, 'calculated_estimated_cost_usd' | 'source_row_sha256'>): number | null {
+  if (row.telemetry_model === 'gpt-image-2.5-sunburst') {
+    return (row.text_input_tokens * 5 + row.image_input_tokens * 8 + row.image_output_tokens * 30) / 1_000_000
+  }
+  if (row.telemetry_model === 'gpt-5.4-mini') {
+    return ((row.input_tokens - row.cached_input_tokens) * 0.75 + row.cached_input_tokens * 0.075 + row.output_tokens * 4.5) / 1_000_000
+  }
+  if (row.telemetry_model === 'gpt-4o-mini') {
+    return (row.input_tokens * 0.15 + row.output_tokens * 0.6) / 1_000_000
+  }
+  return null
+}
 
 function canonicalModel(model: string): string {
   if (model.startsWith('gpt-image-2.5')) return 'gpt-image-2.5-sunburst'
@@ -138,10 +186,16 @@ async function readPages(
   throw new Error('OpenAI pagination exceeded the safety limit.')
 }
 
-function activityRows(buckets: UsageBucket[], operationSource: 'images' | 'completions'): ActivityRow[] {
+function sourceName(kind: string, window: RecoveryWindow): string {
+  return `openai-admin-api-${kind}-${window.start}-${window.endExclusive}-exclusive.json`
+}
+
+function activityRows(buckets: UsageBucket[], operationSource: 'images' | 'completions', window: RecoveryWindow): ActivityRow[] {
+  const sourcePayload = stableJson(buckets)
+  const sourceHash = sha256(sourcePayload)
   const rows: ActivityRow[] = []
   for (const bucket of buckets) {
-    if (!Number.isSafeInteger(bucket.start_time)) throw new Error('OpenAI returned an invalid activity bucket.')
+    if (!Number.isSafeInteger(bucket.start_time) || !Number.isSafeInteger(bucket.end_time)) throw new Error('OpenAI returned an invalid activity bucket.')
     for (const result of bucket.results ?? []) {
       if (result.project_id !== HGI_OPENAI_PROJECT_ID) throw new Error('OpenAI activity included an unexpected project.')
       const providerModel = optionalString(result.model)?.toLowerCase() ?? 'unknown'
@@ -158,13 +212,24 @@ function activityRows(buckets: UsageBucket[], operationSource: 'images' | 'compl
         provider: 'openai' as const,
         provider_project_id: HGI_OPENAI_PROJECT_ID,
         usage_date: dateFromUnix(bucket.start_time as number),
+        period_start_at: iso(bucket.start_time as number),
+        period_end_at: iso(bucket.end_time as number),
         provider_model: providerModel,
         telemetry_model: telemetryModel,
         operation_type: operation,
         request_count: nonNegativeInteger(result.num_model_requests),
-        operationSource,
+        input_tokens: nonNegativeInteger(result.input_tokens),
+        output_tokens: nonNegativeInteger(result.output_tokens),
+        cached_input_tokens: nonNegativeInteger(result.input_cached_tokens ?? result.cached_input_tokens),
+        text_input_tokens: nonNegativeInteger(result.input_text_tokens),
+        text_output_tokens: nonNegativeInteger(result.output_text_tokens),
+        image_input_tokens: nonNegativeInteger(result.input_image_tokens),
+        image_output_tokens: nonNegativeInteger(result.output_image_tokens),
+        source_file_name: sourceName(operationSource, window),
+        source_file_sha256: sourceHash,
       }
-      rows.push({ ...withoutHash, source_row_sha256: sha256(stableJson(withoutHash)) })
+      const withCost = { ...withoutHash, calculated_estimated_cost_usd: calculatedCost(withoutHash) }
+      rows.push({ ...withCost, source_row_sha256: sha256(stableJson(withCost)) })
     }
   }
   return rows
@@ -179,24 +244,37 @@ function mergeActivity(rows: ActivityRow[]): ActivityRow[] {
       merged.set(key, row)
       continue
     }
-    const combined = { ...existing, request_count: existing.request_count + row.request_count }
-    merged.set(key, { ...combined, source_row_sha256: sha256(stableJson(combined)) })
+    const combinedWithoutHash = {
+      ...existing,
+      request_count: existing.request_count + row.request_count,
+      input_tokens: existing.input_tokens + row.input_tokens,
+      output_tokens: existing.output_tokens + row.output_tokens,
+      cached_input_tokens: existing.cached_input_tokens + row.cached_input_tokens,
+      text_input_tokens: existing.text_input_tokens + row.text_input_tokens,
+      text_output_tokens: existing.text_output_tokens + row.text_output_tokens,
+      image_input_tokens: existing.image_input_tokens + row.image_input_tokens,
+      image_output_tokens: existing.image_output_tokens + row.image_output_tokens,
+      calculated_estimated_cost_usd: (existing.calculated_estimated_cost_usd ?? 0) + (row.calculated_estimated_cost_usd ?? 0),
+      source_file_name: `${existing.source_file_name}+${row.source_file_name}`,
+      source_file_sha256: sha256(`${existing.source_file_sha256}|${row.source_file_sha256}`),
+    }
+    merged.set(key, { ...combinedWithoutHash, source_row_sha256: sha256(stableJson(combinedWithoutHash)) })
   }
   return [...merged.values()].sort((left, right) => `${left.usage_date}|${left.provider_model}`.localeCompare(`${right.usage_date}|${right.provider_model}`))
 }
 
 function calculatedDailyCost(rows: ActivityRow[], usageDate: string): number {
-  // The Costs API may omit project_id. This value is used only for scope validation
-  // when OpenAI's daily HGI activity total exactly equals the returned daily cost.
-  // Token-based calculation is unavailable in the reduced activity row, so a
-  // project-less cost is rejected rather than attributed speculatively.
-  return rows.some((row) => row.usage_date === usageDate) ? Number.NaN : 0
+  return rows
+    .filter((row) => row.usage_date === usageDate)
+    .reduce((sum, row) => sum + (row.calculated_estimated_cost_usd ?? 0), 0)
 }
 
-function costRows(buckets: UsageBucket[], rows: ActivityRow[]): CostRow[] {
+function costRows(buckets: UsageBucket[], rows: ActivityRow[], window: RecoveryWindow): CostRow[] {
+  const sourcePayload = stableJson(buckets)
+  const sourceHash = sha256(sourcePayload)
   const result: CostRow[] = []
   for (const bucket of buckets) {
-    if (!Number.isSafeInteger(bucket.start_time)) throw new Error('OpenAI returned an invalid cost bucket.')
+    if (!Number.isSafeInteger(bucket.start_time) || !Number.isSafeInteger(bucket.end_time)) throw new Error('OpenAI returned an invalid cost bucket.')
     const usageDate = dateFromUnix(bucket.start_time as number)
     let actualCost = 0
     let directlyAttributed = true
@@ -219,10 +297,15 @@ function costRows(buckets: UsageBucket[], rows: ActivityRow[]): CostRow[] {
     const withoutHash = {
       provider: 'openai' as const,
       reconciled_project_id: HGI_OPENAI_PROJECT_ID,
+      export_project_id: directlyAttributed ? HGI_OPENAI_PROJECT_ID : null,
       usage_date: usageDate,
+      period_start_at: iso(bucket.start_time as number),
+      period_end_at: iso(bucket.end_time as number),
       currency: 'usd' as const,
       actual_cost_usd: roundUsd(actualCost),
-      attribution: directlyAttributed ? 'provider_project_id' as const : 'daily_activity_exact_match' as const,
+      scope_verification: directlyAttributed ? 'export_project_id' as const : 'daily_activity_exact_match' as const,
+      source_file_name: sourceName('costs', window),
+      source_file_sha256: sourceHash,
     }
     result.push({ ...withoutHash, source_row_sha256: sha256(stableJson(withoutHash)) })
   }
@@ -278,30 +361,22 @@ function planRows<T extends { source_row_sha256: string }>(
   existing: JsonRecord[],
   key: (row: T | JsonRecord) => string,
   equivalent: (candidate: T, existing: JsonRecord) => boolean,
-): { inserts: number; exact: number; conflicts: string[] } {
+): { inserts: T[]; exact: number; conflicts: string[] } {
   const existingByKey = new Map(existing.map((row) => [key(row), row]))
-  let inserts = 0
+  const inserts: T[] = []
   let exact = 0
   const conflicts: string[] = []
   for (const candidate of candidates) {
     const naturalKey = key(candidate)
     const current = existingByKey.get(naturalKey)
-    if (!current) inserts += 1
+    if (!current) inserts.push(candidate)
     else if (equivalent(candidate, current)) exact += 1
     else conflicts.push(naturalKey)
   }
   return { inserts, exact, conflicts }
 }
 
-export async function runProviderRecoveryDryRun(options: {
-  start: string
-  endExclusive: string
-  adminApiKey: string
-  supabaseUrl: string
-  supabasePublishableKey: string
-  accessToken: string
-  fetchImpl?: typeof fetch
-}): Promise<ProviderRecoveryDryRunReport> {
+export async function runProviderRecoveryDryRun(options: RecoveryOptions): Promise<ProviderRecoveryDryRunReport> {
   const window = allowedRecoveryWindow(options.start, options.endExclusive)
   if (!window) throw new Error('The requested recovery window is not allowed.')
   if (!options.adminApiKey) throw new Error('The server-only OpenAI Admin credential is not configured.')
@@ -339,8 +414,8 @@ export async function runProviderRecoveryDryRun(options: {
     pricingMarkup(options.supabaseUrl, options.supabasePublishableKey, options.accessToken, fetchImpl),
   ])
 
-  const activity = mergeActivity([...activityRows(images, 'images'), ...activityRows(completions, 'completions')])
-  const cost = costRows(costs, activity)
+  const activity = mergeActivity([...activityRows(images, 'images', window), ...activityRows(completions, 'completions', window)])
+  const cost = costRows(costs, activity, window)
   const dates = utcDates(window.start, window.endExclusive)
   const returnedCostDates = new Set(cost.map((row) => row.usage_date))
   if (dates.some((date) => !returnedCostDates.has(date))) throw new Error('OpenAI Costs did not explicitly cover every requested UTC date.')
@@ -358,6 +433,7 @@ export async function runProviderRecoveryDryRun(options: {
     (candidate, current) => Math.abs(Number(current.actual_cost_usd) - candidate.actual_cost_usd) <= 0.000000001,
   )
   const conflicts = [...activityPlan.conflicts.map((key) => `activity:${key}`), ...costPlan.conflicts.map((key) => `cost:${key}`)]
+  options.onPrepared?.(activity, cost, activityPlan.inserts, costPlan.inserts)
 
   const activityByKey = new Map(octoberActivity.map((row) => [`${row.usage_date}|${row.provider_model}`, Number(row.request_count ?? 0)]))
   for (const row of activity) if (!activityByKey.has(`${row.usage_date}|${row.provider_model}`)) activityByKey.set(`${row.usage_date}|${row.provider_model}`, row.request_count)
@@ -383,7 +459,7 @@ export async function runProviderRecoveryDryRun(options: {
     zeroUsageDates: dates.filter((date) => !activity.some((row) => row.usage_date === date && row.request_count > 0)),
     provider: { requestCount, imageRequestCount, completionRequestCount, modelRequests, actualCostUsd: roundUsd(cost.reduce((sum, row) => sum + row.actual_cost_usd, 0)) },
     existingRows: { activity: existingActivity.length, costs: existingCosts.length },
-    wouldInsert: { activity: activityPlan.inserts, costs: costPlan.inserts },
+    wouldInsert: { activity: activityPlan.inserts.length, costs: costPlan.inserts.length },
     exactDuplicates: { activity: activityPlan.exact, costs: costPlan.exact },
     conflicts,
     idempotent: conflicts.length === 0,
@@ -394,5 +470,90 @@ export async function runProviderRecoveryDryRun(options: {
       verifiedProviderCostUsdThroughOct28: totalCost,
       provisionalAiUsageChargesUsd: provisionalCharge,
     },
+  }
+}
+
+const EXPECTED_RECOVERY = {
+  'oct-01-04': { requests: 103, cost: 3.99489145, activityRows: 6, costRows: 4 },
+  'oct-23-28': { requests: 50, cost: 4.20780675, activityRows: 6, costRows: 6 },
+} as const
+
+async function applyRowsWithRpc(
+  activity: ActivityRow[],
+  costs: CostRow[],
+  start: string,
+  endExclusive: string,
+  supabaseUrl: string,
+  publishableKey: string,
+  accessToken: string,
+  fetchImpl: typeof fetch,
+): Promise<{ activity: number; costs: number }> {
+  const response = await fetchImpl(`${supabaseUrl.replace(/\/+$/, '')}/rest/v1/rpc/apply_verified_openai_provider_recovery`, {
+    method: 'POST',
+    headers: {
+      apikey: publishableKey,
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ p_activity: activity, p_costs: costs, p_start: start, p_end: endExclusive }),
+  })
+  if (!response.ok) throw new Error(`Verified provider rows could not be imported transactionally (${response.status}).`)
+  const rows = await response.json() as Array<{ inserted_activity?: number; inserted_costs?: number }>
+  return { activity: Number(rows[0]?.inserted_activity ?? 0), costs: Number(rows[0]?.inserted_costs ?? 0) }
+}
+
+export async function applyProviderRecovery(options: {
+  start: string
+  endExclusive: string
+  adminApiKey: string
+  supabaseUrl: string
+  supabasePublishableKey: string
+  accessToken: string
+  fetchImpl?: typeof fetch
+}): Promise<ProviderRecoveryApplyReport> {
+  const window = allowedRecoveryWindow(options.start, options.endExclusive)
+  if (!window) throw new Error('The requested recovery window is not allowed.')
+  const fetchImpl = options.fetchImpl ?? fetch
+  let allActivity: ActivityRow[] = []
+  let allCosts: CostRow[] = []
+  const dryRun = await runProviderRecoveryDryRun({
+    start: window.start,
+    endExclusive: window.endExclusive,
+    adminApiKey: options.adminApiKey,
+    supabaseUrl: options.supabaseUrl,
+    supabasePublishableKey: options.supabasePublishableKey,
+    accessToken: options.accessToken,
+    fetchImpl,
+    onPrepared: (activity, costs) => {
+      allActivity = activity
+      allCosts = costs
+    },
+  })
+  const expected = EXPECTED_RECOVERY[window.id]
+  if (!dryRun.safeToApply || dryRun.conflicts.length) throw new Error('The recovery import was blocked by a reconciliation conflict.')
+  if (dryRun.provider.requestCount !== expected.requests || Math.abs(dryRun.provider.actualCostUsd - expected.cost) > 0.000000001) {
+    throw new Error('The provider totals changed from the approved recovery dry run; no rows were written.')
+  }
+  if (dryRun.wouldInsert.activity > expected.activityRows || dryRun.wouldInsert.costs > expected.costRows) {
+    throw new Error('The recovery row count exceeded the approved import; no rows were written.')
+  }
+
+  const inserted = await applyRowsWithRpc(allActivity, allCosts, window.start, window.endExclusive, options.supabaseUrl, options.supabasePublishableKey, options.accessToken, fetchImpl)
+  const [postActivity, postCosts] = await Promise.all([
+    supabaseRows('ai_provider_activity_daily', 'provider,provider_project_id,usage_date,provider_model,request_count', window.start, window.endExclusive, options.supabaseUrl, options.supabasePublishableKey, options.accessToken, fetchImpl),
+    supabaseRows('ai_provider_cost_daily', 'provider,reconciled_project_id,usage_date,currency,actual_cost_usd', window.start, window.endExclusive, options.supabaseUrl, options.supabasePublishableKey, options.accessToken, fetchImpl),
+  ])
+  const verified = postActivity.length === expected.activityRows
+    && postCosts.length === expected.costRows
+    && postActivity.reduce((sum, row) => sum + Number(row.request_count ?? 0), 0) === expected.requests
+    && Math.abs(postCosts.reduce((sum, row) => sum + Number(row.actual_cost_usd ?? 0), 0) - expected.cost) <= 0.000000001
+  if (!verified) throw new Error('Post-import verification did not match the approved provider recovery totals.')
+
+  return {
+    ...dryRun,
+    readOnly: false,
+    writesPerformed: inserted.activity > 0 || inserted.costs > 0,
+    inserted,
+    postApply: { activityRows: postActivity.length, costRows: postCosts.length, verified },
   }
 }
