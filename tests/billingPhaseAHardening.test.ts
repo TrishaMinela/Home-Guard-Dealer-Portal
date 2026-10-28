@@ -4,6 +4,7 @@ import test from 'node:test'
 
 const migrationUrl = new URL('../supabase/migrations/20261027000000_create_ai_billing_foundation.sql', import.meta.url)
 const cutoverUrl = new URL('../supabase/policy-cutovers/20261027010000_restrict_ai_telemetry_to_internal_billing_admins.sql', import.meta.url)
+const appliedCutoverUrl = new URL('../supabase/migrations/20261029040000_restrict_ai_telemetry_to_internal_billing_admins.sql', import.meta.url)
 
 test('foundation does not cut over existing AI policies', async () => {
   const sql = await readFile(migrationUrl, 'utf8')
@@ -30,10 +31,11 @@ test('provider identifiers are isolated from client base tables', async () => {
   assert.match(sql, /create table public\.billing_stripe_invoices/)
 })
 
-test('future cutover remains staged outside migration history', async () => {
-  const sql = await readFile(cutoverUrl, 'utf8')
-  assert.match(sql, /PREPARED, NOT APPLIED/)
-  assert.match(sql, /is_billing_internal_admin/)
+test('reviewed cutover source matches the applied least-privilege boundary', async () => {
+  const [source, applied] = await Promise.all([readFile(cutoverUrl, 'utf8'), readFile(appliedCutoverUrl, 'utf8')])
+  assert.match(source, /Applied through the matching timestamped migration/)
+  assert.match(applied, /is_billing_internal_admin/)
+  assert.doesNotMatch(applied, /resolve_ai_admin_issue|drop policy .*AI admin issues/i)
 })
 
 test('billing client has a dedicated layout and membership-scoped account list', async () => {
@@ -51,5 +53,5 @@ test('billing client has a dedicated layout and membership-scoped account list',
   assert.doesNotMatch(hook, /\.limit\(1\)|billing_account_users/)
   assert.match(adminLayout, /AI Usage & Billing[^\n]+internalOnly: true/)
   assert.match(adminLayout, /isInternalBillingAdmin \? <AdminBillingPage showInternalDetails \/>/)
-  assert.match(adminLayout, /path="\/admin\/ai-usage" element={<AdminAiUsagePage \/>}/)
+  assert.match(adminLayout, /path="\/admin\/ai-usage" element={<AdminAiUsagePage showInternalDetails={isInternalBillingAdmin} \/>}/)
 })

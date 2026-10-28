@@ -241,7 +241,7 @@ export function AdminLayout({ email, isInternalBillingAdmin, signOutError, onSig
             }
           />
           <Route path="/admin/leads/:leadId?" element={<AdminLeadsPage {...adminData} />} />
-          <Route path="/admin/ai-usage" element={<AdminAiUsagePage />} />
+          <Route path="/admin/ai-usage" element={<AdminAiUsagePage showInternalDetails={isInternalBillingAdmin} />} />
           <Route path="/admin/billing" element={isInternalBillingAdmin ? <AdminBillingPage showInternalDetails /> : <Navigate to="/admin" replace />} />
           <Route path="/admin/inventory" element={<AdminInventoryPage />} />
           <Route path="/admin/inventory/review" element={<AdminInventoryReviewPage />} />

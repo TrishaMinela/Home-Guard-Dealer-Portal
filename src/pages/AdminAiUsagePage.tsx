@@ -159,7 +159,7 @@ function formatDateTime(value: string) {
   }).format(new Date(value))
 }
 
-export function AdminAiUsagePage() {
+export function AdminAiUsagePage({ showInternalDetails = false }: { showInternalDetails?: boolean }) {
   const [searchParams] = useSearchParams()
   const selectedIssueId = searchParams.get('issue')
   const [period, setPeriod] = useState<AiUsagePeriod>('this-month')
@@ -207,13 +207,14 @@ export function AdminAiUsagePage() {
   }, [])
 
   const loadProviderSyncStatus = useCallback(async () => {
+    if (!showInternalDetails) return
     const { data } = await supabase
       .from('ai_provider_sync_runs')
       .select('id,completed_at,range_start,range_end_exclusive,status,activity_rows_inserted,cost_rows_inserted,activity_rows_noop,cost_rows_noop,conflict_count,provider_request_count,provider_cost_usd,error_message')
       .order('created_at', { ascending: false })
       .limit(10)
     setProviderSyncRuns((data ?? []) as ProviderSyncRun[])
-  }, [])
+  }, [showInternalDetails])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => { void loadIssues(); void loadProviderSyncStatus() }, 0)
@@ -336,6 +337,11 @@ export function AdminAiUsagePage() {
   }
 
   const loadUsage = useCallback(async (background: boolean) => {
+      if (!showInternalDetails) {
+        setIsLoading(false)
+        setIsRefreshing(false)
+        return
+      }
       const requestId = ++requestSequence.current
       if (!bounds) {
         setError('Choose a valid UTC date range. The end date must be on or after the start date.')
@@ -415,14 +421,16 @@ export function AdminAiUsagePage() {
       }
       if (background) setIsRefreshing(false)
       else setIsLoading(false)
-  }, [bounds])
+  }, [bounds, showInternalDetails])
 
   useEffect(() => {
+    if (!showInternalDetails) return
     const timeoutId = window.setTimeout(() => void loadUsage(false), 0)
     return () => { window.clearTimeout(timeoutId); requestSequence.current += 1 }
-  }, [loadUsage])
+  }, [loadUsage, showInternalDetails])
 
   useEffect(() => {
+    if (!showInternalDetails) return
     let isCurrent = true
     void Promise.all([
       supabase.from('ai_generation_usage').select('created_at').order('created_at', { ascending: true }).limit(1).maybeSingle(),
@@ -434,7 +442,7 @@ export function AdminAiUsagePage() {
         else setTrackingBegan({ generation: generationResult.data?.created_at ?? null, detection: detectionResult.data?.created_at ?? null, workflow: workflowResult.data?.started_at ?? null })
       })
     return () => { isCurrent = false }
-  }, [])
+  }, [showInternalDetails])
 
   const metrics = useMemo(() => {
     const succeededGenerations = generationRows.filter((row) => row.status === 'succeeded')
@@ -548,9 +556,9 @@ export function AdminAiUsagePage() {
         <div className="ai-usage-header__copy">
           <p className="eyebrow">Home Guard</p>
           <h1>AI Visualizer Usage</h1>
-          <p>Monitor AI visualization volume, usage, cost, and generation performance.</p>
+          <p>{showInternalDetails ? 'Monitor AI visualization volume, usage, cost, and generation performance.' : 'Review and resolve privacy-safe AI Visualizer operational issues.'}</p>
         </div>
-        <div className="ai-usage-filters">
+        {showInternalDetails && <div className="ai-usage-filters">
           <div className="filter-field ai-usage-period"><label htmlFor="ai-usage-period">Date range</label><select id="ai-usage-period" value={period} onChange={(event) => setPeriod(event.target.value as AiUsagePeriod)}>{periods.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
           {period === 'custom' && <div className="ai-usage-custom-range">
             <div className="filter-field"><label htmlFor="ai-usage-start">Start (UTC)</label><input id="ai-usage-start" type="date" value={customStart} onChange={(event) => setCustomStart(event.target.value)} /></div>
@@ -581,14 +589,14 @@ export function AdminAiUsagePage() {
             </button>
             {refreshError && <small className="ai-usage-refresh__error" role="alert">{refreshError}</small>}
           </div>
-        </div>
+        </div>}
       </header>
-      {openAiVerificationError && <div className="notification-inline-error" role="alert">{openAiVerificationError}</div>}
-      {openAiVerificationReport && <section className="content-card" aria-label="OpenAI Admin API verification report"><pre>{openAiVerificationReport}</pre></section>}
-      {providerRecoveryError && <div className="notification-inline-error" role="alert">{providerRecoveryError}</div>}
-      {providerRecoveryReport && <section className="content-card" aria-label="OpenAI provider recovery dry-run report"><div className="content-card__header"><p className="eyebrow">Read-only diagnostic</p><h2>Provider Recovery Dry Run</h2></div><pre>{providerRecoveryReport}</pre></section>}
-      {providerSyncError && <div className="notification-inline-error" role="alert">{providerSyncError}</div>}
-      <section className="content-card ai-provider-sync-status" aria-labelledby="provider-sync-status-title">
+      {showInternalDetails && openAiVerificationError && <div className="notification-inline-error" role="alert">{openAiVerificationError}</div>}
+      {showInternalDetails && openAiVerificationReport && <section className="content-card" aria-label="OpenAI Admin API verification report"><pre>{openAiVerificationReport}</pre></section>}
+      {showInternalDetails && providerRecoveryError && <div className="notification-inline-error" role="alert">{providerRecoveryError}</div>}
+      {showInternalDetails && providerRecoveryReport && <section className="content-card" aria-label="OpenAI provider recovery dry-run report"><div className="content-card__header"><p className="eyebrow">Read-only diagnostic</p><h2>Provider Recovery Dry Run</h2></div><pre>{providerRecoveryReport}</pre></section>}
+      {showInternalDetails && providerSyncError && <div className="notification-inline-error" role="alert">{providerSyncError}</div>}
+      {showInternalDetails && <section className="content-card ai-provider-sync-status" aria-labelledby="provider-sync-status-title">
         <div className="content-card__header"><p className="eyebrow">Internal operations</p><h2 id="provider-sync-status-title">Provider Sync Status</h2></div>
         {providerSyncRuns.length === 0 ? <div className="data-state data-state--compact">No scheduled provider sync has run yet.</div> : (() => {
           const latest = providerSyncRuns[0]!
@@ -600,9 +608,9 @@ export function AdminAiUsagePage() {
             <div><dt>Latest conflicts</dt><dd>{latest.conflict_count}</dd>{latest.error_message && <small>{latest.error_message}</small>}</div>
           </dl>
         })()}
-      </section>
-      <p className="ai-usage-timezone-note">Reporting boundaries use UTC dates. Times in activity tables are displayed in your local browser time.</p>
-      {(trackingBegan.generation || trackingBegan.detection || trackingBegan.workflow) && <p className="ai-usage-tracking-note">Workflow-level attempts and failures are available from {trackingBegan.workflow ? formatDateTime(trackingBegan.workflow) : 'the workflow-tracking rollout'}. Image-generation tracking began {trackingBegan.generation ? formatDateTime(trackingBegan.generation) : 'after this period'}. Entrance-analysis tracking began {trackingBegan.detection ? formatDateTime(trackingBegan.detection) : 'after this period'}. Earlier workflow attempts are not inferred or fabricated.</p>}
+      </section>}
+      {showInternalDetails && <p className="ai-usage-timezone-note">Reporting boundaries use UTC dates. Times in activity tables are displayed in your local browser time.</p>}
+      {showInternalDetails && (trackingBegan.generation || trackingBegan.detection || trackingBegan.workflow) && <p className="ai-usage-tracking-note">Workflow-level attempts and failures are available from {trackingBegan.workflow ? formatDateTime(trackingBegan.workflow) : 'the workflow-tracking rollout'}. Image-generation tracking began {trackingBegan.generation ? formatDateTime(trackingBegan.generation) : 'after this period'}. Entrance-analysis tracking began {trackingBegan.detection ? formatDateTime(trackingBegan.detection) : 'after this period'}. Earlier workflow attempts are not inferred or fabricated.</p>}
 
       <section className="content-card ai-issues-card" aria-labelledby="ai-issues-title">
         <div className="content-card__header"><p className="eyebrow">Admin diagnostics</p><h2 id="ai-issues-title">AI Visualizer Issues</h2></div>
@@ -632,9 +640,9 @@ export function AdminAiUsagePage() {
         </div>}
       </section>
 
-      {isLoading && <div className="data-state">Loading AI usage...</div>}
-      {!isLoading && error && <div className="data-state data-state--error" role="alert">{error}</div>}
-      {!isLoading && !error && generationRows.length === 0 && detectionRows.length === 0 && workflowRows.length === 0 && providerActivityRows.length === 0 && providerCostRows.length === 0 && (
+      {showInternalDetails && isLoading && <div className="data-state">Loading AI usage...</div>}
+      {showInternalDetails && !isLoading && error && <div className="data-state data-state--error" role="alert">{error}</div>}
+      {showInternalDetails && !isLoading && !error && generationRows.length === 0 && detectionRows.length === 0 && workflowRows.length === 0 && providerActivityRows.length === 0 && providerCostRows.length === 0 && (
         <section className="content-card empty-state ai-usage-empty">
           <div className="empty-state__icon" aria-hidden="true">AI</div>
           <strong>No AI usage has been recorded for this period yet.</strong>
@@ -642,7 +650,7 @@ export function AdminAiUsagePage() {
         </section>
       )}
 
-      {!isLoading && !error && (generationRows.length > 0 || detectionRows.length > 0 || workflowRows.length > 0 || providerActivityRows.length > 0 || providerCostRows.length > 0) && (
+      {showInternalDetails && !isLoading && !error && (generationRows.length > 0 || detectionRows.length > 0 || workflowRows.length > 0 || providerActivityRows.length > 0 || providerCostRows.length > 0) && (
         <>
           <section className="metric-grid ai-usage-metrics" aria-label="AI usage summary">
             <article className="metric-card metric-card--admin ai-metric-card"><MetricIcon name="usage" /><p>Combined Known Requests</p><strong>{new Intl.NumberFormat().format(metrics.reconciledRequests)}</strong><small>Provider export plus non-overlapping tracked requests</small></article>

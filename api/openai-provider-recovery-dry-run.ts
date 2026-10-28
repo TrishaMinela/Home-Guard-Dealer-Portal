@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { authorizeHgiAdmin } from './_lib/authorizeHgiAdmin.js'
+import { authorizeInternalBillingAdmin } from './_lib/authorizeHgiAdmin.js'
 import { allowedRecoveryWindow, runProviderRecoveryDryRun } from './_lib/openaiProviderRecovery.js'
 
 type JsonResponse = ServerResponse<IncomingMessage> & { json?: (value: unknown) => void }
@@ -41,7 +41,7 @@ export default async function handler(request: IncomingMessage, response: JsonRe
     return
   }
   const authorization = Array.isArray(request.headers.authorization) ? request.headers.authorization[0] : request.headers.authorization
-  const access = await authorizeHgiAdmin(authorization)
+  const access = await authorizeInternalBillingAdmin(authorization)
   if (!access.authorized) {
     sendJson(response, access.status, { error: access.message })
     return

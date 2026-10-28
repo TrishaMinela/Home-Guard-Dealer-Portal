@@ -99,9 +99,9 @@ test('rejects a wrong Supabase project before provider access', async () => {
   }), /wrong Supabase project/)
 })
 
-test('the endpoint has no mutation mode and uses HGI admin authorization', async () => {
+test('the endpoint has no mutation mode and uses internal billing authorization', async () => {
   const source = await readFile(new URL('../api/openai-provider-recovery-dry-run.ts', import.meta.url), 'utf8')
-  assert.match(source, /authorizeHgiAdmin\(authorization\)/)
+  assert.match(source, /authorizeInternalBillingAdmin\(authorization\)/)
   assert.match(source, /allowedRecoveryWindow/)
   assert.doesNotMatch(source, /--apply|apply\s*=|method:\s*['"](?:POST|PATCH|PUT|DELETE)['"].*rest\/v1/s)
   assert.doesNotMatch(source, /SUPABASE_SERVICE_ROLE_KEY/)
@@ -197,9 +197,9 @@ test('imports approved rows once and is idempotent on the second run', async () 
   assert.equal(rpcCalls, 1)
 })
 
-test('the import endpoint is allowlisted and requires HGI admin authorization', async () => {
+test('the import endpoint is allowlisted and requires internal billing authorization', async () => {
   const source = await readFile(new URL('../api/openai-provider-recovery-import.ts', import.meta.url), 'utf8')
-  assert.match(source, /authorizeHgiAdmin\(authorization\)/)
+  assert.match(source, /authorizeInternalBillingAdmin\(authorization\)/)
   assert.match(source, /allowedRecoveryWindow/)
   assert.match(source, /applyProviderRecovery/)
   assert.doesNotMatch(source, /console\.(?:log|error|warn)/)

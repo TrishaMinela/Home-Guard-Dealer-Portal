@@ -126,13 +126,13 @@ test('provider authorization failure records diagnostics and never applies rows'
   assert.equal(mock.appliedBody(), null)
 })
 
-test('cron and manual endpoints require server or HGI-admin authentication', async () => {
+test('cron and manual endpoints require server or internal-billing-admin authentication', async () => {
   const cron = await readFile(new URL('../api/cron-openai-provider-sync.ts', import.meta.url), 'utf8')
   const manual = await readFile(new URL('../api/openai-provider-sync-run.ts', import.meta.url), 'utf8')
   const config = await readFile(new URL('../vercel.json', import.meta.url), 'utf8')
   assert.match(cron, /timingSafeEqual/)
   assert.match(cron, /process\.env\.CRON_SECRET/)
-  assert.match(manual, /authorizeHgiAdmin\(authorization\)/)
+  assert.match(manual, /authorizeInternalBillingAdmin\(authorization\)/)
   assert.match(config, /"schedule": "0 3 \* \* \*"/)
   assert.doesNotMatch(`${cron}\n${manual}`, /console\.(?:log|warn|error)/)
 })
