@@ -44,6 +44,18 @@ export function NavIcon({ name }: NavIconProps) {
         <path d="M3 12h4l2-7 4 14 2-7h6" />
       </>
     ),
+    billing: (
+      <>
+        <rect x="4" y="3" width="16" height="18" rx="2" />
+        <path d="M8 7h8M8 11h8M8 15h3" />
+      </>
+    ),
+    history: (
+      <>
+        <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+        <path d="M3 3v5h5M12 7v5l3 2" />
+      </>
+    ),
     inventory: (
       <>
         <path d="M4 7.5 12 3l8 4.5-8 4.5-8-4.5Z" />

@@ -32,13 +32,44 @@ export function useAccountAccess(user: User | null) {
       }
 
       if (adminRecord) {
+        const { data: billingAdminRecord, error: billingAdminError } = await supabase
+          .from('billing_internal_admins')
+          .select('id')
+          .eq('user_id', authenticatedUser.id)
+          .maybeSingle()
+
+        if (billingAdminError) {
+          console.warn('Internal billing authorization is not configured yet.')
+        }
         setAccess({
           userId: authenticatedUser.id,
           type: 'admin',
           dealer: null,
           message: '',
+          isInternalBillingAdmin: Boolean(billingAdminRecord),
         })
         return
+      }
+
+      const { data: billingMemberships, error: billingMembershipError } = await supabase
+        .from('billing_account_users')
+        .select('billing_account_id, billing_accounts(id, name)')
+        .eq('user_id', authenticatedUser.id)
+
+      if (!isCurrent) return
+      if (billingMembershipError) {
+        console.warn('Billing-client authorization is not configured yet.')
+      } else if (billingMemberships?.length) {
+        const billingAccounts = billingMemberships.flatMap((membership) => {
+          const account = Array.isArray(membership.billing_accounts)
+            ? membership.billing_accounts[0]
+            : membership.billing_accounts
+          return account ? [{ id: account.id, name: account.name }] : []
+        })
+        if (billingAccounts.length) {
+          setAccess({ userId: authenticatedUser.id, type: 'billing_client', dealer: null, message: '', billingAccounts })
+          return
+        }
       }
 
       const { data: membership, error: membershipError } = await supabase

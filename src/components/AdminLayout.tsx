@@ -9,6 +9,7 @@ import { AdminDealersPage } from '../pages/AdminDealersPage'
 import { AdminLeadsPage } from '../pages/AdminLeadsPage'
 import { AdminSettingsPage } from '../pages/AdminSettingsPage'
 import { AdminAiUsagePage } from '../pages/AdminAiUsagePage'
+import { AdminBillingPage } from '../pages/AdminBillingPage'
 import { AdminInventoryCategoryPage } from '../pages/AdminInventoryCategoryPage'
 import { AdminInventoryPage } from '../pages/AdminInventoryPage'
 import { AdminInventoryReviewPage } from '../pages/AdminInventoryReviewPage'
@@ -26,16 +27,18 @@ const navigation = [
   { label: 'All Leads', path: '/admin/leads', icon: 'users' },
   { label: 'Inventory', path: '/admin/inventory', icon: 'inventory' },
   { label: 'AI Usage', path: '/admin/ai-usage', icon: 'activity' },
+  { label: 'AI Usage & Billing', path: '/admin/billing', icon: 'billing', internalOnly: true },
   { label: 'Settings', path: '/admin/settings', icon: 'settings' },
 ]
 
 type AdminLayoutProps = {
   email: string
+  isInternalBillingAdmin: boolean
   signOutError: string
   onSignOut: () => Promise<void>
 }
 
-export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps) {
+export function AdminLayout({ email, isInternalBillingAdmin, signOutError, onSignOut }: AdminLayoutProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [dealerSuccess, setDealerSuccess] = useState('')
   const [dealerDetailSuccess, setDealerDetailSuccess] = useState('')
@@ -152,7 +155,7 @@ export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps
 
         <nav className="sidebar-nav" aria-label="Home Guard Admin navigation">
           <span className="sidebar-nav__label">Administration</span>
-          {navigation.map((item) => (
+          {navigation.filter((item) => !item.internalOnly || isInternalBillingAdmin).map((item) => (
             <NavLink
               className={({ isActive }) => `sidebar-nav__link ${isActive ? 'is-active' : ''}`}
               end={item.end}
@@ -239,6 +242,7 @@ export function AdminLayout({ email, signOutError, onSignOut }: AdminLayoutProps
           />
           <Route path="/admin/leads/:leadId?" element={<AdminLeadsPage {...adminData} />} />
           <Route path="/admin/ai-usage" element={<AdminAiUsagePage />} />
+          <Route path="/admin/billing" element={isInternalBillingAdmin ? <AdminBillingPage showInternalDetails /> : <Navigate to="/admin" replace />} />
           <Route path="/admin/inventory" element={<AdminInventoryPage />} />
           <Route path="/admin/inventory/review" element={<AdminInventoryReviewPage />} />
           <Route path="/admin/inventory/door-styles" element={<AdminDoorStylesPage />} />

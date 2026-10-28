@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { BrowserRouter } from 'react-router-dom'
 import { AdminLayout } from './components/AdminLayout'
+import { BillingClientLayout } from './components/BillingClientLayout'
 import { LoginPage } from './components/LoginPage'
 import { PortalLayout } from './components/PortalLayout'
 import { useAccountAccess } from './hooks/useAccountAccess'
@@ -111,9 +112,18 @@ function App() {
       <BrowserRouter>
         <AdminLayout
           email={user.email ?? ''}
+          isInternalBillingAdmin={access.isInternalBillingAdmin}
           signOutError={error}
           onSignOut={handleSignOut}
         />
+      </BrowserRouter>
+    )
+  }
+
+  if (access.type === 'billing_client') {
+    return (
+      <BrowserRouter>
+        <BillingClientLayout email={user.email ?? ''} accounts={access.billingAccounts} signOutError={error} onSignOut={handleSignOut} />
       </BrowserRouter>
     )
   }
