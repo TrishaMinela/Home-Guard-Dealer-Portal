@@ -67,7 +67,7 @@ export function AdminBillingPage({ accounts = [], showInternalDetails = false }:
           {showInternalDetails && <InternalBillingPanel accountId={data.account.id} />}
           <div className="billing-summary-grid">
             <article className="metric-card metric-card--admin billing-metric"><p>Current Month AI Usage Charges</p><strong>{money(data.currentMonth?.ai_usage_charge_cents)}</strong><small>{data.currentMonth?.status === 'finalized' ? 'Finalized' : 'Provisional · subject to provider reconciliation'}</small></article>
-            <article className="metric-card metric-card--admin billing-metric"><p>Outstanding Balance</p><strong>{money(data.outstandingBalanceCents)}</strong><small>Open and overdue invoices</small></article>
+            <article className="metric-card metric-card--admin billing-metric"><p>Outstanding Balance</p><strong>{money(data.outstandingBalanceCents)}</strong><small>Issued invoices awaiting payment</small></article>
             <article className="metric-card metric-card--admin billing-metric"><p>Most Recent Invoice</p><strong>{data.mostRecentInvoice?.invoice_number ?? '—'}</strong><small>{data.mostRecentInvoice ? `${money(data.mostRecentInvoice.total_due_cents)} · ${statusLabel(data.mostRecentInvoice.status)}` : 'No invoice issued yet'}</small></article>
             <article className="metric-card metric-card--admin billing-metric"><p>Next Billing Date</p><strong>{date(data.account.next_billing_date)}</strong><small>{data.lastUpdatedAt ? `Last updated ${new Date(data.lastUpdatedAt).toLocaleString()}` : 'No usage update recorded'}</small></article>
           </div>

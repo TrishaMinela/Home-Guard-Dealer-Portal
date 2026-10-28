@@ -32,7 +32,7 @@ export function useClientBilling(accountId: string | null) {
       supabase.from('billing_accounts').select('id, name, currency, next_billing_date').eq('id', accountId).single(),
       supabase.from('billing_charge_summaries').select('id, billing_period_start, billing_period_end, ai_usage_charge_cents, image_generation_count, status, data_complete_through, updated_at').eq('billing_account_id', accountId).order('billing_period_start', { ascending: false }),
       supabase.from('billing_client_usage_daily').select('usage_date, ai_usage_charge_cents, image_generation_count, is_provisional, updated_at').eq('billing_account_id', accountId).gte('usage_date', monthStart).lt('usage_date', nextMonth).order('usage_date'),
-      supabase.from('billing_invoices').select('id, invoice_number, billing_period_start, billing_period_end, issued_at, due_at, ai_usage_charge_cents, total_due_cents, amount_remaining_cents, status').eq('billing_account_id', accountId).order('billing_period_start', { ascending: false }),
+      supabase.from('billing_invoices').select('id, invoice_number, billing_period_start, billing_period_end, issued_at, due_at, ai_usage_charge_cents, subtotal_cents, tax_status, tax_amount_cents, total_due_cents, amount_remaining_cents, status').eq('billing_account_id', accountId).order('billing_period_start', { ascending: false }),
     ])
 
     const queryError = accountResult.error || summariesResult.error || usageResult.error || invoiceResult.error
@@ -56,7 +56,7 @@ export function useClientBilling(accountId: string | null) {
         chargeSummaries,
         usageDays,
         invoices,
-        outstandingBalanceCents: invoices.filter((invoice) => invoice.status === 'open' || invoice.status === 'overdue').reduce((sum, invoice) => sum + invoice.amount_remaining_cents, 0),
+        outstandingBalanceCents: invoices.filter((invoice) => invoice.status === 'issued').reduce((sum, invoice) => sum + invoice.amount_remaining_cents, 0),
         mostRecentInvoice: invoices.find((invoice) => invoice.status !== 'draft') ?? null,
         lastUpdatedAt: timestamps.length ? timestamps.sort().at(-1) ?? null : null,
       },

@@ -11,6 +11,7 @@ type MonthEndReadiness = {
   existingBillingPeriodId: string | null
 }
 type InternalState = { pricing: PricingVersion | null; periodCount: number; auditCount: number; error: string }
+type InvoiceReadiness = { ready: boolean; blockers: string[]; existingInvoiceId: string | null; aiUsageChargeCents: number }
 
 function currentUtcMonth() {
   const now = new Date()
@@ -36,6 +37,8 @@ export function InternalBillingPanel({ accountId }: { accountId: string }) {
   const [isChecking, setIsChecking] = useState(false)
   const [isFinalizing, setIsFinalizing] = useState(false)
   const [finalizeMessage, setFinalizeMessage] = useState('')
+  const [invoiceReadiness, setInvoiceReadiness] = useState<InvoiceReadiness | null>(null)
+  const [isIssuingInvoice, setIsIssuingInvoice] = useState(false)
 
   const loadConfiguration = useCallback(async () => {
     const [pricingResult, periodResult, auditResult] = await Promise.all([
@@ -55,6 +58,11 @@ export function InternalBillingPanel({ accountId }: { accountId: string }) {
       setReadiness(null); setReadinessError('Month-end readiness could not be checked. No billing records were changed.'); return
     }
     setReadiness(data as MonthEndReadiness)
+    const value = data as MonthEndReadiness
+    if (value.status === 'finalized' && value.existingBillingPeriodId) {
+      const invoiceResult = await supabase.rpc('billing_invoice_readiness', { p_billing_period_id: value.existingBillingPeriodId })
+      setInvoiceReadiness(invoiceResult.error ? null : invoiceResult.data as InvoiceReadiness)
+    } else setInvoiceReadiness(null)
   }, [accountId, month])
 
   useEffect(() => { void loadConfiguration() }, [loadConfiguration])
@@ -71,6 +79,20 @@ export function InternalBillingPanel({ accountId }: { accountId: string }) {
       await loadReadiness(); return
     }
     setFinalizeMessage('Month finalized. No invoice or payment was created.')
+    await Promise.all([loadConfiguration(), loadReadiness()])
+  }
+
+  async function issueInvoice() {
+    if (!readiness?.existingBillingPeriodId || !invoiceReadiness?.ready) return
+    if (!window.confirm('Issue this invoice now? Its number, dates, line item, and amounts will be immutable.')) return
+    setIsIssuingInvoice(true); setReadinessError(''); setFinalizeMessage('')
+    const { data, error } = await supabase.rpc('issue_billing_invoice', { p_billing_period_id: readiness.existingBillingPeriodId })
+    setIsIssuingInvoice(false)
+    if (error) {
+      setReadinessError('Invoice issuance was refused. Refresh readiness and review the finalized billing period.'); return
+    }
+    const result = data as { invoiceNumber?: string }
+    setFinalizeMessage(`Invoice ${result.invoiceNumber ?? ''} issued with Net 15 terms.`)
     await Promise.all([loadConfiguration(), loadReadiness()])
   }
 
@@ -106,7 +128,8 @@ export function InternalBillingPanel({ accountId }: { accountId: string }) {
         </dl>
         {readiness.missingDates.length > 0 && <div className="month-end-billing__pending" role="status"><strong>Provider coverage still pending</strong><p>{readiness.missingDates.map(displayDate).join(', ')}</p></div>}
         {readiness.blockers.length > 0 && <p className="month-end-billing__blockers">Readiness safeguards: {readiness.blockers.join(', ').replaceAll('_', ' ')}</p>}
-        <div className="month-end-billing__actions"><p>Finalization is atomic and immutable. It creates no invoice, payment, or Stripe record.</p><button className="button button--primary" type="button" disabled={!readiness.ready || readiness.status !== 'ready' || isFinalizing} onClick={() => void finalizeMonth()}>{isFinalizing ? 'Finalizing…' : readiness.status === 'finalized' ? 'Finalized' : 'Finalize Month'}</button></div>
+        <div className="month-end-billing__actions"><p>Finalization is atomic and immutable. Invoice issuance is a separate Net 15 action and never creates a payment or Stripe record.</p><button className="button button--primary" type="button" disabled={!readiness.ready || readiness.status !== 'ready' || isFinalizing} onClick={() => void finalizeMonth()}>{isFinalizing ? 'Finalizing…' : readiness.status === 'finalized' ? 'Finalized' : 'Finalize Month'}</button>{readiness.status === 'finalized' && <button className="button button--primary" type="button" disabled={!invoiceReadiness?.ready || isIssuingInvoice} onClick={() => void issueInvoice()}>{isIssuingInvoice ? 'Issuing…' : invoiceReadiness?.existingInvoiceId ? 'Invoice Issued' : 'Issue Invoice'}</button>}</div>
+        {readiness.status === 'finalized' && invoiceReadiness && !invoiceReadiness.ready && <p className="month-end-billing__blockers">Invoice safeguards: {invoiceReadiness.blockers.join(', ').replaceAll('_', ' ')}</p>}
       </>}
     </article>
   </>

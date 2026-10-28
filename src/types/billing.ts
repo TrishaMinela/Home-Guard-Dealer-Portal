@@ -1,4 +1,4 @@
-export type BillingInvoiceStatus = 'draft' | 'open' | 'paid' | 'overdue' | 'void'
+export type BillingInvoiceStatus = 'draft' | 'issued' | 'paid' | 'void'
 
 export type BillingAccount = {
   id: string
@@ -34,6 +34,9 @@ export type ClientInvoice = {
   issued_at: string | null
   due_at: string | null
   ai_usage_charge_cents: number
+  subtotal_cents: number
+  tax_status: 'not_configured'
+  tax_amount_cents: null
   total_due_cents: number
   amount_remaining_cents: number
   status: BillingInvoiceStatus
