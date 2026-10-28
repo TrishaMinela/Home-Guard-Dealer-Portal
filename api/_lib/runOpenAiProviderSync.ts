@@ -1,4 +1,4 @@
-import { runDailyProviderSync } from './openaiProviderDailySync.ts'
+import { runDailyProviderSync } from './openaiProviderDailySync.js'
 
 export async function runOpenAiProviderSync(now?: Date) {
   return runDailyProviderSync({

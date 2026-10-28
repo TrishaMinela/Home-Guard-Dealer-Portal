@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { authorizeHgiAdmin } from './_lib/authorizeHgiAdmin.ts'
-import { runOpenAiProviderSync } from './_lib/runOpenAiProviderSync.ts'
+import { authorizeHgiAdmin } from './_lib/authorizeHgiAdmin.js'
+import { runOpenAiProviderSync } from './_lib/runOpenAiProviderSync.js'
 
 type JsonResponse = ServerResponse<IncomingMessage> & { json?: (value: unknown) => void }
 

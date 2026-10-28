@@ -3,7 +3,7 @@ import {
   type ActivityRow,
   type CostRow,
   type ProviderRecoveryDryRunReport,
-} from './openaiProviderRecovery.ts'
+} from './openaiProviderRecovery.js'
 
 type JsonRecord = Record<string, unknown>
 
