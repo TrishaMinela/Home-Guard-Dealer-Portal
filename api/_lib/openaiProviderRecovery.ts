@@ -538,7 +538,9 @@ export async function applyProviderRecovery(options: {
     throw new Error('The recovery row count exceeded the approved import; no rows were written.')
   }
 
-  const inserted = await applyRowsWithRpc(allActivity, allCosts, window.start, window.endExclusive, options.supabaseUrl, options.supabasePublishableKey, options.accessToken, fetchImpl)
+  const inserted = dryRun.wouldInsert.activity === 0 && dryRun.wouldInsert.costs === 0
+    ? { activity: 0, costs: 0 }
+    : await applyRowsWithRpc(allActivity, allCosts, window.start, window.endExclusive, options.supabaseUrl, options.supabasePublishableKey, options.accessToken, fetchImpl)
   const [postActivity, postCosts] = await Promise.all([
     supabaseRows('ai_provider_activity_daily', 'provider,provider_project_id,usage_date,provider_model,request_count', window.start, window.endExclusive, options.supabaseUrl, options.supabasePublishableKey, options.accessToken, fetchImpl),
     supabaseRows('ai_provider_cost_daily', 'provider,reconciled_project_id,usage_date,currency,actual_cost_usd', window.start, window.endExclusive, options.supabaseUrl, options.supabasePublishableKey, options.accessToken, fetchImpl),

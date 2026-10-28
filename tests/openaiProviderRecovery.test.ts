@@ -127,6 +127,7 @@ test('sanitized reports do not contain credentials', async () => {
 test('imports approved rows once and is idempotent on the second run', async () => {
   let storedActivity: Array<Record<string, unknown>> = []
   let storedCosts: Array<Record<string, unknown>> = []
+  let rpcCalls = 0
   const base = recoveryFetch()
   const fetchImpl: typeof fetch = async (input, init) => {
     const url = new URL(input instanceof Request ? input.url : input.toString())
@@ -153,6 +154,7 @@ test('imports approved rows once and is idempotent on the second run', async () 
       ], has_more: false })
     }
     if (url.pathname.endsWith('/rpc/apply_verified_openai_provider_recovery') && init?.method === 'POST') {
+      rpcCalls += 1
       const payload = JSON.parse(String(init.body)) as { p_activity: Array<Record<string, unknown>>; p_costs: Array<Record<string, unknown>> }
       const newActivity = payload.p_activity.filter((candidate) => !storedActivity.some((current) => current.usage_date === candidate.usage_date && current.provider_model === candidate.provider_model))
       const newCosts = payload.p_costs.filter((candidate) => !storedCosts.some((current) => current.usage_date === candidate.usage_date))
@@ -192,6 +194,7 @@ test('imports approved rows once and is idempotent on the second run', async () 
   assert.equal(second.writesPerformed, false)
   assert.equal(storedActivity.length, 6)
   assert.equal(storedCosts.length, 4)
+  assert.equal(rpcCalls, 1)
 })
 
 test('the import endpoint is allowlisted and requires HGI admin authorization', async () => {
