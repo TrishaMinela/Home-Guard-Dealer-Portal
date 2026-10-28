@@ -162,6 +162,9 @@ export function AdminAiUsagePage() {
   const [issues, setIssues] = useState<AiAdminIssue[]>([])
   const [issuesError, setIssuesError] = useState('')
   const [resolvingIssueId, setResolvingIssueId] = useState('')
+  const [isVerifyingOpenAi, setIsVerifyingOpenAi] = useState(false)
+  const [openAiVerificationReport, setOpenAiVerificationReport] = useState('')
+  const [openAiVerificationError, setOpenAiVerificationError] = useState('')
   const requestSequence = useRef(0)
   const bounds = useMemo(() => periodBounds(period, customStart, customEnd), [period, customStart, customEnd])
 
@@ -197,6 +200,27 @@ export function AdminAiUsagePage() {
       window.dispatchEvent(new Event('ai-admin-issues-changed'))
     }
     setResolvingIssueId('')
+  }
+
+  async function verifyOpenAiAdminAccess() {
+    setIsVerifyingOpenAi(true)
+    setOpenAiVerificationError('')
+    setOpenAiVerificationReport('')
+    try {
+      const { data, error: sessionError } = await supabase.auth.getSession()
+      const accessToken = data.session?.access_token
+      if (sessionError || !accessToken) throw new Error('Your admin session is unavailable. Sign in again and retry.')
+      const response = await fetch('/api/openai-admin-verify', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+      const report: unknown = await response.json()
+      setOpenAiVerificationReport(JSON.stringify(report, null, 2))
+    } catch (verificationError) {
+      setOpenAiVerificationError(verificationError instanceof Error ? verificationError.message : 'Verification could not be completed.')
+    } finally {
+      setIsVerifyingOpenAi(false)
+    }
   }
 
   const loadUsage = useCallback(async (background: boolean) => {
@@ -421,6 +445,9 @@ export function AdminAiUsagePage() {
             <div className="filter-field"><label htmlFor="ai-usage-end">End (UTC)</label><input id="ai-usage-end" type="date" value={customEnd} onChange={(event) => setCustomEnd(event.target.value)} /></div>
           </div>}
           <div className="ai-usage-refresh">
+            <button className="button button--secondary" type="button" disabled={isVerifyingOpenAi} onClick={() => void verifyOpenAiAdminAccess()}>
+              {isVerifyingOpenAi ? 'Verifying...' : 'Verify OpenAI Access'}
+            </button>
             <button className="button ai-usage-refresh__button" type="button" disabled={isLoading || isRefreshing} onClick={() => { void loadUsage(true); void loadIssues() }}>
               <RefreshIcon spinning={isRefreshing} />
               {isRefreshing ? 'Refreshing...' : 'Refresh'}
@@ -429,6 +456,8 @@ export function AdminAiUsagePage() {
           </div>
         </div>
       </header>
+      {openAiVerificationError && <div className="notification-inline-error" role="alert">{openAiVerificationError}</div>}
+      {openAiVerificationReport && <section className="content-card" aria-label="OpenAI Admin API verification report"><pre>{openAiVerificationReport}</pre></section>}
       <p className="ai-usage-timezone-note">Reporting boundaries use UTC dates. Times in activity tables are displayed in your local browser time.</p>
       {(trackingBegan.generation || trackingBegan.detection || trackingBegan.workflow) && <p className="ai-usage-tracking-note">Workflow-level attempts and failures are available from {trackingBegan.workflow ? formatDateTime(trackingBegan.workflow) : 'the workflow-tracking rollout'}. Image-generation tracking began {trackingBegan.generation ? formatDateTime(trackingBegan.generation) : 'after this period'}. Entrance-analysis tracking began {trackingBegan.detection ? formatDateTime(trackingBegan.detection) : 'after this period'}. Earlier workflow attempts are not inferred or fabricated.</p>}
 
