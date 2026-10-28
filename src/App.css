@@ -164,6 +164,8 @@ input:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,102
 .ai-usage-refresh small { max-width: 250px; color: var(--color-muted); font-size: 10px; text-align: right; }
 .ai-usage-refresh__error { color: var(--color-error) !important; }
 .ai-usage-refresh .is-spinning { animation: ai-usage-spin .8s linear infinite; }
+.ai-provider-sync-status { margin-bottom: 18px; }
+.ai-provider-sync-status__details { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 @keyframes ai-usage-spin { to { transform: rotate(360deg); } }
 .ai-usage-tracking-note { margin: 0 0 22px; color: #7b8784; font-size: 11px; line-height: 1.5; }
 .ai-usage-timezone-note { margin: 0 0 9px; color: #6d7a77; font-size: 10px; }

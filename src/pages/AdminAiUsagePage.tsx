@@ -16,6 +16,22 @@ const periods: Array<{ value: AiUsagePeriod; label: string }> = [
 
 const hgiOpenAiProjectId = 'proj_haRRNxvf4CVwa2jHugJ762SM'
 
+type ProviderSyncRun = {
+  id: string
+  completed_at: string | null
+  range_start: string
+  range_end_exclusive: string
+  status: 'running' | 'succeeded' | 'conflict' | 'failed'
+  activity_rows_inserted: number
+  cost_rows_inserted: number
+  activity_rows_noop: number
+  cost_rows_noop: number
+  conflict_count: number
+  provider_request_count: number
+  provider_cost_usd: number
+  error_message: string | null
+}
+
 function RefreshIcon({ spinning }: { spinning: boolean }) {
   return (
     <svg className={spinning ? 'is-spinning' : undefined} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -169,6 +185,9 @@ export function AdminAiUsagePage() {
   const [providerImportRange, setProviderImportRange] = useState('')
   const [providerRecoveryReport, setProviderRecoveryReport] = useState('')
   const [providerRecoveryError, setProviderRecoveryError] = useState('')
+  const [providerSyncRuns, setProviderSyncRuns] = useState<ProviderSyncRun[]>([])
+  const [isRunningProviderSync, setIsRunningProviderSync] = useState(false)
+  const [providerSyncError, setProviderSyncError] = useState('')
   const requestSequence = useRef(0)
   const bounds = useMemo(() => periodBounds(period, customStart, customEnd), [period, customStart, customEnd])
 
@@ -187,10 +206,41 @@ export function AdminAiUsagePage() {
     }
   }, [])
 
+  const loadProviderSyncStatus = useCallback(async () => {
+    const { data } = await supabase
+      .from('ai_provider_sync_runs')
+      .select('id,completed_at,range_start,range_end_exclusive,status,activity_rows_inserted,cost_rows_inserted,activity_rows_noop,cost_rows_noop,conflict_count,provider_request_count,provider_cost_usd,error_message')
+      .order('created_at', { ascending: false })
+      .limit(10)
+    setProviderSyncRuns((data ?? []) as ProviderSyncRun[])
+  }, [])
+
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => void loadIssues(), 0)
+    const timeoutId = window.setTimeout(() => { void loadIssues(); void loadProviderSyncStatus() }, 0)
     return () => window.clearTimeout(timeoutId)
-  }, [loadIssues])
+  }, [loadIssues, loadProviderSyncStatus])
+
+  async function runProviderSyncNow() {
+    setIsRunningProviderSync(true)
+    setProviderSyncError('')
+    try {
+      const { data, error: sessionError } = await supabase.auth.getSession()
+      const accessToken = data.session?.access_token
+      if (sessionError || !accessToken) throw new Error('Your admin session is unavailable. Sign in again and retry.')
+      const response = await fetch('/api/openai-provider-sync-run', {
+        method: 'POST', headers: { Authorization: `Bearer ${accessToken}` },
+      })
+      const payload = await response.json() as { error?: string }
+      if (!response.ok) throw new Error(payload.error ?? 'Provider synchronization failed.')
+      await loadProviderSyncStatus()
+      await loadUsage(true)
+    } catch (syncError) {
+      setProviderSyncError(syncError instanceof Error ? syncError.message : 'Provider synchronization failed.')
+      await loadProviderSyncStatus()
+    } finally {
+      setIsRunningProviderSync(false)
+    }
+  }
 
   async function resolveIssue(issueId: string) {
     setResolvingIssueId(issueId)
@@ -526,6 +576,9 @@ export function AdminAiUsagePage() {
             <button className="button button--secondary" type="button" disabled={Boolean(providerImportRange)} onClick={() => void importProviderRecovery('2026-10-23', '2026-10-29')}>
               {providerImportRange === '2026-10-23:2026-10-29' ? 'Importing Oct 23–28...' : 'Import Oct 23–28'}
             </button>
+            <button className="button button--secondary" type="button" disabled={isRunningProviderSync} onClick={() => void runProviderSyncNow()}>
+              {isRunningProviderSync ? 'Syncing Provider Data...' : 'Run Provider Sync'}
+            </button>
             {refreshError && <small className="ai-usage-refresh__error" role="alert">{refreshError}</small>}
           </div>
         </div>
@@ -534,6 +587,20 @@ export function AdminAiUsagePage() {
       {openAiVerificationReport && <section className="content-card" aria-label="OpenAI Admin API verification report"><pre>{openAiVerificationReport}</pre></section>}
       {providerRecoveryError && <div className="notification-inline-error" role="alert">{providerRecoveryError}</div>}
       {providerRecoveryReport && <section className="content-card" aria-label="OpenAI provider recovery dry-run report"><div className="content-card__header"><p className="eyebrow">Read-only diagnostic</p><h2>Provider Recovery Dry Run</h2></div><pre>{providerRecoveryReport}</pre></section>}
+      {providerSyncError && <div className="notification-inline-error" role="alert">{providerSyncError}</div>}
+      <section className="content-card ai-provider-sync-status" aria-labelledby="provider-sync-status-title">
+        <div className="content-card__header"><p className="eyebrow">Internal operations</p><h2 id="provider-sync-status-title">Provider Sync Status</h2></div>
+        {providerSyncRuns.length === 0 ? <div className="data-state data-state--compact">No scheduled provider sync has run yet.</div> : (() => {
+          const latest = providerSyncRuns[0]!
+          const lastSuccess = providerSyncRuns.find((run) => run.status === 'succeeded')
+          return <dl className="ai-combined-usage ai-provider-sync-status__details">
+            <div><dt>Latest run</dt><dd><span className={`status-badge status-badge--${latest.status === 'succeeded' ? 'succeeded' : 'failed'}`}>{latest.status}</span></dd><small>{latest.completed_at ? formatDateTime(latest.completed_at) : 'In progress'}</small></div>
+            <div><dt>Last successful sync</dt><dd>{lastSuccess?.completed_at ? formatDateTime(lastSuccess.completed_at) : '—'}</dd></div>
+            <div><dt>Dates covered through</dt><dd>{lastSuccess ? addUtcDays(utcDate(lastSuccess.range_end_exclusive), -1).toISOString().slice(0, 10) : '—'}</dd><small>UTC</small></div>
+            <div><dt>Latest conflicts</dt><dd>{latest.conflict_count}</dd>{latest.error_message && <small>{latest.error_message}</small>}</div>
+          </dl>
+        })()}
+      </section>
       <p className="ai-usage-timezone-note">Reporting boundaries use UTC dates. Times in activity tables are displayed in your local browser time.</p>
       {(trackingBegan.generation || trackingBegan.detection || trackingBegan.workflow) && <p className="ai-usage-tracking-note">Workflow-level attempts and failures are available from {trackingBegan.workflow ? formatDateTime(trackingBegan.workflow) : 'the workflow-tracking rollout'}. Image-generation tracking began {trackingBegan.generation ? formatDateTime(trackingBegan.generation) : 'after this period'}. Entrance-analysis tracking began {trackingBegan.detection ? formatDateTime(trackingBegan.detection) : 'after this period'}. Earlier workflow attempts are not inferred or fabricated.</p>}
 

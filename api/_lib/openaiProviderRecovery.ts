@@ -10,11 +10,12 @@ export const PROVIDER_RECOVERY_WINDOWS = [
 ] as const
 
 type RecoveryWindow = (typeof PROVIDER_RECOVERY_WINDOWS)[number]
+export type ProviderSyncWindow = { id: string; start: string; endExclusive: string; label: string }
 type JsonRecord = Record<string, unknown>
 type UsageBucket = { start_time?: number; end_time?: number; results?: JsonRecord[] }
 type PageResponse = { data?: UsageBucket[]; has_more?: boolean; next_page?: string | null }
 
-type ActivityRow = {
+export type ActivityRow = {
   provider: 'openai'
   provider_project_id: string
   usage_date: string
@@ -37,7 +38,7 @@ type ActivityRow = {
   source_row_sha256: string
 }
 
-type CostRow = {
+export type CostRow = {
   provider: 'openai'
   reconciled_project_id: string
   export_project_id: string | null
@@ -57,7 +58,7 @@ export type ProviderRecoveryDryRunReport = {
   writesPerformed: false
   passed: boolean
   safeToApply: boolean
-  range: { id: RecoveryWindow['id']; label: string; startInclusive: string; endExclusive: string; timezone: 'UTC' }
+  range: { id: string; label: string; startInclusive: string; endExclusive: string; timezone: 'UTC' }
   projectAttribution: { verified: boolean; projectId: string }
   datesCovered: string[]
   zeroUsageDates: string[]
@@ -163,10 +164,16 @@ async function readPages(
     const url = new URL(`${OPENAI_API_BASE}${pathname}`)
     url.search = params.toString()
     if (page) url.searchParams.set('page', page)
-    const response = await fetchImpl(url, {
-      headers: { Authorization: `Bearer ${adminKey}`, Accept: 'application/json' },
-      signal: AbortSignal.timeout(30_000),
-    })
+    let response: Response | null = null
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      response = await fetchImpl(url, {
+        headers: { Authorization: `Bearer ${adminKey}`, Accept: 'application/json' },
+        signal: AbortSignal.timeout(30_000),
+      })
+      if (response.status !== 429 || attempt === 2) break
+      await new Promise((resolve) => setTimeout(resolve, 250 * (2 ** attempt)))
+    }
+    if (!response) throw new Error('OpenAI reporting request failed before receiving a response.')
     if (!response.ok) {
       const category = response.status === 401
         ? 'authentication failed or key expired'
@@ -186,11 +193,11 @@ async function readPages(
   throw new Error('OpenAI pagination exceeded the safety limit.')
 }
 
-function sourceName(kind: string, window: RecoveryWindow): string {
+function sourceName(kind: string, window: ProviderSyncWindow): string {
   return `openai-admin-api-${kind}-${window.start}-${window.endExclusive}-exclusive.json`
 }
 
-function activityRows(buckets: UsageBucket[], operationSource: 'images' | 'completions', window: RecoveryWindow): ActivityRow[] {
+function activityRows(buckets: UsageBucket[], operationSource: 'images' | 'completions', window: ProviderSyncWindow): ActivityRow[] {
   const sourcePayload = stableJson(buckets)
   const sourceHash = sha256(sourcePayload)
   const rows: ActivityRow[] = []
@@ -269,7 +276,7 @@ function calculatedDailyCost(rows: ActivityRow[], usageDate: string): number {
     .reduce((sum, row) => sum + (row.calculated_estimated_cost_usd ?? 0), 0)
 }
 
-function costRows(buckets: UsageBucket[], rows: ActivityRow[], window: RecoveryWindow): CostRow[] {
+function costRows(buckets: UsageBucket[], rows: ActivityRow[], window: ProviderSyncWindow): CostRow[] {
   const sourcePayload = stableJson(buckets)
   const sourceHash = sha256(sourcePayload)
   const result: CostRow[] = []
@@ -376,9 +383,7 @@ function planRows<T extends { source_row_sha256: string }>(
   return { inserts, exact, conflicts }
 }
 
-export async function runProviderRecoveryDryRun(options: RecoveryOptions): Promise<ProviderRecoveryDryRunReport> {
-  const window = allowedRecoveryWindow(options.start, options.endExclusive)
-  if (!window) throw new Error('The requested recovery window is not allowed.')
+async function runProviderWindowDryRun(options: RecoveryOptions, window: ProviderSyncWindow): Promise<ProviderRecoveryDryRunReport> {
   if (!options.adminApiKey) throw new Error('The server-only OpenAI Admin credential is not configured.')
   const expectedRef = new URL(options.supabaseUrl).hostname.split('.')[0]
   if (expectedRef !== 'udbcnpjtwhmjzpjjhoph') throw new Error('The server is connected to the wrong Supabase project.')
@@ -471,6 +476,30 @@ export async function runProviderRecoveryDryRun(options: RecoveryOptions): Promi
       provisionalAiUsageChargesUsd: provisionalCharge,
     },
   }
+}
+
+export async function runProviderRecoveryDryRun(options: RecoveryOptions): Promise<ProviderRecoveryDryRunReport> {
+  const window = allowedRecoveryWindow(options.start, options.endExclusive)
+  if (!window) throw new Error('The requested recovery window is not allowed.')
+  return runProviderWindowDryRun(options, window)
+}
+
+export async function runProviderSyncDryRun(
+  options: RecoveryOptions & { now?: Date },
+): Promise<ProviderRecoveryDryRunReport> {
+  const now = options.now ?? new Date()
+  const todayUtc = now.toISOString().slice(0, 10)
+  const dates = utcDates(options.start, options.endExclusive)
+  if (options.endExclusive !== todayUtc || dates.length !== 3) {
+    throw new Error('Daily provider sync must inspect exactly the previous three completed UTC dates.')
+  }
+  const window: ProviderSyncWindow = {
+    id: 'daily-three-day-lookback',
+    start: options.start,
+    endExclusive: options.endExclusive,
+    label: `${options.start} through ${dates.at(-1)} UTC`,
+  }
+  return runProviderWindowDryRun(options, window)
 }
 
 const EXPECTED_RECOVERY = {
