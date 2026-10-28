@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
+import { AdminLeadDetail } from '../components/AdminLeadDetail'
 import type { Lead, LeadDataState } from '../types/lead'
 import { dateStamp, exportCsv, type CsvColumn } from '../utils/csvExport'
+import { formatCsvTimestamp, formatPortalDateTime } from '../utils/dateTime'
 
 const statusOptions = [
   'All',
@@ -20,14 +22,6 @@ function formatStatus(status: string) {
   return normalizeStatus(status).replace(/\b\w/g, (letter) => letter.toUpperCase())
 }
 
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(new Date(date))
-}
-
 const dealerExportColumns: CsvColumn<Lead>[] = [
   { header: 'First Name', value: (lead) => lead.first_name },
   { header: 'Last Name', value: (lead) => lead.last_name },
@@ -38,16 +32,18 @@ const dealerExportColumns: CsvColumn<Lead>[] = [
   { header: 'State', value: (lead) => lead.state },
   { header: 'ZIP', value: (lead) => lead.zip },
   { header: 'Lead Date', value: (lead) => lead.created_at.slice(0, 10) },
+  { header: 'Date Entered', value: (lead) => formatCsvTimestamp(lead.created_at) },
   { header: 'Lead Status', value: (lead) => formatStatus(lead.status) },
   { header: 'Lead Source', value: (lead) => lead.source },
   { header: 'Visualizer URL', value: (lead) => lead.visualizer_url },
 ]
 
-type LeadsPageProps = LeadDataState & { dealerSlug: string }
+type LeadsPageProps = LeadDataState & { dealerSlug: string; dealerName: string }
 
-export function LeadsPage({ leads, isLoading, error, dealerSlug }: LeadsPageProps) {
+export function LeadsPage({ leads, isLoading, error, dealerSlug, dealerName }: LeadsPageProps) {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('All')
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
 
   const filteredLeads = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
@@ -130,25 +126,35 @@ export function LeadsPage({ leads, isLoading, error, dealerSlug }: LeadsPageProp
                   <th>Email</th>
                   <th>Phone</th>
                   <th>ZIP</th>
-                  <th>Date</th>
+                  <th>Date Entered</th>
                   <th>Status</th>
+                  <th><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody>
                 {filteredLeads.map((lead) => (
-                  <tr key={lead.id}>
+                  <tr className="lead-row" key={lead.id} tabIndex={0} onClick={() => setSelectedLead(lead)} onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      setSelectedLead(lead)
+                    }
+                  }}>
                     <td data-label="Name">
                       <strong>{lead.first_name} {lead.last_name}</strong>
                     </td>
                     <td data-label="Email">{lead.email}</td>
                     <td data-label="Phone">{lead.phone || '—'}</td>
                     <td data-label="ZIP">{lead.zip || '—'}</td>
-                    <td data-label="Date">{formatDate(lead.created_at)}</td>
+                    <td data-label="Date Entered"><time dateTime={lead.created_at}>{formatPortalDateTime(lead.created_at)}</time></td>
                     <td data-label="Status">
                       <span className={`status-badge status-badge--${normalizeStatus(lead.status).replaceAll(' ', '-')}`}>
                         {formatStatus(lead.status)}
                       </span>
                     </td>
+                    <td data-label="Action"><button className="lead-view-button" type="button" onClick={(event) => {
+                      event.stopPropagation()
+                      setSelectedLead(lead)
+                    }}>View</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -156,6 +162,7 @@ export function LeadsPage({ leads, isLoading, error, dealerSlug }: LeadsPageProp
           </div>
         )}
       </section>
+      {selectedLead && <AdminLeadDetail lead={selectedLead} dealerName={dealerName} onClose={() => setSelectedLead(null)} />}
     </div>
   )
 }

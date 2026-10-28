@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { AdminLeadDetail } from '../components/AdminLeadDetail'
 import type { AdminDataState, AdminLead } from '../types/admin'
 import { dateStamp, exportCsv, type CsvColumn } from '../utils/csvExport'
+import { formatCsvTimestamp, formatPortalDateTime } from '../utils/dateTime'
 
 const statusOptions = [
   'All',
@@ -20,14 +21,6 @@ function normalizeStatus(status: string) {
 
 function formatStatus(status: string) {
   return normalizeStatus(status).replace(/\b\w/g, (letter) => letter.toUpperCase())
-}
-
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(new Date(date))
 }
 
 function getLeadOwner(lead: AdminLead, dealerNames: Map<string, string>) {
@@ -94,6 +87,7 @@ export function AdminLeadsPage({ dealers, leads, isLoading, error }: AdminDataSt
     { header: 'State', value: (lead) => lead.state },
     { header: 'ZIP', value: (lead) => lead.zip },
     { header: 'Lead Date', value: (lead) => lead.created_at.slice(0, 10) },
+    { header: 'Date Entered', value: (lead) => formatCsvTimestamp(lead.created_at) },
     { header: 'Lead Status', value: (lead) => formatStatus(lead.status) },
     { header: 'Lead Source', value: (lead) => lead.source },
     { header: 'Visualizer URL', value: (lead) => lead.visualizer_url },
@@ -172,7 +166,7 @@ export function AdminLeadsPage({ dealers, leads, isLoading, error }: AdminDataSt
                   <th>Email</th>
                   <th>Phone</th>
                   <th>ZIP</th>
-                  <th>Date</th>
+                  <th>Date Entered</th>
                   <th>Status</th>
                   <th><span className="sr-only">Actions</span></th>
                 </tr>
@@ -196,7 +190,7 @@ export function AdminLeadsPage({ dealers, leads, isLoading, error }: AdminDataSt
                     <td data-label="Email">{lead.email}</td>
                     <td data-label="Phone">{lead.phone || '—'}</td>
                     <td data-label="ZIP">{lead.zip || '—'}</td>
-                    <td data-label="Date">{formatDate(lead.created_at)}</td>
+                    <td data-label="Date Entered"><time dateTime={lead.created_at}>{formatPortalDateTime(lead.created_at)}</time></td>
                     <td data-label="Status">
                       <span className={`status-badge status-badge--${normalizeStatus(lead.status).replaceAll(' ', '-')}`}>
                         {formatStatus(lead.status)}

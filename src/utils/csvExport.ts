@@ -8,6 +8,16 @@ function escapeCsvValue(value: string | null | undefined) {
   return `"${normalized.replaceAll('"', '""')}"`
 }
 
+export function buildCsv<Row>(rows: Row[], columns: CsvColumn<Row>[]) {
+  const lines = [
+    columns.map((column) => escapeCsvValue(column.header)).join(','),
+    ...rows.map((row) =>
+      columns.map((column) => escapeCsvValue(column.value(row))).join(','),
+    ),
+  ]
+  return `\uFEFF${lines.join('\r\n')}`
+}
+
 export function dateStamp(date = new Date()) {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -18,13 +28,7 @@ export function dateStamp(date = new Date()) {
 export function exportCsv<Row>(filename: string, rows: Row[], columns: CsvColumn<Row>[]) {
   if (rows.length === 0) return false
 
-  const lines = [
-    columns.map((column) => escapeCsvValue(column.header)).join(','),
-    ...rows.map((row) =>
-      columns.map((column) => escapeCsvValue(column.value(row))).join(','),
-    ),
-  ]
-  const blob = new Blob([`\uFEFF${lines.join('\r\n')}`], {
+  const blob = new Blob([buildCsv(rows, columns)], {
     type: 'text/csv;charset=utf-8',
   })
   const url = URL.createObjectURL(blob)

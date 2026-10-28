@@ -1,8 +1,9 @@
 import { useEffect, useMemo } from 'react'
-import type { AdminLead } from '../types/admin'
+import type { Lead } from '../types/lead'
+import { formatPortalDateTime } from '../utils/dateTime'
 
 type AdminLeadDetailProps = {
-  lead: AdminLead
+  lead: Lead
   dealerName: string
   onClose: () => void
 }
@@ -48,13 +49,6 @@ function item(label: string, value: unknown, transform?: (value: string) => stri
 
 function titleCase(value: string) {
   return value.replaceAll('-', ' ').replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
-}
-
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(date))
 }
 
 function DetailSection({ title, items }: { title: string; items: Array<DetailItem | null> }) {
@@ -176,7 +170,7 @@ export function AdminLeadDetail({ lead, dealerName, onClose }: AdminLeadDetailPr
             item('Source', lead.source, titleCase),
             item('Status', lead.status, titleCase),
             item('Project timeline', lead.project_timeline),
-            item('Submitted date', formatDate(lead.created_at)),
+            item('Date Entered', formatPortalDateTime(lead.created_at)),
             item('Submission ID', lead.submission_id),
             item('Configuration schema', snapshot?.schemaVersion ? `Version ${snapshot.schemaVersion}` : null),
           ]} />
