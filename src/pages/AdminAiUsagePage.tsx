@@ -165,6 +165,9 @@ export function AdminAiUsagePage() {
   const [isVerifyingOpenAi, setIsVerifyingOpenAi] = useState(false)
   const [openAiVerificationReport, setOpenAiVerificationReport] = useState('')
   const [openAiVerificationError, setOpenAiVerificationError] = useState('')
+  const [providerRecoveryRange, setProviderRecoveryRange] = useState('')
+  const [providerRecoveryReport, setProviderRecoveryReport] = useState('')
+  const [providerRecoveryError, setProviderRecoveryError] = useState('')
   const requestSequence = useRef(0)
   const bounds = useMemo(() => periodBounds(period, customStart, customEnd), [period, customStart, customEnd])
 
@@ -220,6 +223,35 @@ export function AdminAiUsagePage() {
       setOpenAiVerificationError(verificationError instanceof Error ? verificationError.message : 'Verification could not be completed.')
     } finally {
       setIsVerifyingOpenAi(false)
+    }
+  }
+
+  async function runProviderRecoveryDryRun(start: string, endExclusive: string) {
+    const rangeKey = `${start}:${endExclusive}`
+    setProviderRecoveryRange(rangeKey)
+    setProviderRecoveryError('')
+    setProviderRecoveryReport('')
+    try {
+      const { data, error: sessionError } = await supabase.auth.getSession()
+      const accessToken = data.session?.access_token
+      if (sessionError || !accessToken) throw new Error('Your admin session is unavailable. Sign in again and retry.')
+      const response = await fetch('/api/openai-provider-recovery-dry-run', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ start, endExclusive }),
+      })
+      const report: unknown = await response.json()
+      if (!response.ok) {
+        const message = report && typeof report === 'object' && 'error' in report && typeof report.error === 'string'
+          ? report.error
+          : 'Provider recovery dry run could not be completed.'
+        throw new Error(message)
+      }
+      setProviderRecoveryReport(JSON.stringify(report, null, 2))
+    } catch (recoveryError) {
+      setProviderRecoveryError(recoveryError instanceof Error ? recoveryError.message : 'Provider recovery dry run could not be completed.')
+    } finally {
+      setProviderRecoveryRange('')
     }
   }
 
@@ -452,12 +484,20 @@ export function AdminAiUsagePage() {
               <RefreshIcon spinning={isRefreshing} />
               {isRefreshing ? 'Refreshing...' : 'Refresh'}
             </button>
+            <button className="button button--secondary" type="button" disabled={Boolean(providerRecoveryRange)} onClick={() => void runProviderRecoveryDryRun('2026-10-01', '2026-10-05')}>
+              {providerRecoveryRange === '2026-10-01:2026-10-05' ? 'Checking Oct 1–4...' : 'Dry Run Oct 1–4'}
+            </button>
+            <button className="button button--secondary" type="button" disabled={Boolean(providerRecoveryRange)} onClick={() => void runProviderRecoveryDryRun('2026-10-23', '2026-10-29')}>
+              {providerRecoveryRange === '2026-10-23:2026-10-29' ? 'Checking Oct 23–28...' : 'Dry Run Oct 23–28'}
+            </button>
             {refreshError && <small className="ai-usage-refresh__error" role="alert">{refreshError}</small>}
           </div>
         </div>
       </header>
       {openAiVerificationError && <div className="notification-inline-error" role="alert">{openAiVerificationError}</div>}
       {openAiVerificationReport && <section className="content-card" aria-label="OpenAI Admin API verification report"><pre>{openAiVerificationReport}</pre></section>}
+      {providerRecoveryError && <div className="notification-inline-error" role="alert">{providerRecoveryError}</div>}
+      {providerRecoveryReport && <section className="content-card" aria-label="OpenAI provider recovery dry-run report"><div className="content-card__header"><p className="eyebrow">Read-only diagnostic</p><h2>Provider Recovery Dry Run</h2></div><pre>{providerRecoveryReport}</pre></section>}
       <p className="ai-usage-timezone-note">Reporting boundaries use UTC dates. Times in activity tables are displayed in your local browser time.</p>
       {(trackingBegan.generation || trackingBegan.detection || trackingBegan.workflow) && <p className="ai-usage-tracking-note">Workflow-level attempts and failures are available from {trackingBegan.workflow ? formatDateTime(trackingBegan.workflow) : 'the workflow-tracking rollout'}. Image-generation tracking began {trackingBegan.generation ? formatDateTime(trackingBegan.generation) : 'after this period'}. Entrance-analysis tracking began {trackingBegan.detection ? formatDateTime(trackingBegan.detection) : 'after this period'}. Earlier workflow attempts are not inferred or fabricated.</p>}
 
