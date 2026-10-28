@@ -51,25 +51,15 @@ export function useAccountAccess(user: User | null) {
         return
       }
 
-      const { data: billingMemberships, error: billingMembershipError } = await supabase
-        .from('billing_account_users')
-        .select('billing_account_id, billing_accounts(id, name)')
-        .eq('user_id', authenticatedUser.id)
+      const { data: billingAccounts, error: billingMembershipError } = await supabase
+        .rpc('list_billing_client_accounts')
 
       if (!isCurrent) return
       if (billingMembershipError) {
         console.warn('Billing-client authorization is not configured yet.')
-      } else if (billingMemberships?.length) {
-        const billingAccounts = billingMemberships.flatMap((membership) => {
-          const account = Array.isArray(membership.billing_accounts)
-            ? membership.billing_accounts[0]
-            : membership.billing_accounts
-          return account ? [{ id: account.id, name: account.name }] : []
-        })
-        if (billingAccounts.length) {
-          setAccess({ userId: authenticatedUser.id, type: 'billing_client', dealer: null, message: '', billingAccounts })
-          return
-        }
+      } else if (billingAccounts?.length) {
+        setAccess({ userId: authenticatedUser.id, type: 'billing_client', dealer: null, message: '', billingAccounts })
+        return
       }
 
       const { data: membership, error: membershipError } = await supabase

@@ -45,7 +45,7 @@ test('billing client has a dedicated layout and membership-scoped account list',
     readFile(new URL('../src/hooks/useClientBilling.ts', import.meta.url), 'utf8'),
   ])
   assert.match(app, /access\.type === 'billing_client'/)
-  assert.match(access, /billing_account_users/)
+  assert.match(access, /list_billing_client_accounts/)
   assert.match(layout, /Billing Overview/)
   assert.doesNotMatch(layout, /Dealers|All Leads|Inventory|Admin Settings/)
   assert.doesNotMatch(hook, /\.limit\(1\)|billing_account_users/)
