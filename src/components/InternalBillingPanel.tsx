@@ -1,44 +1,80 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-type PricingVersion = {
-  id: string
-  markup_basis_points: number
-  effective_from: string
-  effective_until: string | null
-  currency: string
+type PricingVersion = { id: string; markup_basis_points: number; effective_from: string; effective_until: string | null; currency: string }
+type MonthEndReadiness = {
+  billingAccountId: string; periodStart: string; periodEndExclusive: string
+  status: 'incomplete' | 'ready' | 'finalized'; ready: boolean; blockers: string[]; missingDates: string[]
+  providerCoverageThrough: string | null; unresolvedConflictCount: number; providerRequestCount: number
+  imageGenerationCount: number; providerCostUsd: number; providerCostMicros: number
+  pricingVersionId: string | null; markupBasisPoints: number | null; aiUsageChargeCents: number
+  existingBillingPeriodId: string | null
 }
+type InternalState = { pricing: PricingVersion | null; periodCount: number; auditCount: number; error: string }
 
-type InternalState = {
-  pricing: PricingVersion | null
-  periodCount: number
-  auditCount: number
-  error: string
+function currentUtcMonth() {
+  const now = new Date()
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`
+}
+function displayDate(value: string | null) {
+  if (!value) return '—'
+  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${value.slice(0, 10)}T00:00:00Z`))
+}
+function moneyFromUsd(value: number) { return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(value) }
+function moneyFromCents(value: number) { return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(value / 100) }
+function statusLabel(status: MonthEndReadiness['status']) {
+  if (status === 'ready') return 'Ready to Finalize'
+  if (status === 'finalized') return 'Finalized'
+  return 'Incomplete'
 }
 
 export function InternalBillingPanel({ accountId }: { accountId: string }) {
   const [state, setState] = useState<InternalState>({ pricing: null, periodCount: 0, auditCount: 0, error: '' })
+  const [month, setMonth] = useState(currentUtcMonth)
+  const [readiness, setReadiness] = useState<MonthEndReadiness | null>(null)
+  const [readinessError, setReadinessError] = useState('')
+  const [isChecking, setIsChecking] = useState(false)
+  const [isFinalizing, setIsFinalizing] = useState(false)
+  const [finalizeMessage, setFinalizeMessage] = useState('')
 
-  useEffect(() => {
-    let active = true
-    void Promise.all([
+  const loadConfiguration = useCallback(async () => {
+    const [pricingResult, periodResult, auditResult] = await Promise.all([
       supabase.from('billing_pricing_versions').select('id, markup_basis_points, effective_from, effective_until, currency').eq('billing_account_id', accountId).order('effective_from', { ascending: false }).limit(1).maybeSingle(),
       supabase.from('billing_periods').select('id', { count: 'exact', head: true }).eq('billing_account_id', accountId),
       supabase.from('billing_audit_log').select('id', { count: 'exact', head: true }).eq('billing_account_id', accountId),
-    ]).then(([pricingResult, periodResult, auditResult]) => {
-      if (!active) return
-      const queryError = pricingResult.error || periodResult.error || auditResult.error
-      setState({
-        pricing: (pricingResult.data as PricingVersion | null) ?? null,
-        periodCount: periodResult.count ?? 0,
-        auditCount: auditResult.count ?? 0,
-        error: queryError ? 'Internal billing configuration could not be loaded.' : '',
-      })
-    })
-    return () => { active = false }
+    ])
+    const queryError = pricingResult.error || periodResult.error || auditResult.error
+    setState({ pricing: (pricingResult.data as PricingVersion | null) ?? null, periodCount: periodResult.count ?? 0, auditCount: auditResult.count ?? 0, error: queryError ? 'Internal billing configuration could not be loaded.' : '' })
   }, [accountId])
 
-  return (
+  const loadReadiness = useCallback(async () => {
+    setIsChecking(true); setReadinessError(''); setFinalizeMessage('')
+    const { data, error } = await supabase.rpc('billing_month_end_readiness', { p_billing_account_id: accountId, p_period_start: `${month}-01` })
+    setIsChecking(false)
+    if (error || !data) {
+      setReadiness(null); setReadinessError('Month-end readiness could not be checked. No billing records were changed.'); return
+    }
+    setReadiness(data as MonthEndReadiness)
+  }, [accountId, month])
+
+  useEffect(() => { void loadConfiguration() }, [loadConfiguration])
+  useEffect(() => { void loadReadiness() }, [loadReadiness])
+
+  async function finalizeMonth() {
+    if (!readiness?.ready || readiness.status !== 'ready') return
+    if (!window.confirm(`Finalize ${displayDate(readiness.periodStart)} billing? Finalized records are immutable and this action does not create an invoice.`)) return
+    setIsFinalizing(true); setReadinessError(''); setFinalizeMessage('')
+    const { error } = await supabase.rpc('finalize_month_end_billing', { p_billing_account_id: accountId, p_period_start: readiness.periodStart })
+    setIsFinalizing(false)
+    if (error) {
+      setReadinessError('Finalization was refused. Readiness may have changed; refresh and review the month before trying again.')
+      await loadReadiness(); return
+    }
+    setFinalizeMessage('Month finalized. No invoice or payment was created.')
+    await Promise.all([loadConfiguration(), loadReadiness()])
+  }
+
+  return <>
     <article className="content-card billing-overview" aria-label="Internal billing configuration">
       <div className="billing-section-heading"><div><span className="eyebrow">Internal billing administration</span><h2>Pricing &amp; period status</h2></div></div>
       {state.error && <p className="message message--error" role="alert">{state.error}</p>}
@@ -49,5 +85,29 @@ export function InternalBillingPanel({ accountId }: { accountId: string }) {
         <div><dt>Audit entries</dt><dd>{state.auditCount}</dd><small>Internal audit history</small></div>
       </dl>}
     </article>
-  )
+
+    <article className="content-card billing-overview month-end-billing" aria-label="Month-End Billing">
+      <div className="billing-section-heading">
+        <div><span className="eyebrow">Internal billing administration</span><h2>Month-End Billing</h2></div>
+        <div className="month-end-billing__controls"><label htmlFor="billing-month">UTC month</label><input id="billing-month" type="month" value={month} onChange={(event) => setMonth(event.target.value)} /><button className="button button--secondary button--compact" type="button" disabled={isChecking} onClick={() => void loadReadiness()}>{isChecking ? 'Checking…' : 'Refresh'}</button></div>
+      </div>
+      {readinessError && <p className="message message--error" role="alert">{readinessError}</p>}
+      {finalizeMessage && <p className="message message--success" role="status">{finalizeMessage}</p>}
+      {isChecking && !readiness && <div className="billing-empty-inline">Checking provider coverage and billing safeguards…</div>}
+      {readiness && <>
+        <div className="month-end-billing__status-row"><span className={`billing-status billing-status--month-${readiness.status}`}>{statusLabel(readiness.status)}</span><span>{displayDate(readiness.periodStart)} – {displayDate(readiness.periodEndExclusive)} (exclusive end)</span></div>
+        <dl className="month-end-billing__metrics">
+          <div><dt>Provider coverage through</dt><dd>{displayDate(readiness.providerCoverageThrough)}</dd></div>
+          <div><dt>Unresolved conflicts</dt><dd>{readiness.unresolvedConflictCount}</dd></div>
+          <div><dt>Verified provider requests</dt><dd>{readiness.providerRequestCount.toLocaleString()}</dd></div>
+          <div><dt>Internal provider cost</dt><dd>{moneyFromUsd(readiness.providerCostUsd)}</dd></div>
+          <div><dt>Pricing adjustment</dt><dd>{readiness.markupBasisPoints === null ? '—' : `${(readiness.markupBasisPoints / 100).toFixed(2)}%`}</dd></div>
+          <div><dt>Final AI Usage Charges</dt><dd>{moneyFromCents(readiness.aiUsageChargeCents)}</dd></div>
+        </dl>
+        {readiness.missingDates.length > 0 && <div className="month-end-billing__pending" role="status"><strong>Provider coverage still pending</strong><p>{readiness.missingDates.map(displayDate).join(', ')}</p></div>}
+        {readiness.blockers.length > 0 && <p className="month-end-billing__blockers">Readiness safeguards: {readiness.blockers.join(', ').replaceAll('_', ' ')}</p>}
+        <div className="month-end-billing__actions"><p>Finalization is atomic and immutable. It creates no invoice, payment, or Stripe record.</p><button className="button button--primary" type="button" disabled={!readiness.ready || readiness.status !== 'ready' || isFinalizing} onClick={() => void finalizeMonth()}>{isFinalizing ? 'Finalizing…' : readiness.status === 'finalized' ? 'Finalized' : 'Finalize Month'}</button></div>
+      </>}
+    </article>
+  </>
 }
