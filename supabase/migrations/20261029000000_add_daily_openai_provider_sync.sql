@@ -49,7 +49,7 @@ as $$
   select p_secret is not null
     and length(p_secret) >= 48
     and encode(extensions.digest(convert_to(p_secret, 'UTF8'), 'sha256'), 'hex')
-      = 'f91ccd84ca0e97269d88e562a25c71b266e894f8eb15b6433dbc5653f38062e1'
+      = 'f43b0a323df273a372a31cd6b37398e15b97b88604100d32b6a254949dbdf8e1'
 $$;
 
 revoke all on function public.openai_provider_sync_secret_valid(text) from public, anon, authenticated;
