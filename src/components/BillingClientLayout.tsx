@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom'
-import { AdminBillingPage } from '../pages/AdminBillingPage'
+import { BillingClientPage } from '../pages/BillingClientPage'
 import { NavIcon } from './NavIcon'
 
 type Props = {
@@ -18,7 +18,6 @@ const links = [
 
 export function BillingClientLayout({ email, accounts, signOutError, onSignOut }: Props) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const page = <AdminBillingPage accounts={accounts} />
   return (
     <div className="portal-shell portal-shell--billing-client">
       <header className="mobile-header mobile-header--admin">
@@ -42,7 +41,7 @@ export function BillingClientLayout({ email, accounts, signOutError, onSignOut }
           <button className="button button--secondary button--full" type="button" onClick={() => void onSignOut()}>Sign Out</button>
         </div>
       </aside>
-      <main className="portal-main"><Routes><Route path="/billing" element={page} /><Route path="/billing/usage" element={page} /><Route path="/billing/history" element={page} /><Route path="*" element={<Navigate to="/billing" replace />} /></Routes></main>
+      <main className="portal-main"><Routes><Route path="/billing" element={<BillingClientPage accounts={accounts} view="overview" />} /><Route path="/billing/usage" element={<BillingClientPage accounts={accounts} view="usage" />} /><Route path="/billing/history" element={<BillingClientPage accounts={accounts} view="history" />} /><Route path="*" element={<Navigate to="/billing" replace />} /></Routes></main>
     </div>
   )
 }

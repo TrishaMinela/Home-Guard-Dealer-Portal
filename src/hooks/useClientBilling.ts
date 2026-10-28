@@ -28,14 +28,14 @@ export function useClientBilling(accountId: string | null) {
     const today = new Date()
     const monthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)).toISOString().slice(0, 10)
     const nextMonth = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1)).toISOString().slice(0, 10)
-    const [accountResult, summaryResult, usageResult, invoiceResult] = await Promise.all([
+    const [accountResult, summariesResult, usageResult, invoiceResult] = await Promise.all([
       supabase.from('billing_accounts').select('id, name, currency, next_billing_date').eq('id', accountId).single(),
-      supabase.from('billing_charge_summaries').select('id, billing_period_start, billing_period_end, ai_usage_charge_cents, image_generation_count, status, data_complete_through, updated_at').eq('billing_account_id', accountId).gte('billing_period_start', monthStart).lt('billing_period_start', nextMonth).maybeSingle(),
+      supabase.from('billing_charge_summaries').select('id, billing_period_start, billing_period_end, ai_usage_charge_cents, image_generation_count, status, data_complete_through, updated_at').eq('billing_account_id', accountId).order('billing_period_start', { ascending: false }),
       supabase.from('billing_client_usage_daily').select('usage_date, ai_usage_charge_cents, image_generation_count, is_provisional, updated_at').eq('billing_account_id', accountId).gte('usage_date', monthStart).lt('usage_date', nextMonth).order('usage_date'),
       supabase.from('billing_invoices').select('id, invoice_number, billing_period_start, billing_period_end, issued_at, due_at, ai_usage_charge_cents, total_due_cents, amount_remaining_cents, status').eq('billing_account_id', accountId).order('billing_period_start', { ascending: false }),
     ])
 
-    const queryError = accountResult.error || summaryResult.error || usageResult.error || invoiceResult.error
+    const queryError = accountResult.error || summariesResult.error || usageResult.error || invoiceResult.error
     if (queryError) {
       console.error('Unable to load client-safe billing data.', queryError)
       setState({ data: null, isLoading: false, error: 'We could not load AI usage charges right now. Please try again.' })
@@ -43,7 +43,8 @@ export function useClientBilling(accountId: string | null) {
     }
 
     const invoices = (invoiceResult.data ?? []) as ClientInvoice[]
-    const currentMonth = (summaryResult.data ?? null) as ClientChargeSummary | null
+    const chargeSummaries = (summariesResult.data ?? []) as ClientChargeSummary[]
+    const currentMonth = chargeSummaries.find((summary) => summary.billing_period_start >= monthStart && summary.billing_period_start < nextMonth) ?? null
     const usageDays = (usageResult.data ?? []) as ClientUsageDay[]
     const timestamps = [currentMonth?.updated_at, ...usageDays.map((row) => row.updated_at)].filter((value): value is string => Boolean(value))
     setState({
@@ -52,6 +53,7 @@ export function useClientBilling(accountId: string | null) {
       data: {
         account: accountResult.data as BillingAccount,
         currentMonth,
+        chargeSummaries,
         usageDays,
         invoices,
         outstandingBalanceCents: invoices.filter((invoice) => invoice.status === 'open' || invoice.status === 'overdue').reduce((sum, invoice) => sum + invoice.amount_remaining_cents, 0),

@@ -5,6 +5,7 @@ import test from 'node:test'
 const clientFiles = [
   new URL('../src/types/billing.ts', import.meta.url),
   new URL('../src/hooks/useClientBilling.ts', import.meta.url),
+  new URL('../src/pages/BillingClientPage.tsx', import.meta.url),
   new URL('../src/pages/AdminBillingPage.tsx', import.meta.url),
 ]
 

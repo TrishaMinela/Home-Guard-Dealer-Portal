@@ -42,6 +42,7 @@ export type ClientInvoice = {
 export type ClientBillingDashboard = {
   account: BillingAccount
   currentMonth: ClientChargeSummary | null
+  chargeSummaries: ClientChargeSummary[]
   usageDays: ClientUsageDay[]
   invoices: ClientInvoice[]
   outstandingBalanceCents: number
