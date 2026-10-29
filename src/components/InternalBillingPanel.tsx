@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { ConfirmationModal } from './ConfirmationModal'
 import { supabase } from '../lib/supabase'
 
 type PricingVersion = { id: string; markup_basis_points: number; effective_from: string; effective_until: string | null; currency: string }
@@ -39,6 +40,8 @@ export function InternalBillingPanel({ accountId }: { accountId: string }) {
   const [finalizeMessage, setFinalizeMessage] = useState('')
   const [invoiceReadiness, setInvoiceReadiness] = useState<InvoiceReadiness | null>(null)
   const [isIssuingInvoice, setIsIssuingInvoice] = useState(false)
+  const [pendingAction, setPendingAction] = useState<'finalize' | 'invoice' | null>(null)
+  const [confirmationError, setConfirmationError] = useState('')
 
   const loadConfiguration = useCallback(async () => {
     const [pricingResult, periodResult, auditResult] = await Promise.all([
@@ -70,27 +73,29 @@ export function InternalBillingPanel({ accountId }: { accountId: string }) {
 
   async function finalizeMonth() {
     if (!readiness?.ready || readiness.status !== 'ready') return
-    if (!window.confirm(`Finalize ${displayDate(readiness.periodStart)} billing? Finalized records are immutable and this action does not create an invoice.`)) return
     setIsFinalizing(true); setReadinessError(''); setFinalizeMessage('')
     const { error } = await supabase.rpc('finalize_month_end_billing', { p_billing_account_id: accountId, p_period_start: readiness.periodStart })
     setIsFinalizing(false)
     if (error) {
-      setReadinessError('Finalization was refused. Readiness may have changed; refresh and review the month before trying again.')
+      const message = 'Finalization was refused. Readiness may have changed; refresh and review the month before trying again.'
+      setReadinessError(message); setConfirmationError(message)
       await loadReadiness(); return
     }
+    setPendingAction(null); setConfirmationError('')
     setFinalizeMessage('Month finalized. No invoice or payment was created.')
     await Promise.all([loadConfiguration(), loadReadiness()])
   }
 
   async function issueInvoice() {
     if (!readiness?.existingBillingPeriodId || !invoiceReadiness?.ready) return
-    if (!window.confirm('Issue this invoice now? Its number, dates, line item, and amounts will be immutable.')) return
     setIsIssuingInvoice(true); setReadinessError(''); setFinalizeMessage('')
     const { data, error } = await supabase.rpc('issue_billing_invoice', { p_billing_period_id: readiness.existingBillingPeriodId })
     setIsIssuingInvoice(false)
     if (error) {
-      setReadinessError('Invoice issuance was refused. Refresh readiness and review the finalized billing period.'); return
+      const message = 'Invoice issuance was refused. Refresh readiness and review the finalized billing period.'
+      setReadinessError(message); setConfirmationError(message); return
     }
+    setPendingAction(null); setConfirmationError('')
     const result = data as { invoiceNumber?: string }
     setFinalizeMessage(`Invoice ${result.invoiceNumber ?? ''} issued with Net 15 terms.`)
     await Promise.all([loadConfiguration(), loadReadiness()])
@@ -128,9 +133,24 @@ export function InternalBillingPanel({ accountId }: { accountId: string }) {
         </dl>
         {readiness.missingDates.length > 0 && <div className="month-end-billing__pending" role="status"><strong>Provider coverage still pending</strong><p>{readiness.missingDates.map(displayDate).join(', ')}</p></div>}
         {readiness.blockers.length > 0 && <p className="month-end-billing__blockers">Readiness safeguards: {readiness.blockers.join(', ').replaceAll('_', ' ')}</p>}
-        <div className="month-end-billing__actions"><p>Finalization is atomic and immutable. Invoice issuance is a separate Net 15 action and never creates a payment or Stripe record.</p><button className="button button--primary" type="button" disabled={!readiness.ready || readiness.status !== 'ready' || isFinalizing} onClick={() => void finalizeMonth()}>{isFinalizing ? 'Finalizing…' : readiness.status === 'finalized' ? 'Finalized' : 'Finalize Month'}</button>{readiness.status === 'finalized' && <button className="button button--primary" type="button" disabled={!invoiceReadiness?.ready || isIssuingInvoice} onClick={() => void issueInvoice()}>{isIssuingInvoice ? 'Issuing…' : invoiceReadiness?.existingInvoiceId ? 'Invoice Issued' : 'Issue Invoice'}</button>}</div>
+        <div className="month-end-billing__actions"><p>Finalization is atomic and immutable. Invoice issuance is a separate Net 15 action and never creates a payment or Stripe record.</p><button className="button button--primary" type="button" disabled={!readiness.ready || readiness.status !== 'ready' || isFinalizing} onClick={() => { setConfirmationError(''); setPendingAction('finalize') }}>{isFinalizing ? 'Finalizing…' : readiness.status === 'finalized' ? 'Finalized' : 'Finalize Month'}</button>{readiness.status === 'finalized' && <button className="button button--primary" type="button" disabled={!invoiceReadiness?.ready || isIssuingInvoice} onClick={() => { setConfirmationError(''); setPendingAction('invoice') }}>{isIssuingInvoice ? 'Issuing…' : invoiceReadiness?.existingInvoiceId ? 'Invoice Issued' : 'Issue Invoice'}</button>}</div>
         {readiness.status === 'finalized' && invoiceReadiness && !invoiceReadiness.ready && <p className="month-end-billing__blockers">Invoice safeguards: {invoiceReadiness.blockers.join(', ').replaceAll('_', ' ')}</p>}
       </>}
     </article>
+    <ConfirmationModal
+      open={Boolean(pendingAction)}
+      title={pendingAction === 'finalize' ? 'Finalize this billing month?' : 'Issue this invoice?'}
+      message={pendingAction === 'finalize'
+        ? 'Finalized billing records are immutable. This action does not create an invoice or payment.'
+        : 'The invoice number, dates, line item, and amounts will become immutable. No payment is collected automatically.'}
+      target={pendingAction === 'finalize' && readiness ? `${displayDate(readiness.periodStart)} billing` : undefined}
+      confirmLabel={pendingAction === 'finalize' ? 'Finalize Month' : 'Issue Invoice'}
+      confirmingLabel={pendingAction === 'finalize' ? 'Finalizing…' : 'Issuing…'}
+      destructive
+      isConfirming={isFinalizing || isIssuingInvoice}
+      error={confirmationError}
+      onCancel={() => { if (!isFinalizing && !isIssuingInvoice) { setPendingAction(null); setConfirmationError('') } }}
+      onConfirm={() => { if (pendingAction === 'finalize') void finalizeMonth(); else if (pendingAction === 'invoice') void issueInvoice() }}
+    />
   </>
 }
