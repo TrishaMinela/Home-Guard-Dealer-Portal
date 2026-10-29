@@ -113,6 +113,7 @@ function App() {
         <AdminLayout
           email={user.email ?? ''}
           isInternalBillingAdmin={access.isInternalBillingAdmin}
+          isBillingAccessManager={access.isBillingAccessManager}
           signOutError={error}
           onSignOut={handleSignOut}
         />

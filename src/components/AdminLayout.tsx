@@ -10,6 +10,7 @@ import { AdminLeadsPage } from '../pages/AdminLeadsPage'
 import { AdminSettingsPage } from '../pages/AdminSettingsPage'
 import { AdminAiUsagePage } from '../pages/AdminAiUsagePage'
 import { AdminBillingPage } from '../pages/AdminBillingPage'
+import { BillingAccessManagementPage } from '../pages/BillingAccessManagementPage'
 import { AdminInventoryCategoryPage } from '../pages/AdminInventoryCategoryPage'
 import { AdminInventoryPage } from '../pages/AdminInventoryPage'
 import { AdminInventoryReviewPage } from '../pages/AdminInventoryReviewPage'
@@ -21,24 +22,26 @@ import type { AdminDealer } from '../types/admin'
 import { NavIcon } from './NavIcon'
 import { NotificationLauncher, type PortalNotification } from './NotificationLauncher'
 
-const navigation = [
+const navigation: Array<{ label: string; path: string; icon: string; end?: boolean; internalOnly?: boolean; accessManagerOnly?: boolean }> = [
   { label: 'Dashboard', path: '/admin', icon: 'grid', end: true },
   { label: 'Dealers', path: '/admin/dealers', icon: 'building' },
   { label: 'All Leads', path: '/admin/leads', icon: 'users' },
   { label: 'Inventory', path: '/admin/inventory', icon: 'inventory' },
   { label: 'AI Usage', path: '/admin/ai-usage', icon: 'activity' },
   { label: 'AI Usage & Billing', path: '/admin/billing', icon: 'billing', internalOnly: true },
+  { label: 'Billing Access', path: '/admin/billing/access', icon: 'users', accessManagerOnly: true },
   { label: 'Settings', path: '/admin/settings', icon: 'settings' },
 ]
 
 type AdminLayoutProps = {
   email: string
   isInternalBillingAdmin: boolean
+  isBillingAccessManager: boolean
   signOutError: string
   onSignOut: () => Promise<void>
 }
 
-export function AdminLayout({ email, isInternalBillingAdmin, signOutError, onSignOut }: AdminLayoutProps) {
+export function AdminLayout({ email, isInternalBillingAdmin, isBillingAccessManager, signOutError, onSignOut }: AdminLayoutProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [dealerSuccess, setDealerSuccess] = useState('')
   const [dealerDetailSuccess, setDealerDetailSuccess] = useState('')
@@ -155,7 +158,7 @@ export function AdminLayout({ email, isInternalBillingAdmin, signOutError, onSig
 
         <nav className="sidebar-nav" aria-label="Home Guard Admin navigation">
           <span className="sidebar-nav__label">Administration</span>
-          {navigation.filter((item) => !item.internalOnly || isInternalBillingAdmin).map((item) => (
+          {navigation.filter((item) => (!item.internalOnly || isInternalBillingAdmin) && (!item.accessManagerOnly || isBillingAccessManager)).map((item) => (
             <NavLink
               className={({ isActive }) => `sidebar-nav__link ${isActive ? 'is-active' : ''}`}
               end={item.end}
@@ -243,6 +246,7 @@ export function AdminLayout({ email, isInternalBillingAdmin, signOutError, onSig
           <Route path="/admin/leads/:leadId?" element={<AdminLeadsPage {...adminData} />} />
           <Route path="/admin/ai-usage" element={<AdminAiUsagePage showInternalDetails={isInternalBillingAdmin} />} />
           <Route path="/admin/billing" element={isInternalBillingAdmin ? <AdminBillingPage showInternalDetails /> : <Navigate to="/admin" replace />} />
+          <Route path="/admin/billing/access" element={isBillingAccessManager ? <BillingAccessManagementPage /> : <Navigate to="/admin" replace />} />
           <Route path="/admin/inventory" element={<AdminInventoryPage />} />
           <Route path="/admin/inventory/review" element={<AdminInventoryReviewPage />} />
           <Route path="/admin/inventory/door-styles" element={<AdminDoorStylesPage />} />

@@ -32,21 +32,22 @@ export function useAccountAccess(user: User | null) {
       }
 
       if (adminRecord) {
-        const { data: billingAdminRecord, error: billingAdminError } = await supabase
-          .from('billing_internal_admins')
-          .select('id')
-          .eq('user_id', authenticatedUser.id)
-          .maybeSingle()
+        const [billingAdminResult, accessManagerResult] = await Promise.all([
+          supabase.from('billing_internal_admins').select('id').eq('user_id', authenticatedUser.id).maybeSingle(),
+          supabase.rpc('is_billing_access_manager'),
+        ])
 
-        if (billingAdminError) {
+        if (billingAdminResult.error) {
           console.warn('Internal billing authorization is not configured yet.')
         }
+        if (accessManagerResult.error) console.warn('Billing access-management authorization is not configured yet.')
         setAccess({
           userId: authenticatedUser.id,
           type: 'admin',
           dealer: null,
           message: '',
-          isInternalBillingAdmin: Boolean(billingAdminRecord),
+          isInternalBillingAdmin: Boolean(billingAdminResult.data),
+          isBillingAccessManager: accessManagerResult.data === true,
         })
         return
       }
