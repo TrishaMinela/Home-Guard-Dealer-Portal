@@ -83,6 +83,7 @@ export function LoginPage({
               )}
             </button>
           </div>
+          <a className="login-form__forgot" href="/auth/forgot-password">Forgot password?</a>
 
           <div className="form-message" aria-live="polite">
             {error && <p className="message message--error">{error}</p>}

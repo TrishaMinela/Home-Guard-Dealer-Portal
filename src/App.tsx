@@ -3,15 +3,19 @@ import type { User } from '@supabase/supabase-js'
 import { BrowserRouter } from 'react-router-dom'
 import { AdminLayout } from './components/AdminLayout'
 import { BillingClientLayout } from './components/BillingClientLayout'
+import { ForgotPasswordPage } from './components/ForgotPasswordPage'
 import { InviteSetupPage } from './components/InviteSetupPage'
 import { LoginPage } from './components/LoginPage'
 import { PortalLayout } from './components/PortalLayout'
+import { ResetPasswordPage } from './components/ResetPasswordPage'
 import { useAccountAccess } from './hooks/useAccountAccess'
 import { supabase } from './lib/supabase'
 import './App.css'
 
 function App() {
   const isInviteRoute = window.location.pathname === '/auth/invite'
+  const isForgotPasswordRoute = window.location.pathname === '/auth/forgot-password'
+  const isResetPasswordRoute = window.location.pathname === '/auth/reset-password'
   const [user, setUser] = useState<User | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -41,6 +45,8 @@ function App() {
   }, [])
 
   if (isInviteRoute) return <InviteSetupPage />
+  if (isForgotPasswordRoute) return <ForgotPasswordPage />
+  if (isResetPasswordRoute) return <ResetPasswordPage />
 
   async function handleSignIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()

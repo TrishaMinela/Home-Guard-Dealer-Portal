@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { authorizedDestination } from '../utils/authorizedDestination'
 
 type InviteStep = 'loading' | 'welcome' | 'password' | 'ready' | 'existing' | 'invalid'
 
@@ -20,17 +21,6 @@ function invitationError(): boolean {
 
 function clearInviteUrl(): void {
   window.history.replaceState({}, document.title, '/auth/invite')
-}
-
-async function authorizedDestination(userId: string): Promise<string | null> {
-  const { data: admin } = await supabase.from('home_guard_admins').select('id').eq('user_id', userId).maybeSingle()
-  if (admin) return '/admin'
-
-  const { data: billingAccounts } = await supabase.rpc('list_billing_client_accounts')
-  if (billingAccounts?.length) return '/billing'
-
-  const { data: dealer } = await supabase.from('dealer_users').select('dealer_id').eq('user_id', userId).limit(1).maybeSingle()
-  return dealer ? '/dashboard' : null
 }
 
 export function InviteSetupPage() {

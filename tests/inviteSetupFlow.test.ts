@@ -5,6 +5,7 @@ import test from 'node:test'
 const app = readFileSync('src/App.tsx', 'utf8')
 const page = readFileSync('src/components/InviteSetupPage.tsx', 'utf8')
 const endpoint = readFileSync('api/billing-access-management.ts', 'utf8')
+const destination = readFileSync('src/utils/authorizedDestination.ts', 'utf8')
 
 test('invite setup is a public auth-completion route', () => {
   assert.match(app, /window\.location\.pathname === '\/auth\/invite'/)
@@ -25,9 +26,10 @@ test('invite flow uses Supabase session and password APIs without custom tokens'
 })
 
 test('authorized destination comes from database membership rather than URL role parameters', () => {
-  assert.match(page, /from\('home_guard_admins'\)/)
-  assert.match(page, /rpc\('list_billing_client_accounts'\)/)
-  assert.match(page, /from\('dealer_users'\)/)
+  assert.match(page, /authorizedDestination\(session\.user\.id\)/)
+  assert.match(destination, /from\('home_guard_admins'\)/)
+  assert.match(destination, /rpc\('list_billing_client_accounts'\)/)
+  assert.match(destination, /from\('dealer_users'\)/)
   assert.doesNotMatch(page, /searchParams.*role|[?&]role=/)
 })
 
