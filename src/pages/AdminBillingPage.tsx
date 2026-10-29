@@ -40,7 +40,7 @@ export function AdminBillingPage({ accounts = [], showInternalDetails = false }:
   if (isLoading) return <div className="app-status">Loading AI usage and billing...</div>
 
   return (
-    <section className="billing-page">
+    <section className="page-content billing-page">
       <header className="page-header page-header--with-action">
         <div>
           <span className="eyebrow">Home Guard Industries</span>

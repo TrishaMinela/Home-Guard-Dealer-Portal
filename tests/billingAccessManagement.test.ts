@@ -30,7 +30,7 @@ test('revocation protects access managers and preserves auth accounts', () => {
 })
 
 test('UI and route are visible only to access managers', () => {
-  assert.match(layout, /accessManagerOnly: true/)
+  assert.match(layout, /isBillingAccessManager && <NavLink[^\n]+Billing Access<\/NavLink>/)
   assert.match(layout, /isBillingAccessManager \? <BillingAccessManagementPage/)
   assert.match(page, /Grant Billing Access/)
   assert.match(page, /Remove Billing Access/)
