@@ -11,6 +11,13 @@ type ActionBody = {
 const protectedManagerId = '9ff44f07-b720-4e51-a5a2-a36fdd1c331a'
 const hgiBillingAccountId = '7791a715-da6b-40bb-8795-4148cecff204'
 
+function inviteRedirectUrl(): string {
+  const configured = process.env.PORTAL_INVITE_REDIRECT_URL?.trim()
+  if (configured) return configured
+  const portalUrl = process.env.PORTAL_URL?.trim() || 'https://home-guard-dealer-portal.vercel.app'
+  return new URL('/auth/invite', portalUrl).toString()
+}
+
 function sendJson(response: JsonResponse, status: number, value: unknown): void {
   response.statusCode = status
   response.setHeader('Content-Type', 'application/json; charset=utf-8')
@@ -103,7 +110,7 @@ export default async function handler(request: IncomingMessage, response: JsonRe
       let invited = false
       if ((body.action === 'grant' || body.action === 'grant_client') && !target) {
         const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-          redirectTo: process.env.PORTAL_URL ?? 'https://home-guard-dealer-portal.vercel.app/',
+          redirectTo: inviteRedirectUrl(),
         })
         if (error || !data.user) throw error ?? new Error('Invitation could not be created.')
         target = data.user
@@ -182,7 +189,7 @@ export default async function handler(request: IncomingMessage, response: JsonRe
           return
         }
         const { error } = await admin.auth.resend({
-          type: 'signup', email, options: { emailRedirectTo: process.env.PORTAL_URL ?? 'https://home-guard-dealer-portal.vercel.app/' },
+          type: 'signup', email, options: { emailRedirectTo: inviteRedirectUrl() },
         })
         if (error) throw error
         const { error: auditError } = await admin.from('billing_access_audit_log').insert({

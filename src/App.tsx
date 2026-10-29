@@ -3,6 +3,7 @@ import type { User } from '@supabase/supabase-js'
 import { BrowserRouter } from 'react-router-dom'
 import { AdminLayout } from './components/AdminLayout'
 import { BillingClientLayout } from './components/BillingClientLayout'
+import { InviteSetupPage } from './components/InviteSetupPage'
 import { LoginPage } from './components/LoginPage'
 import { PortalLayout } from './components/PortalLayout'
 import { useAccountAccess } from './hooks/useAccountAccess'
@@ -10,6 +11,7 @@ import { supabase } from './lib/supabase'
 import './App.css'
 
 function App() {
+  const isInviteRoute = window.location.pathname === '/auth/invite'
   const [user, setUser] = useState<User | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -37,6 +39,8 @@ function App() {
 
     return () => subscription.unsubscribe()
   }, [])
+
+  if (isInviteRoute) return <InviteSetupPage />
 
   async function handleSignIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
