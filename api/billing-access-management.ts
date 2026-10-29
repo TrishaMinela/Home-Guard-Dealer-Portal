@@ -72,13 +72,21 @@ export default async function handler(request: IncomingMessage, response: JsonRe
   const authorization = Array.isArray(request.headers.authorization) ? request.headers.authorization[0] : request.headers.authorization
   const access = await authorizeBillingAccessManager(authorization)
   if (!access.authorized) {
-    sendJson(response, access.status, { error: access.message })
+    const code = access.status === 401
+      ? 'authentication_required'
+      : access.status === 403
+        ? 'permission_denied'
+        : 'authorization_unavailable'
+    sendJson(response, access.status, { error: access.message, code })
     return
   }
   const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !serviceRoleKey) {
-    sendJson(response, 500, { error: 'Billing access management is not configured.' })
+    sendJson(response, 500, {
+      error: 'Billing access management is not configured.',
+      code: 'configuration_missing',
+    })
     return
   }
   const admin = createClient(url, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } })
@@ -208,6 +216,9 @@ export default async function handler(request: IncomingMessage, response: JsonRe
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Billing access operation failed.'
     console.error('Billing access management operation failed.', { message })
-    sendJson(response, 500, { error: 'Unable to complete the billing access operation.' })
+    sendJson(response, 500, {
+      error: 'Unable to complete the billing access operation.',
+      code: 'server_failure',
+    })
   }
 }

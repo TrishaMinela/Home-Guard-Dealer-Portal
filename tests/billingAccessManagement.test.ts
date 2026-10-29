@@ -23,6 +23,15 @@ test('server endpoint requires access-manager authorization and keeps admin API 
   assert.match(authorizer, /rpc\('is_billing_access_manager'\)/)
 })
 
+test('access-management failures remain distinguishable from a true empty list', () => {
+  for (const code of ['authentication_required', 'permission_denied', 'authorization_unavailable', 'configuration_missing', 'server_failure']) {
+    assert.match(endpoint, new RegExp(code))
+  }
+  assert.match(page, /network_failure/)
+  assert.match(page, /No internal billing administrators/)
+  assert.match(page, /No HGI billing users assigned/)
+})
+
 test('revocation protects access managers and preserves auth accounts', () => {
   assert.match(endpoint, /Access-manager billing access is protected/)
   assert.match(endpoint, /from\('billing_internal_admins'\)\.delete\(\)/)

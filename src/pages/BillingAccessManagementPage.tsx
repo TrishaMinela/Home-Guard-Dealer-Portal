@@ -18,17 +18,68 @@ type BillingClient = {
   invitedAt: string | null
 }
 
+type AccessManagementErrorCode =
+  | 'authentication_required'
+  | 'permission_denied'
+  | 'authorization_unavailable'
+  | 'configuration_missing'
+  | 'server_failure'
+  | 'network_failure'
+
+class AccessManagementError extends Error {
+  readonly code: AccessManagementErrorCode
+  readonly status: number | undefined
+
+  constructor(
+    message: string,
+    code: AccessManagementErrorCode,
+    status?: number,
+  ) {
+    super(message)
+    this.name = 'AccessManagementError'
+    this.code = code
+    this.status = status
+  }
+}
+
+function accessErrorMessage(error: unknown, fallback: string): string {
+  if (!(error instanceof AccessManagementError)) return error instanceof Error ? error.message : fallback
+  if (error.code === 'authentication_required') return 'Your session has expired. Please sign in again.'
+  if (error.code === 'permission_denied') return 'You do not have permission to manage billing access.'
+  if (error.code === 'authorization_unavailable') return 'Billing access authorization is temporarily unavailable. Try again shortly.'
+  if (error.code === 'configuration_missing') return 'Billing access management server configuration is incomplete. Contact School Radius support.'
+  if (error.code === 'network_failure') return 'Unable to reach billing access management. Check your connection and try again.'
+  return 'Billing access management encountered a server error. Try again shortly.'
+}
+
 async function requestAccessManagement(method: 'GET' | 'POST', body?: object) {
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
-  if (!token) throw new Error('Your session has expired. Please sign in again.')
-  const response = await fetch('/api/billing-access-management', {
-    method,
-    headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
-    body: body ? JSON.stringify(body) : undefined,
-  })
-  const result = await response.json() as { users?: BillingAdmin[]; clientUsers?: BillingClient[]; error?: string }
-  if (!response.ok) throw new Error(result.error ?? 'Billing access request failed.')
+  if (!token) throw new AccessManagementError('Authentication required.', 'authentication_required', 401)
+  let response: Response
+  try {
+    response = await fetch('/api/billing-access-management', {
+      method,
+      headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    })
+  } catch {
+    throw new AccessManagementError('Network request failed.', 'network_failure')
+  }
+  const result = await response.json() as {
+    users?: BillingAdmin[]
+    clientUsers?: BillingClient[]
+    error?: string
+    code?: AccessManagementErrorCode
+  }
+  if (!response.ok) {
+    const fallbackCode: AccessManagementErrorCode = response.status === 401
+      ? 'authentication_required'
+      : response.status === 403
+        ? 'permission_denied'
+        : 'server_failure'
+    throw new AccessManagementError(result.error ?? 'Billing access request failed.', result.code ?? fallbackCode, response.status)
+  }
   return { users: result.users ?? [], clientUsers: result.clientUsers ?? [] }
 }
 
@@ -49,7 +100,7 @@ export function BillingAccessManagementPage() {
       const result = await requestAccessManagement('GET')
       setUsers(result.users); setClientUsers(result.clientUsers)
     }
-    catch (caught) { setError(caught instanceof Error ? caught.message : 'Unable to load billing administrators.') }
+    catch (caught) { setError(accessErrorMessage(caught, 'Unable to load billing administrators.')) }
     finally { setIsLoading(false) }
   }, [])
 
@@ -58,7 +109,7 @@ export function BillingAccessManagementPage() {
     void requestAccessManagement('GET').then((records) => {
       if (current) { setUsers(records.users); setClientUsers(records.clientUsers) }
     }).catch((caught: unknown) => {
-      if (current) setError(caught instanceof Error ? caught.message : 'Unable to load billing administrators.')
+      if (current) setError(accessErrorMessage(caught, 'Unable to load billing administrators.'))
     }).finally(() => {
       if (current) setIsLoading(false)
     })
@@ -74,7 +125,7 @@ export function BillingAccessManagementPage() {
       setUsers(result.users); setClientUsers(result.clientUsers)
       setSuccess(`Billing access was granted to ${email.trim().toLowerCase()}.`)
       setEmail('')
-    } catch (caught) { setError(caught instanceof Error ? caught.message : 'Unable to grant billing access.') }
+    } catch (caught) { setError(accessErrorMessage(caught, 'Unable to grant billing access.')) }
     finally { setIsSaving(false) }
   }
 
@@ -85,7 +136,7 @@ export function BillingAccessManagementPage() {
       const result = await requestAccessManagement('POST', { action: 'revoke', email: user.email })
       setUsers(result.users); setClientUsers(result.clientUsers)
       setSuccess(`Billing access was removed from ${user.email}.`)
-    } catch (caught) { setError(caught instanceof Error ? caught.message : 'Unable to remove billing access.') }
+    } catch (caught) { setError(accessErrorMessage(caught, 'Unable to remove billing access.')) }
     finally { setIsSaving(false) }
   }
 
@@ -99,7 +150,7 @@ export function BillingAccessManagementPage() {
       setUsers(result.users); setClientUsers(result.clientUsers)
       setSuccess(`HGI billing access is configured for ${normalizedEmail}.`)
       setClientEmail('')
-    } catch (caught) { setError(caught instanceof Error ? caught.message : 'Unable to grant HGI billing access.') }
+    } catch (caught) { setError(accessErrorMessage(caught, 'Unable to grant HGI billing access.')) }
     finally { setIsSaving(false) }
   }
 
@@ -110,7 +161,7 @@ export function BillingAccessManagementPage() {
       const result = await requestAccessManagement('POST', { action, email: user.email })
       setUsers(result.users); setClientUsers(result.clientUsers)
       setSuccess(action === 'resend_client' ? `Invitation resent to ${user.email}.` : `HGI billing access removed from ${user.email}.`)
-    } catch (caught) { setError(caught instanceof Error ? caught.message : 'Unable to update HGI billing access.') }
+    } catch (caught) { setError(accessErrorMessage(caught, 'Unable to update HGI billing access.')) }
     finally { setIsSaving(false) }
   }
 
