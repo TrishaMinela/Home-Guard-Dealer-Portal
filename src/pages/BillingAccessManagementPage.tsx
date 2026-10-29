@@ -10,6 +10,14 @@ type BillingAdmin = {
   isAccessManager: boolean
 }
 
+type BillingClient = {
+  email: string
+  status: 'active' | 'pending'
+  role: 'viewer'
+  accessGrantedAt: string
+  invitedAt: string | null
+}
+
 async function requestAccessManagement(method: 'GET' | 'POST', body?: object) {
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
@@ -19,14 +27,16 @@ async function requestAccessManagement(method: 'GET' | 'POST', body?: object) {
     headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   })
-  const result = await response.json() as { users?: BillingAdmin[]; error?: string }
+  const result = await response.json() as { users?: BillingAdmin[]; clientUsers?: BillingClient[]; error?: string }
   if (!response.ok) throw new Error(result.error ?? 'Billing access request failed.')
-  return result.users ?? []
+  return { users: result.users ?? [], clientUsers: result.clientUsers ?? [] }
 }
 
 export function BillingAccessManagementPage() {
   const [users, setUsers] = useState<BillingAdmin[]>([])
+  const [clientUsers, setClientUsers] = useState<BillingClient[]>([])
   const [email, setEmail] = useState('')
+  const [clientEmail, setClientEmail] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
@@ -35,7 +45,10 @@ export function BillingAccessManagementPage() {
   const load = useCallback(async () => {
     setIsLoading(true)
     setError('')
-    try { setUsers(await requestAccessManagement('GET')) }
+    try {
+      const result = await requestAccessManagement('GET')
+      setUsers(result.users); setClientUsers(result.clientUsers)
+    }
     catch (caught) { setError(caught instanceof Error ? caught.message : 'Unable to load billing administrators.') }
     finally { setIsLoading(false) }
   }, [])
@@ -43,7 +56,7 @@ export function BillingAccessManagementPage() {
   useEffect(() => {
     let current = true
     void requestAccessManagement('GET').then((records) => {
-      if (current) setUsers(records)
+      if (current) { setUsers(records.users); setClientUsers(records.clientUsers) }
     }).catch((caught: unknown) => {
       if (current) setError(caught instanceof Error ? caught.message : 'Unable to load billing administrators.')
     }).finally(() => {
@@ -57,7 +70,8 @@ export function BillingAccessManagementPage() {
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) { setError('Enter a valid email address.'); return }
     setIsSaving(true); setError(''); setSuccess('')
     try {
-      setUsers(await requestAccessManagement('POST', { action: 'grant', email: email.trim() }))
+      const result = await requestAccessManagement('POST', { action: 'grant', email: email.trim() })
+      setUsers(result.users); setClientUsers(result.clientUsers)
       setSuccess(`Billing access was granted to ${email.trim().toLowerCase()}.`)
       setEmail('')
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Unable to grant billing access.') }
@@ -68,9 +82,35 @@ export function BillingAccessManagementPage() {
     if (!window.confirm(`Remove internal billing access for ${user.email}? Their sign-in and other roles will be preserved.`)) return
     setIsSaving(true); setError(''); setSuccess('')
     try {
-      setUsers(await requestAccessManagement('POST', { action: 'revoke', email: user.email }))
+      const result = await requestAccessManagement('POST', { action: 'revoke', email: user.email })
+      setUsers(result.users); setClientUsers(result.clientUsers)
       setSuccess(`Billing access was removed from ${user.email}.`)
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Unable to remove billing access.') }
+    finally { setIsSaving(false) }
+  }
+
+  async function grantClient(event: FormEvent) {
+    event.preventDefault()
+    if (!/^\S+@\S+\.\S+$/.test(clientEmail.trim())) { setError('Enter a valid billing-user email address.'); return }
+    setIsSaving(true); setError(''); setSuccess('')
+    try {
+      const normalizedEmail = clientEmail.trim().toLowerCase()
+      const result = await requestAccessManagement('POST', { action: 'grant_client', email: normalizedEmail, role: 'viewer' })
+      setUsers(result.users); setClientUsers(result.clientUsers)
+      setSuccess(`HGI billing access is configured for ${normalizedEmail}.`)
+      setClientEmail('')
+    } catch (caught) { setError(caught instanceof Error ? caught.message : 'Unable to grant HGI billing access.') }
+    finally { setIsSaving(false) }
+  }
+
+  async function clientAction(user: BillingClient, action: 'revoke_client' | 'resend_client') {
+    if (action === 'revoke_client' && !window.confirm(`Remove HGI billing access for ${user.email}? Their Auth account and billing history will be preserved.`)) return
+    setIsSaving(true); setError(''); setSuccess('')
+    try {
+      const result = await requestAccessManagement('POST', { action, email: user.email })
+      setUsers(result.users); setClientUsers(result.clientUsers)
+      setSuccess(action === 'resend_client' ? `Invitation resent to ${user.email}.` : `HGI billing access removed from ${user.email}.`)
+    } catch (caught) { setError(caught instanceof Error ? caught.message : 'Unable to update HGI billing access.') }
     finally { setIsSaving(false) }
   }
 
@@ -88,6 +128,15 @@ export function BillingAccessManagementPage() {
     <article className="content-card">
       <div className="billing-section-heading"><div><span className="eyebrow">Authorized staff</span><h2>Internal Billing Admins</h2></div><button className="button button--outline" type="button" onClick={() => void load()} disabled={isLoading || isSaving}>Refresh</button></div>
       {isLoading ? <p>Loading billing administrators…</p> : users.length === 0 ? <p>No internal billing administrators are configured.</p> : <div className="table-scroll"><table className="data-table"><thead><tr><th>User</th><th>Status</th><th>Access granted</th><th>Authority</th><th>Action</th></tr></thead><tbody>{users.map((user) => <tr key={user.email}><td><strong>{user.name || user.email}</strong>{user.name && <small>{user.email}</small>}</td><td><span className={`billing-status billing-status--${user.status === 'active' ? 'paid' : 'draft'}`}>{user.status}</span></td><td>{new Date(user.accessGrantedAt).toLocaleString()}</td><td>{user.isAccessManager ? 'Access manager' : 'Billing admin'}</td><td><button className="button button--outline button--compact" type="button" disabled={isSaving || user.isAccessManager} title={user.isAccessManager ? 'Access-manager billing access is protected.' : undefined} onClick={() => void revoke(user)}>Remove Billing Access</button></td></tr>)}</tbody></table></div>}
+    </article>
+    <article className="content-card billing-access-client">
+      <div className="billing-section-heading"><div><span className="eyebrow">Home Guard Industries</span><h2>HGI Billing Client Access</h2><p>Billing viewers can access only the assigned HGI billing account and client-safe billing pages.</p></div></div>
+      <form className="billing-access-client__form" onSubmit={(event) => void grantClient(event)}>
+        <label>Email address<input type="email" autoComplete="email" value={clientEmail} onChange={(event) => setClientEmail(event.target.value)} placeholder="billing@homeguardindustries.com" disabled={isSaving} /></label>
+        <label>Role<select value="viewer" disabled><option value="viewer">Viewer</option></select></label>
+        <button className="button button--primary" type="submit" disabled={isSaving}>{isSaving ? 'Saving…' : 'Invite Billing User'}</button>
+      </form>
+      {isLoading ? <p>Loading HGI billing users…</p> : clientUsers.length === 0 ? <p className="empty-copy">No HGI billing-client users have been assigned.</p> : <div className="table-scroll"><table className="data-table"><thead><tr><th>Email</th><th>Status</th><th>Role</th><th>Access granted</th><th>Actions</th></tr></thead><tbody>{clientUsers.map((user) => <tr key={user.email}><td><strong>{user.email}</strong></td><td><span className={`billing-status billing-status--${user.status === 'active' ? 'paid' : 'draft'}`}>{user.status}</span></td><td>{user.role}</td><td>{new Date(user.accessGrantedAt).toLocaleString()}</td><td><div className="table-actions">{user.status === 'pending' && <button className="button button--outline button--compact" type="button" disabled={isSaving} onClick={() => void clientAction(user, 'resend_client')}>Resend Invite</button>}<button className="button button--outline button--compact" type="button" disabled={isSaving} onClick={() => void clientAction(user, 'revoke_client')}>Remove Billing Access</button></div></td></tr>)}</tbody></table></div>}
     </article>
   </section>
 }

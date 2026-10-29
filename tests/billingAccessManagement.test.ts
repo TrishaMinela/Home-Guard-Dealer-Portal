@@ -7,6 +7,7 @@ const endpoint = readFileSync('api/billing-access-management.ts', 'utf8')
 const authorizer = readFileSync('api/_lib/authorizeBillingAccessManager.ts', 'utf8')
 const page = readFileSync('src/pages/BillingAccessManagementPage.tsx', 'utf8')
 const layout = readFileSync('src/components/AdminLayout.tsx', 'utf8')
+const clientAccessMigration = readFileSync('supabase/migrations/20261029070000_add_billing_client_access_audit.sql', 'utf8')
 
 test('access-management authority is separate and bootstraps only School Radius', () => {
   assert.match(migration, /create table public\.billing_access_managers/)
@@ -33,4 +34,22 @@ test('UI and route are visible only to access managers', () => {
   assert.match(layout, /isBillingAccessManager \? <BillingAccessManagementPage/)
   assert.match(page, /Grant Billing Access/)
   assert.match(page, /Remove Billing Access/)
+})
+
+test('HGI billing clients are fixed-account viewers with incompatible-role checks', () => {
+  assert.match(endpoint, /7791a715-da6b-40bb-8795-4148cecff204/)
+  assert.match(endpoint, /body\.role !== 'viewer'/)
+  for (const table of ['home_guard_admins', 'dealer_users', 'billing_internal_admins', 'billing_access_managers']) {
+    assert.match(endpoint, new RegExp(`from\\('${table}'\\)`))
+  }
+  assert.match(endpoint, /billing_account_users'\)\.insert/)
+  assert.doesNotMatch(endpoint, /home_guard_admins'\)\.insert|billing_internal_admins'\)\.insert|billing_access_managers'\)\.insert/)
+})
+
+test('client revocation preserves Auth and history and invite resend is audited', () => {
+  assert.match(endpoint, /action === 'revoke_client'/)
+  assert.match(endpoint, /action === 'resend_client'/)
+  assert.match(endpoint, /client_invite_resent/)
+  assert.match(clientAccessMigration, /client_invited.*client_granted.*client_revoked.*client_invite_resent/s)
+  assert.doesNotMatch(endpoint, /deleteUser/)
 })
