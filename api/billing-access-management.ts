@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createClient, type User } from '@supabase/supabase-js'
 import { authorizeBillingAccessManager } from './_lib/authorizeBillingAccessManager.js'
+import { classifyInvitationFailure, type InvitationFailure } from './_lib/invitationDelivery.js'
 
 type JsonResponse = ServerResponse<IncomingMessage> & { json?: (value: unknown) => void }
 type ActionBody = {
@@ -8,6 +9,8 @@ type ActionBody = {
   email?: string
   role?: 'viewer'
 }
+type InvitationStatus = 'new_invitation_sent' | 'pending_reinvited' | 'confirmed_access_restored' | 'invite_resent'
+type OperationFeedback = { notice?: string; warning?: string; invitationStatus?: InvitationStatus }
 const protectedManagerId = '9ff44f07-b720-4e51-a5a2-a36fdd1c331a'
 const hgiBillingAccountId = '7791a715-da6b-40bb-8795-4148cecff204'
 
@@ -16,6 +19,31 @@ function inviteRedirectUrl(): string {
   if (configured) return configured
   const portalUrl = process.env.PORTAL_URL?.trim() || 'https://home-guard-dealer-portal.vercel.app'
   return new URL('/auth/invite', portalUrl).toString()
+}
+
+function invitationFailure(response: JsonResponse, error: unknown): void {
+  const failure = classifyInvitationFailure(error)
+  console.error('Billing invitation delivery failed.', { code: failure.code, status: failure.status })
+  sendJson(response, failure.status, { error: failure.message, code: failure.code })
+}
+
+type InviteAdminClient = {
+  auth: { admin: { inviteUserByEmail(email: string, options: { redirectTo: string }): Promise<{ data: { user: User | null }; error: unknown }> } }
+}
+
+async function sendFreshInvitation(admin: InviteAdminClient, email: string, expectedUserId?: string) {
+  const result = await admin.auth.admin.inviteUserByEmail(email, { redirectTo: inviteRedirectUrl() })
+  if (result.error || !result.data.user) return { user: null, failure: classifyInvitationFailure(result.error) }
+  if (expectedUserId && result.data.user.id !== expectedUserId) {
+    return { user: null, failure: classifyInvitationFailure(new Error('Auth user identity mismatch.')) }
+  }
+  return { user: result.data.user, failure: null }
+}
+
+function invitationWarning(failure: InvitationFailure): string {
+  if (failure.code === 'invitation_rate_limited') return 'Billing access was granted, but invitation email delivery is temporarily rate limited. Use Resend Invite shortly.'
+  if (failure.code === 'invitation_provider_failure') return 'Billing access was granted, but the email provider did not accept the invitation. Use Resend Invite or contact support.'
+  return 'Billing access was granted, but the authentication service did not create a new invitation. Use Resend Invite or contact support.'
 }
 
 function sendJson(response: JsonResponse, status: number, value: unknown): void {
@@ -98,6 +126,7 @@ export default async function handler(request: IncomingMessage, response: JsonRe
   }
   const admin = createClient(url, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } })
   try {
+    let feedback: OperationFeedback = {}
     if (request.method === 'POST') {
       const body = await readBody(request)
       const email = body.email?.trim().toLowerCase() ?? ''
@@ -109,11 +138,12 @@ export default async function handler(request: IncomingMessage, response: JsonRe
       let target = users.find((user) => user.email?.toLowerCase() === email)
       let invited = false
       if ((body.action === 'grant' || body.action === 'grant_client') && !target) {
-        const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-          redirectTo: inviteRedirectUrl(),
-        })
-        if (error || !data.user) throw error ?? new Error('Invitation could not be created.')
-        target = data.user
+        const invitation = await sendFreshInvitation(admin, email)
+        if (invitation.failure || !invitation.user) {
+          invitationFailure(response, invitation.failure)
+          return
+        }
+        target = invitation.user
         invited = true
       }
       if (!target) {
@@ -172,6 +202,26 @@ export default async function handler(request: IncomingMessage, response: JsonRe
           })))
           if (auditError) throw auditError
         }
+        if (invited) {
+          feedback = { notice: 'Billing access granted and an invitation was sent.', invitationStatus: 'new_invitation_sent' }
+        } else if (target.email_confirmed_at) {
+          feedback = {
+            notice: 'Billing access restored. This user can sign in with their existing Portal account.',
+            invitationStatus: 'confirmed_access_restored',
+          }
+        } else {
+          const invitation = await sendFreshInvitation(admin, email, target.id)
+          if (invitation.failure) {
+            console.error('Pending billing user re-invitation failed.', { code: invitation.failure.code, status: invitation.failure.status })
+            feedback = { warning: invitationWarning(invitation.failure) }
+          } else {
+            const { error: auditError } = await admin.from('billing_access_audit_log').insert({
+              actor_user_id: access.userId, target_user_id: target.id, target_email: email, action: 'client_invited',
+            })
+            if (auditError) throw auditError
+            feedback = { notice: 'Billing access granted and a new invitation was sent.', invitationStatus: 'pending_reinvited' }
+          }
+        }
       } else if (body.action === 'revoke_client') {
         const { error } = await admin.from('billing_account_users').delete()
           .eq('billing_account_id', hgiBillingAccountId).eq('user_id', target.id)
@@ -188,14 +238,16 @@ export default async function handler(request: IncomingMessage, response: JsonRe
           sendJson(response, 409, { error: 'Only pending HGI billing invitations can be resent.' })
           return
         }
-        const { error } = await admin.auth.resend({
-          type: 'signup', email, options: { emailRedirectTo: inviteRedirectUrl() },
-        })
-        if (error) throw error
+        const invitation = await sendFreshInvitation(admin, email, target.id)
+        if (invitation.failure) {
+          invitationFailure(response, invitation.failure)
+          return
+        }
         const { error: auditError } = await admin.from('billing_access_audit_log').insert({
           actor_user_id: access.userId, target_user_id: target.id, target_email: email, action: 'client_invite_resent',
         })
         if (auditError) throw auditError
+        feedback = { notice: 'A new invitation was sent.', invitationStatus: 'invite_resent' }
       } else {
         sendJson(response, 400, { error: 'Unsupported access-management action.' })
         return
@@ -219,7 +271,7 @@ export default async function handler(request: IncomingMessage, response: JsonRe
       const user = usersById.get(membership.user_id)
       return user ? [safeBillingClient(user, membership)] : []
     })
-    sendJson(response, 200, { users: safeUsers, clientUsers })
+    sendJson(response, 200, { users: safeUsers, clientUsers, ...feedback })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Billing access operation failed.'
     console.error('Billing access management operation failed.', { message })

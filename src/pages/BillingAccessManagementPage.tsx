@@ -30,6 +30,9 @@ type AccessManagementErrorCode =
   | 'configuration_missing'
   | 'server_failure'
   | 'network_failure'
+  | 'invitation_rate_limited'
+  | 'invitation_provider_failure'
+  | 'invitation_auth_failure'
 
 class AccessManagementError extends Error {
   readonly code: AccessManagementErrorCode
@@ -76,6 +79,9 @@ async function requestAccessManagement(method: 'GET' | 'POST', body?: object) {
     clientUsers?: BillingClient[]
     error?: string
     code?: AccessManagementErrorCode
+    notice?: string
+    warning?: string
+    invitationStatus?: 'new_invitation_sent' | 'pending_reinvited' | 'confirmed_access_restored' | 'invite_resent'
   }
   if (!response.ok) {
     const fallbackCode: AccessManagementErrorCode = response.status === 401
@@ -85,7 +91,13 @@ async function requestAccessManagement(method: 'GET' | 'POST', body?: object) {
         : 'server_failure'
     throw new AccessManagementError(result.error ?? 'Billing access request failed.', result.code ?? fallbackCode, response.status)
   }
-  return { users: result.users ?? [], clientUsers: result.clientUsers ?? [] }
+  return {
+    users: result.users ?? [],
+    clientUsers: result.clientUsers ?? [],
+    notice: result.notice,
+    warning: result.warning,
+    invitationStatus: result.invitationStatus,
+  }
 }
 
 export function BillingAccessManagementPage() {
@@ -155,7 +167,8 @@ export function BillingAccessManagementPage() {
       const normalizedEmail = clientEmail.trim().toLowerCase()
       const result = await requestAccessManagement('POST', { action: 'grant_client', email: normalizedEmail, role: 'viewer' })
       setUsers(result.users); setClientUsers(result.clientUsers)
-      setSuccess(`HGI billing access is configured for ${normalizedEmail}.`)
+      setSuccess(result.notice ?? `HGI billing access is configured for ${normalizedEmail}.`)
+      if (result.warning) setError(result.warning)
       setClientEmail('')
     } catch (caught) { setError(accessErrorMessage(caught, 'Unable to grant HGI billing access.')) }
     finally { setIsSaving(false) }
@@ -166,7 +179,7 @@ export function BillingAccessManagementPage() {
     try {
       const result = await requestAccessManagement('POST', { action, email: user.email })
       setUsers(result.users); setClientUsers(result.clientUsers)
-      setSuccess(action === 'resend_client' ? `Invitation resent to ${user.email}.` : `HGI billing access removed from ${user.email}.`)
+      setSuccess(action === 'resend_client' ? (result.notice ?? `Invitation resent to ${user.email}.`) : `HGI billing access removed from ${user.email}.`)
       if (action === 'revoke_client') setPendingRemoval(null)
     } catch (caught) {
       const message = accessErrorMessage(caught, 'Unable to update HGI billing access.')

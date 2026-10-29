@@ -14,8 +14,7 @@ test('invite setup is a public auth-completion route', () => {
 test('new-user invitations explicitly target the branded production route', () => {
   assert.match(endpoint, /PORTAL_INVITE_REDIRECT_URL/)
   assert.match(endpoint, /new URL\('\/auth\/invite', portalUrl\)/)
-  assert.match(endpoint, /inviteUserByEmail\(email,[\s\S]*redirectTo: inviteRedirectUrl\(\)/)
-  assert.match(endpoint, /emailRedirectTo: inviteRedirectUrl\(\)/)
+  assert.match(endpoint, /inviteUserByEmail\(email, \{ redirectTo: inviteRedirectUrl\(\) \}\)/)
 })
 
 test('invite flow uses Supabase session and password APIs without custom tokens', () => {
