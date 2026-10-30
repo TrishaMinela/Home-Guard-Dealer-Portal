@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { AdminDealer } from '../types/admin'
 import { getDealerVisualizerDisplayUrl } from '../config/visualizer'
+import { DealerUserAccess } from '../components/DealerUserAccess'
 
 const logoExtensions: Record<string, string> = {
   'image/png': 'png',
@@ -17,6 +18,7 @@ type DealerDetailPageProps = {
   successMessage: string
   onDealerUpdated: (dealer: AdminDealer, message: string) => void
   onClearSuccess: () => void
+  canManageDealerUsers: boolean
 }
 
 function formatDate(date: string) {
@@ -43,6 +45,7 @@ export function DealerDetailPage({
   successMessage,
   onDealerUpdated,
   onClearSuccess,
+  canManageDealerUsers,
 }: DealerDetailPageProps) {
   const { dealerId } = useParams()
   const [isConfirmingDisable, setIsConfirmingDisable] = useState(false)
@@ -358,6 +361,7 @@ export function DealerDetailPage({
           </div>
         )}
       </section>
+      {canManageDealerUsers && <DealerUserAccess dealerId={dealer.id} />}
     </div>
   )
 }
