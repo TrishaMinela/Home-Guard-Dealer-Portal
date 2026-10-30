@@ -19,9 +19,20 @@ type BillingClient = {
   invitedAt: string | null
 }
 
+type PortalAdmin = {
+  email: string
+  name: string | null
+  status: 'active' | 'pending'
+  accessGrantedAt: string
+  invitedAt: string | null
+  isInternalBillingAdmin: boolean
+  isAccessManager: boolean
+}
+
 type PendingRemoval =
   | { kind: 'internal'; user: BillingAdmin }
   | { kind: 'client'; user: BillingClient }
+  | { kind: 'portal_admin'; user: PortalAdmin }
 
 type AccessManagementErrorCode =
   | 'authentication_required'
@@ -77,6 +88,7 @@ async function requestAccessManagement(method: 'GET' | 'POST', body?: object) {
   const result = await response.json() as {
     users?: BillingAdmin[]
     clientUsers?: BillingClient[]
+    portalAdmins?: PortalAdmin[]
     error?: string
     code?: AccessManagementErrorCode
     notice?: string
@@ -94,6 +106,7 @@ async function requestAccessManagement(method: 'GET' | 'POST', body?: object) {
   return {
     users: result.users ?? [],
     clientUsers: result.clientUsers ?? [],
+    portalAdmins: result.portalAdmins ?? [],
     notice: result.notice,
     warning: result.warning,
     invitationStatus: result.invitationStatus,
@@ -103,8 +116,10 @@ async function requestAccessManagement(method: 'GET' | 'POST', body?: object) {
 export function BillingAccessManagementPage() {
   const [users, setUsers] = useState<BillingAdmin[]>([])
   const [clientUsers, setClientUsers] = useState<BillingClient[]>([])
+  const [portalAdmins, setPortalAdmins] = useState<PortalAdmin[]>([])
   const [email, setEmail] = useState('')
   const [clientEmail, setClientEmail] = useState('')
+  const [portalAdminEmail, setPortalAdminEmail] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
@@ -117,7 +132,7 @@ export function BillingAccessManagementPage() {
     setError('')
     try {
       const result = await requestAccessManagement('GET')
-      setUsers(result.users); setClientUsers(result.clientUsers)
+      setUsers(result.users); setClientUsers(result.clientUsers); setPortalAdmins(result.portalAdmins)
     }
     catch (caught) { setError(accessErrorMessage(caught, 'Unable to load billing administrators.')) }
     finally { setIsLoading(false) }
@@ -126,7 +141,7 @@ export function BillingAccessManagementPage() {
   useEffect(() => {
     let current = true
     void requestAccessManagement('GET').then((records) => {
-      if (current) { setUsers(records.users); setClientUsers(records.clientUsers) }
+      if (current) { setUsers(records.users); setClientUsers(records.clientUsers); setPortalAdmins(records.portalAdmins) }
     }).catch((caught: unknown) => {
       if (current) setError(accessErrorMessage(caught, 'Unable to load billing administrators.'))
     }).finally(() => {
@@ -148,11 +163,41 @@ export function BillingAccessManagementPage() {
     finally { setIsSaving(false) }
   }
 
+  async function grantPortalAdmin(event: FormEvent) {
+    event.preventDefault()
+    if (!/^\S+@\S+\.\S+$/.test(portalAdminEmail.trim())) { setError('Enter a valid administrator email address.'); return }
+    setIsSaving(true); setError(''); setSuccess('')
+    try {
+      const normalizedEmail = portalAdminEmail.trim().toLowerCase()
+      const result = await requestAccessManagement('POST', { action: 'grant_portal_admin', email: normalizedEmail })
+      setUsers(result.users); setClientUsers(result.clientUsers); setPortalAdmins(result.portalAdmins)
+      setSuccess(result.notice ?? `Portal administrator access is configured for ${normalizedEmail}.`)
+      if (result.warning) setError(result.warning)
+      setPortalAdminEmail('')
+    } catch (caught) { setError(accessErrorMessage(caught, 'Unable to grant Portal administrator access.')) }
+    finally { setIsSaving(false) }
+  }
+
+  async function portalAdminAction(user: PortalAdmin, action: 'revoke_portal_admin' | 'resend_portal_admin') {
+    setIsSaving(true); setError(''); setSuccess('')
+    try {
+      const result = await requestAccessManagement('POST', { action, email: user.email })
+      setUsers(result.users); setClientUsers(result.clientUsers); setPortalAdmins(result.portalAdmins)
+      setSuccess(action === 'resend_portal_admin' ? (result.notice ?? `Invitation resent to ${user.email}.`) : `Portal administrator access was removed from ${user.email}.`)
+      if (action === 'revoke_portal_admin') setPendingRemoval(null)
+    } catch (caught) {
+      const message = accessErrorMessage(caught, 'Unable to update Portal administrator access.')
+      if (action === 'revoke_portal_admin') setConfirmationError(message)
+      else setError(message)
+    }
+    finally { setIsSaving(false) }
+  }
+
   async function revoke(user: BillingAdmin) {
     setIsSaving(true); setError(''); setSuccess('')
     try {
       const result = await requestAccessManagement('POST', { action: 'revoke', email: user.email })
-      setUsers(result.users); setClientUsers(result.clientUsers)
+      setUsers(result.users); setClientUsers(result.clientUsers); setPortalAdmins(result.portalAdmins)
       setSuccess(`Billing access was removed from ${user.email}.`)
       setPendingRemoval(null)
     } catch (caught) { setConfirmationError(accessErrorMessage(caught, 'Unable to remove billing access.')) }
@@ -166,7 +211,7 @@ export function BillingAccessManagementPage() {
     try {
       const normalizedEmail = clientEmail.trim().toLowerCase()
       const result = await requestAccessManagement('POST', { action: 'grant_client', email: normalizedEmail, role: 'viewer' })
-      setUsers(result.users); setClientUsers(result.clientUsers)
+      setUsers(result.users); setClientUsers(result.clientUsers); setPortalAdmins(result.portalAdmins)
       setSuccess(result.notice ?? `HGI billing access is configured for ${normalizedEmail}.`)
       if (result.warning) setError(result.warning)
       setClientEmail('')
@@ -178,7 +223,7 @@ export function BillingAccessManagementPage() {
     setIsSaving(true); setError(''); setSuccess('')
     try {
       const result = await requestAccessManagement('POST', { action, email: user.email })
-      setUsers(result.users); setClientUsers(result.clientUsers)
+      setUsers(result.users); setClientUsers(result.clientUsers); setPortalAdmins(result.portalAdmins)
       setSuccess(action === 'resend_client' ? (result.notice ?? `Invitation resent to ${user.email}.`) : `HGI billing access removed from ${user.email}.`)
       if (action === 'revoke_client') setPendingRemoval(null)
     } catch (caught) {
@@ -201,13 +246,20 @@ export function BillingAccessManagementPage() {
   function confirmRemoval() {
     if (!pendingRemoval || isSaving) return
     if (pendingRemoval.kind === 'internal') void revoke(pendingRemoval.user)
-    else void clientAction(pendingRemoval.user, 'revoke_client')
+    else if (pendingRemoval.kind === 'client') void clientAction(pendingRemoval.user, 'revoke_client')
+    else void portalAdminAction(pendingRemoval.user, 'revoke_portal_admin')
   }
 
   return <section className="page-content billing-access-page">
     <header className="page-header page-header--with-action billing-access-header"><div><span className="eyebrow">Billing · Access Management</span><h1>Billing Access</h1><p>Manage internal School Radius billing administrators and approved Home Guard billing viewers.</p></div><button className="button button--outline" type="button" onClick={() => void load()} disabled={isLoading || isSaving}>Refresh access</button></header>
     {error && <p className="message message--error" role="alert">{error}</p>}
     {success && <p className="message message--success" role="status">{success}</p>}
+    <article className="content-card billing-access-card">
+      <header className="billing-access-card__header"><span className="eyebrow">Portal security</span><h2>Portal Administrator Access</h2><p>Invite a trusted administrator with Home Guard Admin, internal billing admin, and billing access manager permissions. Dealer and HGI billing-client access are never added.</p></header>
+      <div className="billing-access-card__form"><h3>Invite or Add Administrator</h3><form onSubmit={(event) => void grantPortalAdmin(event)}><label><span>Email address</span><input type="email" autoComplete="email" value={portalAdminEmail} onChange={(event) => setPortalAdminEmail(event.target.value)} placeholder="admin@example.com" disabled={isSaving} /></label><button className="button button--primary" type="submit" disabled={isSaving}>{isSaving ? 'Saving…' : 'Invite Administrator'}</button></form><p className="form-help">Existing confirmed Portal users keep their password. New or pending users receive the secure Portal invitation.</p></div>
+      <div className="billing-access-card__list"><div className="billing-access-card__list-heading"><div><h3>Current Portal administrators</h3><p>Removal is blocked until another confirmed administrator has successfully signed in.</p></div><span>{portalAdmins.length} {portalAdmins.length === 1 ? 'user' : 'users'}</span></div>
+      {isLoading ? <div className="billing-access-empty"><strong>Loading Portal administrators…</strong><p>Checking protected administrator access.</p></div> : portalAdmins.length === 0 ? <div className="billing-access-empty"><strong>No Portal administrators found</strong><p>Administrator memberships will appear here.</p></div> : <div className="table-scroll"><table className="data-table"><thead><tr><th>User</th><th>Status</th><th>Permissions</th><th>Access granted</th><th>Actions</th></tr></thead><tbody>{portalAdmins.map((user) => <tr key={user.email}><td><strong>{user.name || user.email}</strong>{user.name && <small>{user.email}</small>}</td><td><span className={`billing-status billing-status--${user.status === 'active' ? 'paid' : 'draft'}`}>{user.status}</span></td><td><span className="billing-access-permissions">Home Guard Admin · Billing Admin · Access Manager</span></td><td>{new Date(user.accessGrantedAt).toLocaleString()}</td><td><div className="table-actions">{user.status === 'pending' && <button className="button button--outline button--compact" type="button" disabled={isSaving} onClick={() => void portalAdminAction(user, 'resend_portal_admin')}>Resend Invite</button>}<button className="button button--outline button--compact" type="button" disabled={isSaving} onClick={() => requestRemoval({ kind: 'portal_admin', user })}>Remove Administrator</button></div></td></tr>)}</tbody></table></div>}</div>
+    </article>
     <article className="content-card billing-access-card">
       <header className="billing-access-card__header"><span className="eyebrow">School Radius</span><h2>Internal Billing Access</h2><p>Grant protected billing administration without adding Home Guard, dealer, client, or access-manager privileges.</p></header>
       <div className="billing-access-card__form"><h3>Add Internal Billing Admin</h3><form onSubmit={(event) => void grant(event)}><label><span>Email address</span><input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@schoolradius.com" disabled={isSaving} /></label><button className="button button--primary" type="submit" disabled={isSaving}>{isSaving ? 'Saving…' : 'Grant Billing Access'}</button></form></div>
@@ -222,10 +274,12 @@ export function BillingAccessManagementPage() {
     </article>
     <ConfirmationModal
       open={Boolean(pendingRemoval)}
-      title={pendingRemoval?.kind === 'internal' ? 'Remove billing access?' : 'Remove HGI billing access?'}
+      title={pendingRemoval?.kind === 'internal' ? 'Remove billing access?' : pendingRemoval?.kind === 'client' ? 'Remove HGI billing access?' : 'Remove Portal administrator?'}
       message={pendingRemoval?.kind === 'internal'
         ? 'This user will lose internal billing access. Their sign-in and any other roles will remain unchanged.'
-        : 'This user will lose access to Home Guard billing. Their Auth account and billing history will remain unchanged.'}
+        : pendingRemoval?.kind === 'client'
+          ? 'This user will lose access to Home Guard billing. Their Auth account and billing history will remain unchanged.'
+          : 'This user will lose Home Guard Admin, internal billing admin, and billing access manager permissions. Their sign-in will remain unchanged.'}
       target={pendingRemoval?.user.email}
       confirmLabel="Remove Access"
       confirmingLabel="Removing…"

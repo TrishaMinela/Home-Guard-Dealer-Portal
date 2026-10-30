@@ -6,6 +6,7 @@ import { classifyInvitationFailure, type InvitationFailure } from './_lib/invita
 type JsonResponse = ServerResponse<IncomingMessage> & { json?: (value: unknown) => void }
 type ActionBody = {
   action?: 'grant' | 'revoke' | 'grant_client' | 'revoke_client' | 'resend_client'
+    | 'grant_portal_admin' | 'revoke_portal_admin' | 'resend_portal_admin'
   email?: string
   role?: 'viewer'
 }
@@ -84,6 +85,25 @@ function safeBillingClient(user: User, membership: { created_at: string; role: s
   }
 }
 
+function safePortalAdmin(
+  user: User,
+  membership: { created_at: string },
+  isInternalBillingAdmin: boolean,
+  isAccessManager: boolean,
+) {
+  const metadata = user.user_metadata as Record<string, unknown> | undefined
+  const name = typeof metadata?.full_name === 'string' ? metadata.full_name : typeof metadata?.name === 'string' ? metadata.name : null
+  return {
+    email: user.email ?? '',
+    name,
+    status: user.email_confirmed_at ? 'active' : 'pending',
+    accessGrantedAt: membership.created_at,
+    invitedAt: user.invited_at ?? null,
+    isInternalBillingAdmin,
+    isAccessManager,
+  }
+}
+
 type AuthUserLister = {
   auth: { admin: { listUsers(options: { page: number; perPage: number }): Promise<{ data: { users: User[] }; error: Error | null }> } }
 }
@@ -137,7 +157,7 @@ export default async function handler(request: IncomingMessage, response: JsonRe
       const users = await allAuthUsers(admin)
       let target = users.find((user) => user.email?.toLowerCase() === email)
       let invited = false
-      if ((body.action === 'grant' || body.action === 'grant_client') && !target) {
+      if ((body.action === 'grant' || body.action === 'grant_client' || body.action === 'grant_portal_admin') && !target) {
         const invitation = await sendFreshInvitation(admin, email)
         if (invitation.failure || !invitation.user) {
           invitationFailure(response, invitation.failure)
@@ -150,7 +170,82 @@ export default async function handler(request: IncomingMessage, response: JsonRe
         sendJson(response, 404, { error: 'No Supabase Auth user exists for that email.' })
         return
       }
-      if (body.action === 'grant') {
+      if (body.action === 'grant_portal_admin') {
+        const { error } = await admin.rpc('manage_portal_administrator_access', {
+          p_actor_user_id: access.userId,
+          p_target_user_id: target.id,
+          p_target_email: email,
+          p_operation: 'grant',
+          p_invited: invited,
+        })
+        if (error) {
+          if (error.message.includes('incompatible_portal_role')) {
+            sendJson(response, 409, { error: 'This user has an incompatible dealer or billing-client membership.' })
+            return
+          }
+          throw error
+        }
+        if (invited) {
+          feedback = { notice: 'Portal administrator access was granted and an invitation was sent.', invitationStatus: 'new_invitation_sent' }
+        } else if (target.email_confirmed_at) {
+          feedback = {
+            notice: 'Portal administrator access was granted. This user can sign in with their existing Portal account.',
+            invitationStatus: 'confirmed_access_restored',
+          }
+        } else {
+          const invitation = await sendFreshInvitation(admin, email, target.id)
+          if (invitation.failure) {
+            console.error('Pending Portal administrator re-invitation failed.', { code: invitation.failure.code, status: invitation.failure.status })
+            feedback = { warning: invitationWarning(invitation.failure) }
+          } else {
+            const { error: auditError } = await admin.from('billing_access_audit_log').insert({
+              actor_user_id: access.userId, target_user_id: target.id, target_email: email, action: 'portal_admin_invite_resent',
+            })
+            if (auditError) throw auditError
+            feedback = { notice: 'Portal administrator access was granted and a new invitation was sent.', invitationStatus: 'pending_reinvited' }
+          }
+        }
+      } else if (body.action === 'revoke_portal_admin') {
+        const { error } = await admin.rpc('manage_portal_administrator_access', {
+          p_actor_user_id: access.userId,
+          p_target_user_id: target.id,
+          p_target_email: email,
+          p_operation: 'revoke',
+          p_invited: false,
+        })
+        if (error) {
+          if (error.message.includes('self_revocation_forbidden')) {
+            sendJson(response, 409, { error: 'You cannot remove your own Portal administrator access.' })
+            return
+          }
+          if (error.message.includes('last_usable_administrator')) {
+            sendJson(response, 409, { error: 'At least one other confirmed administrator must sign in before this access can be removed.' })
+            return
+          }
+          throw error
+        }
+      } else if (body.action === 'resend_portal_admin') {
+        const [homeGuard, internalAdmin, manager] = await Promise.all([
+          admin.from('home_guard_admins').select('id').eq('user_id', target.id).maybeSingle(),
+          admin.from('billing_internal_admins').select('id').eq('user_id', target.id).maybeSingle(),
+          admin.from('billing_access_managers').select('user_id').eq('user_id', target.id).maybeSingle(),
+        ])
+        if (homeGuard.error || internalAdmin.error || manager.error) throw homeGuard.error ?? internalAdmin.error ?? manager.error
+        if (!homeGuard.data || !internalAdmin.data || !manager.data || target.email_confirmed_at) {
+          sendJson(response, 409, { error: 'Only pending Portal administrator invitations can be resent.' })
+          return
+        }
+        const invitation = await sendFreshInvitation(admin, email, target.id)
+        if (invitation.failure) {
+          invitationFailure(response, invitation.failure)
+          return
+        }
+        const { error: auditError } = await admin.from('billing_access_audit_log').insert({
+          actor_user_id: access.userId, target_user_id: target.id, target_email: email, action: 'portal_admin_invite_resent',
+        })
+        if (auditError) throw auditError
+        feedback = { notice: 'A new Portal administrator invitation was sent.', invitationStatus: 'invite_resent' }
+      } else if (body.action === 'grant') {
         const { error } = await admin.from('billing_internal_admins').upsert({ user_id: target.id }, { onConflict: 'user_id', ignoreDuplicates: true })
         if (error) throw error
         const auditEvents = invited ? ['invited', 'granted'] : ['granted']
@@ -254,14 +349,16 @@ export default async function handler(request: IncomingMessage, response: JsonRe
       }
     }
 
-    const [{ data: principals, error: principalError }, { data: managers, error: managerError }, { data: clientMemberships, error: clientError }, users] = await Promise.all([
+    const [{ data: principals, error: principalError }, { data: managers, error: managerError }, { data: portalMemberships, error: portalError }, { data: clientMemberships, error: clientError }, users] = await Promise.all([
       admin.from('billing_internal_admins').select('user_id,created_at').order('created_at'),
       admin.from('billing_access_managers').select('user_id'),
+      admin.from('home_guard_admins').select('user_id,created_at').order('created_at'),
       admin.from('billing_account_users').select('user_id,role,created_at').eq('billing_account_id', hgiBillingAccountId).order('created_at'),
       allAuthUsers(admin),
     ])
-    if (principalError || managerError || clientError) throw principalError ?? managerError ?? clientError
+    if (principalError || managerError || portalError || clientError) throw principalError ?? managerError ?? portalError ?? clientError
     const managerIds = new Set((managers ?? []).map((entry) => entry.user_id))
+    const internalAdminIds = new Set((principals ?? []).map((entry) => entry.user_id))
     const usersById = new Map(users.map((user) => [user.id, user]))
     const safeUsers = (principals ?? []).flatMap((principal) => {
       const user = usersById.get(principal.user_id)
@@ -271,7 +368,11 @@ export default async function handler(request: IncomingMessage, response: JsonRe
       const user = usersById.get(membership.user_id)
       return user ? [safeBillingClient(user, membership)] : []
     })
-    sendJson(response, 200, { users: safeUsers, clientUsers, ...feedback })
+    const portalAdmins = (portalMemberships ?? []).flatMap((membership) => {
+      const user = usersById.get(membership.user_id)
+      return user ? [safePortalAdmin(user, membership, internalAdminIds.has(membership.user_id), managerIds.has(membership.user_id))] : []
+    })
+    sendJson(response, 200, { users: safeUsers, clientUsers, portalAdmins, ...feedback })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Billing access operation failed.'
     console.error('Billing access management operation failed.', { message })
