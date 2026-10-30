@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { DealerForm } from '../components/DealerForm'
 import { supabase } from '../lib/supabase'
 import type { AdminDealer, DealerFormValues } from '../types/admin'
+import { isReservedDealerSlug } from '../utils/dealerSlug'
 
 type EditDealerPageProps = {
   dealers: AdminDealer[]
@@ -57,6 +58,10 @@ export function EditDealerPage({ dealers, isLoading, error, onSaved }: EditDeale
     setFormError('')
     if (!normalizedSlug) {
       setFormError('Enter a dealer slug using letters or numbers.')
+      return
+    }
+    if (isReservedDealerSlug(normalizedSlug)) {
+      setFormError('This dealer slug is reserved for the Door Builder. Please choose another URL.')
       return
     }
 

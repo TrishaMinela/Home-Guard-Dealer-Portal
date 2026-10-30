@@ -2,7 +2,7 @@ import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import type { DealerAccount } from '../types/account'
 import type { DealerFormValues } from '../types/admin'
-import { normalizeDealerSlug } from '../utils/dealerSlug'
+import { isReservedDealerSlug, normalizeDealerSlug } from '../utils/dealerSlug'
 import { getDealerVisualizerDisplayUrl } from '../config/visualizer'
 
 type DealerCompanyProfilePageProps = {
@@ -165,6 +165,10 @@ export function DealerCompanyProfilePage({
 
     if (!normalizedRequestedSlug) {
       setError('Enter a valid Visualizer URL slug.')
+      return
+    }
+    if (isReservedDealerSlug(normalizedRequestedSlug)) {
+      setError('This dealer slug is reserved for the Door Builder. Please choose another URL.')
       return
     }
 
