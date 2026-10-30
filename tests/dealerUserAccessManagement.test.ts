@@ -8,9 +8,9 @@ const page = readFileSync('src/pages/DealerDetailPage.tsx', 'utf8')
 const layout = readFileSync('src/components/AdminLayout.tsx', 'utf8')
 const migration = readFileSync('supabase/migrations/20261030000100_add_dealer_user_access_audit.sql', 'utf8')
 
-test('dealer-user management requires access-manager authorization on server and UI', () => {
-  assert.match(endpoint, /authorizeBillingAccessManager\(authorization\)/)
-  assert.match(layout, /canManageDealerUsers=\{isBillingAccessManager\}/)
+test('dealer-user management allows access managers and internal billing admins on server and UI', () => {
+  assert.match(endpoint, /authorizeBillingAccessOperator\(authorization\)/)
+  assert.match(layout, /canManageDealerUsers=\{isBillingAccessManager \|\| isInternalBillingAdmin\}/)
   assert.match(page, /canManageDealerUsers && <DealerUserAccess/)
 })
 

@@ -14,6 +14,7 @@ const links = [
   { label: 'Billing Overview', path: '/billing', icon: 'billing', end: true },
   { label: 'AI Usage Charges', path: '/billing/usage', icon: 'activity' },
   { label: 'Billing History', path: '/billing/history', icon: 'history' },
+  { label: 'Invoices', path: '/billing/invoices', icon: 'billing' },
 ]
 
 export function BillingClientLayout({ email, accounts, signOutError, onSignOut }: Props) {
@@ -41,7 +42,7 @@ export function BillingClientLayout({ email, accounts, signOutError, onSignOut }
           <button className="button button--secondary button--full" type="button" onClick={() => void onSignOut()}>Sign Out</button>
         </div>
       </aside>
-      <main className="portal-main"><Routes><Route path="/billing" element={<BillingClientPage accounts={accounts} view="overview" />} /><Route path="/billing/usage" element={<BillingClientPage accounts={accounts} view="usage" />} /><Route path="/billing/history" element={<BillingClientPage accounts={accounts} view="history" />} /><Route path="*" element={<Navigate to="/billing" replace />} /></Routes></main>
+      <main className="portal-main"><Routes><Route path="/billing" element={<BillingClientPage accounts={accounts} view="overview" />} /><Route path="/billing/usage" element={<BillingClientPage accounts={accounts} view="usage" />} /><Route path="/billing/history" element={<BillingClientPage accounts={accounts} view="history" />} /><Route path="/billing/invoices" element={<BillingClientPage accounts={accounts} view="invoices" />} /><Route path="*" element={<Navigate to="/billing" replace />} /></Routes></main>
     </div>
   )
 }

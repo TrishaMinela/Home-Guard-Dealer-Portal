@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createClient, type User } from '@supabase/supabase-js'
-import { authorizeBillingAccessManager } from './_lib/authorizeBillingAccessManager.js'
+import { authorizeBillingAccessOperator } from './_lib/authorizeBillingAccessManager.js'
 import { classifyInvitationFailure } from './_lib/invitationDelivery.js'
 
 type JsonResponse = ServerResponse<IncomingMessage> & { json?: (value: unknown) => void }
@@ -63,7 +63,7 @@ function safeUser(user: User, membership: { created_at: string; role: string }) 
 export default async function handler(request: IncomingMessage, response: JsonResponse) {
   if (request.method !== 'GET' && request.method !== 'POST') return send(response, 405, { error: 'Method not allowed.' })
   const authorization = Array.isArray(request.headers.authorization) ? request.headers.authorization[0] : request.headers.authorization
-  const access = await authorizeBillingAccessManager(authorization)
+  const access = await authorizeBillingAccessOperator(authorization)
   if (!access.authorized) return send(response, access.status, { error: access.message })
   const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useClientBilling } from '../hooks/useClientBilling'
 import type { BillingInvoiceStatus, ClientBillingDashboard, ClientChargeSummary } from '../types/billing'
 
-type View = 'overview' | 'usage' | 'history'
+type View = 'overview' | 'usage' | 'history' | 'invoices'
 type Props = { accounts: Array<{ id: string; name: string }>; view: View }
 
 function money(cents: number | null | undefined) {
@@ -77,10 +77,18 @@ function BillingHistory({ data }: { data: ClientBillingDashboard }) {
   </article>
 }
 
+function Invoices({ data }: { data: ClientBillingDashboard }) {
+  return <article className="content-card billing-invoices billing-client-history">
+    <div className="billing-section-heading"><div><span className="eyebrow">Invoice records</span><h2>Invoices</h2></div></div>
+    {data.invoices.length ? <div className="billing-client-history-list">{data.invoices.map((invoice) => <div className="billing-client-history-card" key={invoice.id}><div><span>Invoice</span><strong>{invoice.invoice_number}</strong></div><div><span>Billing period</span><strong>{date(invoice.billing_period_start)} – {inclusiveEndDate(invoice.billing_period_end)}</strong></div><div><span>Invoice date</span><strong>{date(invoice.issued_at)}</strong></div><div><span>Due date</span><strong>{date(invoice.due_at)}</strong></div><div><span>AI Usage Charges</span><strong>{money(invoice.ai_usage_charge_cents)}</strong></div><div><span>Amount due</span><strong>{money(invoice.amount_remaining_cents)}</strong></div><div><span>Status</span><strong>{statusLabel(invoice.status)}</strong></div></div>)}</div> : <EmptyState title="No invoices yet.">Invoice records will appear here when they are issued.</EmptyState>}
+  </article>
+}
+
 const pageCopy: Record<View, { eyebrow: string; title: string; description: string }> = {
   overview: { eyebrow: 'Home Guard Industries', title: 'Billing Overview', description: 'Review your current AI Usage Charges, account balance, and recent billing activity.' },
   usage: { eyebrow: 'AI usage', title: 'AI Usage Charges', description: 'Review approved usage and charges for the current UTC billing period.' },
   history: { eyebrow: 'Account history', title: 'Billing History', description: 'Review finalized billing periods and invoice details when available.' },
+  invoices: { eyebrow: 'Invoice records', title: 'Invoices', description: 'Review issued invoices, due dates, balances, and payment status.' },
 }
 
 export function BillingClientPage({ accounts, view }: Props) {
@@ -95,5 +103,6 @@ export function BillingClientPage({ accounts, view }: Props) {
     {data && view === 'overview' && <Overview data={data} />}
     {data && view === 'usage' && <UsageCharges data={data} />}
     {data && view === 'history' && <BillingHistory data={data} />}
+    {data && view === 'invoices' && <Invoices data={data} />}
   </section>
 }

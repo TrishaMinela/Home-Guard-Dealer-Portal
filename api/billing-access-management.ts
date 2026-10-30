@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createClient, type User } from '@supabase/supabase-js'
-import { authorizeBillingAccessManager } from './_lib/authorizeBillingAccessManager.js'
+import { authorizeBillingAccessOperator } from './_lib/authorizeBillingAccessManager.js'
 import { classifyInvitationFailure, type InvitationFailure } from './_lib/invitationDelivery.js'
 
 type JsonResponse = ServerResponse<IncomingMessage> & { json?: (value: unknown) => void }
@@ -125,7 +125,7 @@ export default async function handler(request: IncomingMessage, response: JsonRe
     return
   }
   const authorization = Array.isArray(request.headers.authorization) ? request.headers.authorization[0] : request.headers.authorization
-  const access = await authorizeBillingAccessManager(authorization)
+  const access = await authorizeBillingAccessOperator(authorization)
   if (!access.authorized) {
     const code = access.status === 401
       ? 'authentication_required'
@@ -149,6 +149,11 @@ export default async function handler(request: IncomingMessage, response: JsonRe
     let feedback: OperationFeedback = {}
     if (request.method === 'POST') {
       const body = await readBody(request)
+      const managerOnlyActions = new Set(['grant', 'revoke', 'grant_portal_admin', 'revoke_portal_admin', 'resend_portal_admin'])
+      if (body.action && managerOnlyActions.has(body.action) && !access.isAccessManager) {
+        sendJson(response, 403, { error: 'Billing access manager permission required.', code: 'permission_denied' })
+        return
+      }
       const email = body.email?.trim().toLowerCase() ?? ''
       if (!/^\S+@\S+\.\S+$/.test(email)) {
         sendJson(response, 400, { error: 'Enter a valid email address.' })
@@ -246,25 +251,34 @@ export default async function handler(request: IncomingMessage, response: JsonRe
         if (auditError) throw auditError
         feedback = { notice: 'A new Portal administrator invitation was sent.', invitationStatus: 'invite_resent' }
       } else if (body.action === 'grant') {
-        const { error } = await admin.from('billing_internal_admins').upsert({ user_id: target.id }, { onConflict: 'user_id', ignoreDuplicates: true })
-        if (error) throw error
-        const auditEvents = invited ? ['invited', 'granted'] : ['granted']
-        const { error: auditError } = await admin.from('billing_access_audit_log').insert(auditEvents.map((action) => ({
-          actor_user_id: access.userId, target_user_id: target.id, target_email: email, action,
-        })))
-        if (auditError) throw auditError
+        const { error } = await admin.rpc('manage_internal_billing_administrator_access', {
+          p_actor_user_id: access.userId,
+          p_target_user_id: target.id,
+          p_target_email: email,
+          p_operation: 'grant',
+          p_invited: invited,
+        })
+        if (error) {
+          if (error.message.includes('incompatible_portal_role')) {
+            sendJson(response, 409, { error: 'This user has an incompatible dealer or billing-client membership.' })
+            return
+          }
+          throw error
+        }
       } else if (body.action === 'revoke') {
         const { data: manager } = await admin.from('billing_access_managers').select('user_id').eq('user_id', target.id).maybeSingle()
         if (target.id === protectedManagerId || target.id === access.userId || manager) {
           sendJson(response, 409, { error: 'Access-manager billing access is protected to prevent administrative lockout.' })
           return
         }
-        const { error } = await admin.from('billing_internal_admins').delete().eq('user_id', target.id)
-        if (error) throw error
-        const { error: auditError } = await admin.from('billing_access_audit_log').insert({
-          actor_user_id: access.userId, target_user_id: target.id, target_email: email, action: 'revoked',
+        const { error } = await admin.rpc('manage_internal_billing_administrator_access', {
+          p_actor_user_id: access.userId,
+          p_target_user_id: target.id,
+          p_target_email: email,
+          p_operation: 'revoke',
+          p_invited: false,
         })
-        if (auditError) throw auditError
+        if (error) throw error
       } else if (body.action === 'grant_client') {
         if (body.role !== 'viewer') {
           sendJson(response, 400, { error: 'Only the viewer billing role is currently supported.' })
@@ -360,19 +374,25 @@ export default async function handler(request: IncomingMessage, response: JsonRe
     const managerIds = new Set((managers ?? []).map((entry) => entry.user_id))
     const internalAdminIds = new Set((principals ?? []).map((entry) => entry.user_id))
     const usersById = new Map(users.map((user) => [user.id, user]))
-    const safeUsers = (principals ?? []).flatMap((principal) => {
+    const safeUsers = access.isAccessManager ? (principals ?? []).flatMap((principal) => {
       const user = usersById.get(principal.user_id)
       return user ? [safeUser(user, principal.created_at, managerIds.has(principal.user_id))] : []
-    })
+    }) : []
     const clientUsers = (clientMemberships ?? []).flatMap((membership) => {
       const user = usersById.get(membership.user_id)
       return user ? [safeBillingClient(user, membership)] : []
     })
-    const portalAdmins = (portalMemberships ?? []).flatMap((membership) => {
+    const portalAdmins = access.isAccessManager ? (portalMemberships ?? []).flatMap((membership) => {
       const user = usersById.get(membership.user_id)
       return user ? [safePortalAdmin(user, membership, internalAdminIds.has(membership.user_id), managerIds.has(membership.user_id))] : []
+    }) : []
+    sendJson(response, 200, {
+      users: safeUsers,
+      clientUsers,
+      portalAdmins,
+      capabilities: { canManageAdministrators: access.isAccessManager, canManageClients: true },
+      ...feedback,
     })
-    sendJson(response, 200, { users: safeUsers, clientUsers, portalAdmins, ...feedback })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Billing access operation failed.'
     console.error('Billing access management operation failed.', { message })

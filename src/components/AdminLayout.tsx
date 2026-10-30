@@ -177,7 +177,7 @@ export function AdminLayout({ email, isInternalBillingAdmin, isBillingAccessMana
             <div className="sidebar-nav__children" id="billing-navigation" hidden={!isBillingNavOpen}>
               <NavLink className={({ isActive }) => `sidebar-nav__child ${isActive ? 'is-active' : ''}`} to="/admin/ai-usage" onClick={() => setIsMenuOpen(false)}>AI Usage</NavLink>
               {isInternalBillingAdmin && <NavLink className={({ isActive }) => `sidebar-nav__child ${isActive ? 'is-active' : ''}`} end to="/admin/billing" onClick={() => setIsMenuOpen(false)}>Billing</NavLink>}
-              {isBillingAccessManager && <NavLink className={({ isActive }) => `sidebar-nav__child ${isActive ? 'is-active' : ''}`} to="/admin/billing/access" onClick={() => setIsMenuOpen(false)}>Billing Access</NavLink>}
+              {(isBillingAccessManager || isInternalBillingAdmin) && <NavLink className={({ isActive }) => `sidebar-nav__child ${isActive ? 'is-active' : ''}`} to="/admin/billing/access" onClick={() => setIsMenuOpen(false)}>Billing Access</NavLink>}
             </div>
           </div>
           <NavLink className={({ isActive }) => `sidebar-nav__link ${isActive ? 'is-active' : ''}`} to="/admin/settings" onClick={() => setIsMenuOpen(false)}><NavIcon name="settings" />Settings</NavLink>
@@ -240,7 +240,7 @@ export function AdminLayout({ email, isInternalBillingAdmin, isBillingAccessMana
                 successMessage={dealerDetailSuccess}
                 onDealerUpdated={handleDealerDetailUpdated}
                 onClearSuccess={() => setDealerDetailSuccess('')}
-                canManageDealerUsers={isBillingAccessManager}
+                canManageDealerUsers={isBillingAccessManager || isInternalBillingAdmin}
               />
             }
           />
@@ -258,7 +258,7 @@ export function AdminLayout({ email, isInternalBillingAdmin, isBillingAccessMana
           <Route path="/admin/leads/:leadId?" element={<AdminLeadsPage {...adminData} />} />
           <Route path="/admin/ai-usage" element={<AdminAiUsagePage showInternalDetails={isInternalBillingAdmin} />} />
           <Route path="/admin/billing" element={isInternalBillingAdmin ? <AdminBillingPage showInternalDetails /> : <Navigate to="/admin" replace />} />
-          <Route path="/admin/billing/access" element={isBillingAccessManager ? <BillingAccessManagementPage /> : <Navigate to="/admin" replace />} />
+          <Route path="/admin/billing/access" element={(isBillingAccessManager || isInternalBillingAdmin) ? <BillingAccessManagementPage canManageAdministrators={isBillingAccessManager} /> : <Navigate to="/admin" replace />} />
           <Route path="/admin/inventory" element={<AdminInventoryPage />} />
           <Route path="/admin/inventory/review" element={<AdminInventoryReviewPage />} />
           <Route path="/admin/inventory/door-styles" element={<AdminDoorStylesPage />} />

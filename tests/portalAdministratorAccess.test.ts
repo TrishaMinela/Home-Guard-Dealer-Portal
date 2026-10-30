@@ -7,7 +7,8 @@ const page = readFileSync('src/pages/BillingAccessManagementPage.tsx', 'utf8')
 const migration = readFileSync('supabase/migrations/20261030000000_add_portal_administrator_access.sql', 'utf8')
 
 test('Portal administrator management stays behind access-manager authorization', () => {
-  assert.match(endpoint, /authorizeBillingAccessManager\(authorization\)/)
+  assert.match(endpoint, /managerOnlyActions/)
+  assert.match(endpoint, /!access\.isAccessManager/)
   assert.match(endpoint, /action === 'grant_portal_admin'/)
   assert.match(endpoint, /action === 'revoke_portal_admin'/)
   assert.match(endpoint, /action === 'resend_portal_admin'/)

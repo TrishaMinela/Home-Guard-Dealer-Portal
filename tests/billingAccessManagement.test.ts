@@ -16,11 +16,14 @@ test('access-management authority is separate and bootstraps only School Radius'
   assert.doesNotMatch(migration, /insert into public\.billing_account_users/)
 })
 
-test('server endpoint requires access-manager authorization and keeps admin API server-only', () => {
-  assert.match(endpoint, /authorizeBillingAccessManager\(authorization\)/)
+test('server endpoint allows billing operators but reserves administrator actions for access managers', () => {
+  assert.match(endpoint, /authorizeBillingAccessOperator\(authorization\)/)
+  assert.match(endpoint, /managerOnlyActions/)
+  assert.match(endpoint, /!access\.isAccessManager/)
   assert.match(endpoint, /process\.env\.SUPABASE_SERVICE_ROLE_KEY/)
   assert.doesNotMatch(page, /SERVICE_ROLE|service.role/i)
   assert.match(authorizer, /rpc\('is_billing_access_manager'\)/)
+  assert.match(authorizer, /rpc\('is_billing_internal_admin'\)/)
 })
 
 test('access-management failures remain distinguishable from a true empty list', () => {
@@ -43,15 +46,21 @@ test('Billing Access rejects non-JSON server responses without exposing raw sour
 
 test('revocation protects access managers and preserves auth accounts', () => {
   assert.match(endpoint, /Access-manager billing access is protected/)
-  assert.match(endpoint, /from\('billing_internal_admins'\)\.delete\(\)/)
+  assert.match(endpoint, /manage_internal_billing_administrator_access/)
   assert.doesNotMatch(endpoint, /deleteUser/)
 })
 
-test('UI and route are visible only to access managers', () => {
-  assert.match(layout, /isBillingAccessManager && <NavLink[^\n]+Billing Access<\/NavLink>/)
-  assert.match(layout, /isBillingAccessManager \? <BillingAccessManagementPage/)
+test('UI route supports internal billing operators while administrator controls remain manager-only', () => {
+  assert.match(layout, /isBillingAccessManager \|\| isInternalBillingAdmin/)
+  assert.match(layout, /canManageAdministrators=\{isBillingAccessManager\}/)
+  assert.match(page, /canManageAdministrators && <article/)
   assert.match(page, /Grant Billing Access/)
   assert.match(page, /Remove Billing Access/)
+})
+
+test('internal billing grants use the atomic database role transition', () => {
+  assert.match(endpoint, /manage_internal_billing_administrator_access/)
+  assert.doesNotMatch(endpoint, /from\('billing_internal_admins'\)\.upsert/)
 })
 
 test('HGI billing clients are fixed-account viewers with incompatible-role checks', () => {
