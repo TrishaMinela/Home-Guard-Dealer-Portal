@@ -46,7 +46,13 @@ export function InviteSetupPage() {
         return
       }
 
-      const nextDestination = await authorizedDestination(nextSession.user.id)
+      let nextDestination: string | null
+      try {
+        nextDestination = await authorizedDestination(nextSession.user.id)
+      } catch {
+        if (current) setStep('invalid')
+        return
+      }
       if (!current) return
       setDestination(nextDestination ?? '/')
       setStep(inviteSignal.current ? 'welcome' : 'existing')
@@ -101,7 +107,13 @@ export function InviteSetupPage() {
       setError('We could not complete your account setup. Request a new invitation or try again.')
       return
     }
-    const nextDestination = await authorizedDestination(session.user.id)
+    let nextDestination: string | null
+    try {
+      nextDestination = await authorizedDestination(session.user.id)
+    } catch {
+      setStep('invalid')
+      return
+    }
     setDestination(nextDestination ?? '/')
     setPassword('')
     setConfirmation('')

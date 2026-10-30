@@ -3,7 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { authorizedDestination } from '../utils/authorizedDestination'
 
-type ResetStep = 'loading' | 'password' | 'success' | 'invalid'
+type ResetStep = 'loading' | 'password' | 'success' | 'no_access' | 'access_error' | 'invalid'
 
 function recoverySignal(): boolean {
   const search = new URLSearchParams(window.location.search)
@@ -101,7 +101,17 @@ export function ResetPasswordPage() {
       return
     }
 
-    setDestination((await authorizedDestination(session.user.id)) ?? '/')
+    try {
+      const nextDestination = await authorizedDestination(session.user.id)
+      if (!nextDestination) {
+        setStep('no_access')
+        return
+      }
+      setDestination(nextDestination)
+    } catch {
+      setStep('access_error')
+      return
+    }
     setPassword('')
     setConfirmation('')
     hasRecoverySignal.current = false
@@ -137,6 +147,20 @@ export function ResetPasswordPage() {
         <h1>Password updated</h1>
         <p>Your password has been changed successfully.</p>
         <button className="button button--primary invite-action" type="button" onClick={() => window.location.assign(destination)}>Continue to Portal</button>
+      </div>}
+
+      {step === 'no_access' && <div className="invite-state">
+        <p className="eyebrow">Password updated</p>
+        <h1>Your password has been updated.</h1>
+        <p>This account does not currently have authorized Portal access. Contact your Portal administrator for assistance.</p>
+        <a className="button button--outline invite-action" href="/">Return to Portal Sign In</a>
+      </div>}
+
+      {step === 'access_error' && <div className="invite-state">
+        <p className="eyebrow">Password updated</p>
+        <h1>Your password has been updated.</h1>
+        <p>We could not verify your Portal access right now. Return to sign in and try again.</p>
+        <a className="button button--outline invite-action" href="/">Return to Portal Sign In</a>
       </div>}
 
       {step === 'invalid' && <div className="invite-state">

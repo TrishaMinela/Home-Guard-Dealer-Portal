@@ -88,8 +88,7 @@ export function useAccountAccess(user: User | null) {
           userId: authenticatedUser.id,
           type: 'none',
           dealer: null,
-          message:
-            'Your account is signed in, but it is not associated with a dealer.',
+          message: 'Your account is signed in, but it does not currently have authorized Portal access. Contact your Portal administrator.',
         })
         return
       }

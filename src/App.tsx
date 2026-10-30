@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import type { User } from '@supabase/supabase-js'
+import type { AuthError, User } from '@supabase/supabase-js'
 import { BrowserRouter } from 'react-router-dom'
 import { AdminLayout } from './components/AdminLayout'
 import { BillingClientLayout } from './components/BillingClientLayout'
@@ -11,6 +11,12 @@ import { ResetPasswordPage } from './components/ResetPasswordPage'
 import { useAccountAccess } from './hooks/useAccountAccess'
 import { supabase } from './lib/supabase'
 import './App.css'
+
+function authenticationErrorMessage(error: AuthError): string {
+  if (error.code === 'invalid_credentials') return 'The email or password is incorrect.'
+  if (error.status === 429) return 'Too many sign-in attempts. Please wait a moment and try again.'
+  return 'We could not sign you in right now. Please try again.'
+}
 
 function App() {
   const isInviteRoute = window.location.pathname === '/auth/invite'
@@ -59,7 +65,7 @@ function App() {
     })
 
     if (signInError) {
-      setError(signInError.message)
+      setError(authenticationErrorMessage(signInError))
     }
 
     setIsSigningIn(false)

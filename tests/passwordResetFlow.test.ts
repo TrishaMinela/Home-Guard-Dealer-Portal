@@ -38,6 +38,8 @@ test('post-reset routing is derived from database memberships', () => {
   assert.match(destination, /rpc\('list_billing_client_accounts'\)/)
   assert.match(destination, /from\('dealer_users'\)/)
   assert.doesNotMatch(reset, /search\.get\('destination'\)|hash\.get\('destination'\)|[?&]destination=/)
+  assert.match(reset, /setStep\('no_access'\)/)
+  assert.match(reset, /setStep\('access_error'\)/)
 })
 
 test('invalid and expired links use a safe branded recovery state', () => {
