@@ -32,6 +32,15 @@ test('access-management failures remain distinguishable from a true empty list',
   assert.match(page, /No HGI billing users assigned/)
 })
 
+test('Billing Access rejects non-JSON server responses without exposing raw source', () => {
+  const page = readFileSync('src/pages/BillingAccessManagementPage.tsx', 'utf8')
+  const vite = readFileSync('vite.config.ts', 'utf8')
+  assert.match(page, /contentType\.includes\('application\/json'\)/)
+  assert.match(page, /Billing access information could not be loaded\. Please try again\./)
+  assert.match(page, /try \{[\s\S]*response\.json\(\)[\s\S]*\} catch/)
+  assert.match(vite, /'\/api'[\s\S]*home-guard-dealer-portal\.vercel\.app/)
+})
+
 test('revocation protects access managers and preserves auth accounts', () => {
   assert.match(endpoint, /Access-manager billing access is protected/)
   assert.match(endpoint, /from\('billing_internal_admins'\)\.delete\(\)/)

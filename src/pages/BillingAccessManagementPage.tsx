@@ -85,7 +85,15 @@ async function requestAccessManagement(method: 'GET' | 'POST', body?: object) {
   } catch {
     throw new AccessManagementError('Network request failed.', 'network_failure')
   }
-  const result = await response.json() as {
+  const contentType = response.headers.get('content-type')?.toLowerCase() ?? ''
+  if (!contentType.includes('application/json')) {
+    throw new AccessManagementError(
+      'Billing access information could not be loaded. Please try again.',
+      'server_failure',
+      response.status,
+    )
+  }
+  let result: {
     users?: BillingAdmin[]
     clientUsers?: BillingClient[]
     portalAdmins?: PortalAdmin[]
@@ -94,6 +102,15 @@ async function requestAccessManagement(method: 'GET' | 'POST', body?: object) {
     notice?: string
     warning?: string
     invitationStatus?: 'new_invitation_sent' | 'pending_reinvited' | 'confirmed_access_restored' | 'invite_resent'
+  }
+  try {
+    result = await response.json() as typeof result
+  } catch {
+    throw new AccessManagementError(
+      'Billing access information could not be loaded. Please try again.',
+      'server_failure',
+      response.status,
+    )
   }
   if (!response.ok) {
     const fallbackCode: AccessManagementErrorCode = response.status === 401
