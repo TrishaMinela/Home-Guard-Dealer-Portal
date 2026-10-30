@@ -132,6 +132,61 @@ input:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,102
 .button--full { width: 100%; }
 
 .portal-shell { min-height: 100vh; background: var(--color-canvas); }
+.portal-shell--dealer {
+  --dealer-primary: var(--color-teal);
+  --dealer-secondary: var(--color-gold);
+  --dealer-primary-contrast: var(--color-white);
+  --dealer-secondary-contrast: var(--color-black);
+}
+.portal-shell--dealer .sidebar-nav__link:hover { background: color-mix(in srgb,var(--dealer-primary) 22%,transparent); }
+.portal-shell--dealer .sidebar-nav__link.is-active {
+  color: var(--dealer-primary-contrast); background: var(--dealer-primary);
+  box-shadow: inset 3px 0 0 var(--dealer-secondary);
+}
+.portal-shell--dealer .button--primary {
+  color: var(--dealer-primary-contrast); background: var(--dealer-primary);
+}
+.portal-shell--dealer .button--primary:hover:not(:disabled) {
+  background: color-mix(in srgb,var(--dealer-primary) 86%,#000000);
+}
+.portal-shell--dealer .button:focus-visible,
+.portal-shell--dealer .menu-button:focus-visible,
+.portal-shell--dealer .sidebar-close:focus-visible {
+  outline-color: var(--dealer-secondary);
+}
+.portal-shell--dealer .eyebrow,
+.portal-shell--dealer .notification-action,
+.portal-shell--dealer .lead-view-button,
+.portal-shell--dealer .banner-copy-row code { color: var(--dealer-primary); }
+.portal-shell--dealer .metric-card::before { background: var(--dealer-primary); }
+.portal-shell--dealer .dealer-avatar,
+.portal-shell--dealer .empty-state__icon,
+.portal-shell--dealer .lead-avatar {
+  color: var(--dealer-secondary-contrast); background: var(--dealer-secondary);
+}
+.portal-shell--dealer .notification-bell {
+  color: var(--dealer-primary-contrast); background: var(--dealer-primary);
+}
+.portal-shell--dealer .notification-bell:hover {
+  background: color-mix(in srgb,var(--dealer-primary) 86%,#000000);
+}
+.portal-shell--dealer input:focus,
+.portal-shell--dealer select:focus {
+  border-color: var(--dealer-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb,var(--dealer-primary) 16%,transparent);
+}
+.dealer-brand-mark {
+  display: grid; flex: 0 0 auto; place-items: center; overflow: hidden;
+  border-radius: 8px; background: var(--dealer-secondary);
+  color: var(--dealer-secondary-contrast); font-size: 12px; font-weight: 800;
+}
+.dealer-brand-mark img { width: 100%; height: 100%; object-fit: contain; }
+.dealer-brand-mark--sidebar { width: 54px; height: 44px; padding: 5px; }
+.dealer-brand-mark--mobile { width: 42px; height: 36px; padding: 4px; border-radius: 7px; }
+.dealer-brand-name {
+  max-width: 155px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mobile-header .dealer-brand-name { max-width: min(58vw,240px); }
 .portal-shell--admin { background: #f0f3f2; }
 .sidebar {
   position: fixed; inset: 0 auto 0 0; z-index: 30; width: 276px; display: flex;

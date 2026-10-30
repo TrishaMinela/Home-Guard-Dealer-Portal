@@ -63,12 +63,10 @@ export function useAccountAccess(user: User | null) {
         return
       }
 
-      const { data: membership, error: membershipError } = await supabase
+      const { data: memberships, error: membershipError } = await supabase
         .from('dealer_users')
         .select('dealer_id')
         .eq('user_id', authenticatedUser.id)
-        .limit(1)
-        .maybeSingle()
 
       if (!isCurrent) return
 
@@ -83,7 +81,7 @@ export function useAccountAccess(user: User | null) {
         return
       }
 
-      if (!membership) {
+      if (!memberships?.length) {
         setAccess({
           userId: authenticatedUser.id,
           type: 'none',
@@ -92,6 +90,19 @@ export function useAccountAccess(user: User | null) {
         })
         return
       }
+
+      if (memberships.length > 1) {
+        console.warn('Multiple dealer memberships require an explicit dealer selection before Portal access can continue.')
+        setAccess({
+          userId: authenticatedUser.id,
+          type: 'none',
+          dealer: null,
+          message: 'Your account is connected to more than one dealer. Contact your Portal administrator to select an active dealer.',
+        })
+        return
+      }
+
+      const membership = memberships[0]
 
       const { data: dealerRecord, error: dealerError } = await supabase
         .from('dealers')

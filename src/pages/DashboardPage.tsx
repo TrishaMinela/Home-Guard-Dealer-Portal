@@ -1,4 +1,5 @@
 import type { LeadDataState } from '../types/lead'
+import { dealerInitials } from '../utils/dealerBrand'
 
 type DashboardPageProps = LeadDataState & {
   dealerName: string
@@ -82,7 +83,7 @@ export function DashboardPage({
         {isLoading && <div className="data-state">Loading recent leads...</div>}
         {!isLoading && !error && recentLeads.length === 0 && (
           <div className="empty-state">
-            <span className="empty-state__icon" aria-hidden="true">HG</span>
+            <span className="empty-state__icon" aria-hidden="true">{dealerInitials(dealerName)}</span>
             <p>No leads yet.</p>
           </div>
         )}
