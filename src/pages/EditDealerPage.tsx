@@ -4,6 +4,8 @@ import { DealerForm } from '../components/DealerForm'
 import { supabase } from '../lib/supabase'
 import type { AdminDealer, DealerFormValues } from '../types/admin'
 import { isReservedDealerSlug } from '../utils/dealerSlug'
+import { DealerTypographySettings } from '../components/DealerTypographySettings'
+import { typographyPayload, type DealerTypographyValues } from '../utils/dealerTypography'
 
 type EditDealerPageProps = {
   dealers: AdminDealer[]
@@ -83,7 +85,7 @@ export function EditDealerPage({ dealers, isLoading, error, onSaved }: EditDeale
         secondary_color: optionalValue(values.secondaryColor),
       })
       .eq('id', dealer.id)
-      .select('id, company_name, slug, logo_url, logo_light_url, primary_contact_name, email, phone, website, address, city, state, zip, primary_color, secondary_color, is_active, created_at, requested_slug, slug_request_status, slug_requested_at')
+      .select('id, company_name, slug, logo_url, logo_light_url, primary_contact_name, email, phone, website, address, city, state, zip, primary_color, secondary_color, is_active, created_at, requested_slug, slug_request_status, slug_requested_at, heading_font_family, heading_font_weight, heading_font_size, body_font_family, body_font_weight, body_font_size, custom_heading_font_url, custom_heading_font_name, custom_heading_font_weight, custom_body_font_url, custom_body_font_name, custom_body_font_weight')
       .single()
 
     if (updateError) {
@@ -99,6 +101,14 @@ export function EditDealerPage({ dealers, isLoading, error, onSaved }: EditDeale
 
     onSaved(data)
     navigate(`/admin/dealers/${dealer.id}`)
+  }
+
+  async function saveTypography(values: DealerTypographyValues) {
+    if(!dealer) throw new Error('Dealer not found.')
+    const {data,error:saveError}=await supabase.from('dealers').update(typographyPayload(values)).eq('id',dealer.id).select('*').single()
+    if(saveError) throw saveError
+    onSaved(data as AdminDealer)
+    return data as AdminDealer
   }
 
   return (
@@ -118,6 +128,7 @@ export function EditDealerPage({ dealers, isLoading, error, onSaved }: EditDeale
         submittingLabel="Saving..."
         onSubmit={handleSubmit}
       />
+      <DealerTypographySettings dealer={dealer} onSave={saveTypography} onUpdated={onSaved}/>
     </div>
   )
 }

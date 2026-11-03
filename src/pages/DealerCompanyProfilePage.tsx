@@ -4,6 +4,8 @@ import type { DealerAccount } from '../types/account'
 import type { DealerFormValues } from '../types/admin'
 import { isReservedDealerSlug, normalizeDealerSlug } from '../utils/dealerSlug'
 import { getDealerVisualizerDisplayUrl } from '../config/visualizer'
+import { DealerTypographySettings } from '../components/DealerTypographySettings'
+import { typographyPayload, type DealerTypographyValues } from '../utils/dealerTypography'
 
 type DealerCompanyProfilePageProps = {
   dealer: DealerAccount
@@ -197,6 +199,18 @@ export function DealerCompanyProfilePage({
     setIsRequestingSlug(false)
   }
 
+  async function saveTypography(values: DealerTypographyValues) {
+    const payload=typographyPayload(values)
+    const {data,error:saveError}=await supabase.rpc('update_my_dealer_typography',{
+      p_dealer_id:dealer.id,p_heading_font_family:payload.heading_font_family,p_heading_font_weight:payload.heading_font_weight,p_heading_font_size:payload.heading_font_size,
+      p_body_font_family:payload.body_font_family,p_body_font_weight:payload.body_font_weight,p_body_font_size:payload.body_font_size,
+      p_custom_heading_font_url:payload.custom_heading_font_url,p_custom_heading_font_name:payload.custom_heading_font_name,p_custom_heading_font_weight:payload.custom_heading_font_weight,
+      p_custom_body_font_url:payload.custom_body_font_url,p_custom_body_font_name:payload.custom_body_font_name,p_custom_body_font_weight:payload.custom_body_font_weight,
+    }).single()
+    if(saveError) throw saveError
+    return data as DealerAccount
+  }
+
   return (
     <div className="page-content">
       <header className="page-header">
@@ -289,6 +303,8 @@ export function DealerCompanyProfilePage({
           </button>
         </div>
       </form>
+
+      <DealerTypographySettings dealer={dealer} onSave={saveTypography} onUpdated={onDealerUpdated}/>
 
       <section className="content-card visualizer-request-card">
         <div className="dealer-form__section-heading">
