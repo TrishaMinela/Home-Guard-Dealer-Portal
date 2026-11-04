@@ -7,6 +7,7 @@ import { getDealerVisualizerDisplayUrl } from '../config/visualizer'
 import { DealerTypographySettings } from '../components/DealerTypographySettings'
 import { typographyPayload, type DealerTypographyValues } from '../utils/dealerTypography'
 import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
+import { DealerLogoPlacementSettings, type DealerLogoPlacement } from '../components/DealerLogoPlacementSettings'
 
 type DealerCompanyProfilePageProps = {
   dealer: DealerAccount
@@ -256,6 +257,17 @@ export function DealerCompanyProfilePage({
     return data as DealerAccount
   }
 
+  async function saveLogoPlacement(placement: DealerLogoPlacement) {
+    const { data, error: saveError } = await supabase
+      .rpc('update_my_dealer_logo_placement', {
+        p_dealer_id: dealer.id,
+        p_logo_placement: placement,
+      })
+      .single()
+    if (saveError) throw saveError
+    return data as DealerAccount
+  }
+
   return (
     <div className="page-content">
       <header className="page-header">
@@ -329,6 +341,8 @@ export function DealerCompanyProfilePage({
           </div>
         </section>
       </div>
+
+      <DealerLogoPlacementSettings dealer={dealer} onSave={saveLogoPlacement} onUpdated={onDealerUpdated} />
 
       <form className="content-card dealer-form" onSubmit={handleSave}>
         <div className="dealer-form__section">

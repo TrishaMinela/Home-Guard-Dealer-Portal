@@ -5,6 +5,7 @@ import type { AdminDealer } from '../types/admin'
 import { getDealerVisualizerDisplayUrl } from '../config/visualizer'
 import { DealerUserAccess } from '../components/DealerUserAccess'
 import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
+import { DealerLogoPlacementSettings, type DealerLogoPlacement } from '../components/DealerLogoPlacementSettings'
 
 const logoExtensions: Record<string, string> = {
   'image/png': 'png',
@@ -67,7 +68,7 @@ export function DealerDetailPage({
       .from('dealers')
       .update({ is_active: isActive })
       .eq('id', dealer.id)
-      .select('id, company_name, slug, logo_url, logo_light_url, logo_generated_light_url, primary_contact_name, email, phone, website, address, city, state, zip, primary_color, secondary_color, is_active, created_at, requested_slug, slug_request_status, slug_requested_at, heading_font_family, heading_font_weight, heading_font_size, body_font_family, body_font_weight, body_font_size, custom_heading_font_url, custom_heading_font_name, custom_heading_font_weight, custom_body_font_url, custom_body_font_name, custom_body_font_weight')
+      .select('id, company_name, slug, logo_url, logo_light_url, logo_generated_light_url, logo_placement, primary_contact_name, email, phone, website, address, city, state, zip, primary_color, secondary_color, is_active, created_at, requested_slug, slug_request_status, slug_requested_at, heading_font_family, heading_font_weight, heading_font_size, body_font_family, body_font_weight, body_font_size, custom_heading_font_url, custom_heading_font_name, custom_heading_font_weight, custom_body_font_url, custom_body_font_name, custom_body_font_weight')
       .single()
 
     if (updateError) {
@@ -157,7 +158,7 @@ export function DealerDetailPage({
         [logoType === 'primary' ? 'logo_url' : 'logo_light_url']: versionedPublicUrl,
       })
       .eq('id', dealer.id)
-      .select('id, company_name, slug, logo_url, logo_light_url, logo_generated_light_url, primary_contact_name, email, phone, website, address, city, state, zip, primary_color, secondary_color, is_active, created_at, requested_slug, slug_request_status, slug_requested_at, heading_font_family, heading_font_weight, heading_font_size, body_font_family, body_font_weight, body_font_size, custom_heading_font_url, custom_heading_font_name, custom_heading_font_weight, custom_body_font_url, custom_body_font_name, custom_body_font_weight')
+      .select('id, company_name, slug, logo_url, logo_light_url, logo_generated_light_url, logo_placement, primary_contact_name, email, phone, website, address, city, state, zip, primary_color, secondary_color, is_active, created_at, requested_slug, slug_request_status, slug_requested_at, heading_font_family, heading_font_weight, heading_font_size, body_font_family, body_font_weight, body_font_size, custom_heading_font_url, custom_heading_font_name, custom_heading_font_weight, custom_body_font_url, custom_body_font_name, custom_body_font_weight')
       .single()
 
     if (updateError) {
@@ -205,7 +206,7 @@ export function DealerDetailPage({
       .from('dealers')
       .update({ logo_light_url: null })
       .eq('id', dealer.id)
-      .select('id, company_name, slug, logo_url, logo_light_url, logo_generated_light_url, primary_contact_name, email, phone, website, address, city, state, zip, primary_color, secondary_color, is_active, created_at, requested_slug, slug_request_status, slug_requested_at, heading_font_family, heading_font_weight, heading_font_size, body_font_family, body_font_weight, body_font_size, custom_heading_font_url, custom_heading_font_name, custom_heading_font_weight, custom_body_font_url, custom_body_font_name, custom_body_font_weight')
+      .select('id, company_name, slug, logo_url, logo_light_url, logo_generated_light_url, logo_placement, primary_contact_name, email, phone, website, address, city, state, zip, primary_color, secondary_color, is_active, created_at, requested_slug, slug_request_status, slug_requested_at, heading_font_family, heading_font_weight, heading_font_size, body_font_family, body_font_weight, body_font_size, custom_heading_font_url, custom_heading_font_name, custom_heading_font_weight, custom_body_font_url, custom_body_font_name, custom_body_font_weight')
       .single()
     setIsGeneratingLightLogo(false)
     if (updateError) {
@@ -213,6 +214,18 @@ export function DealerDetailPage({
       return
     }
     onDealerUpdated(data as AdminDealer, 'Custom light logo removed. The generated default is now in use.')
+  }
+
+  async function saveLogoPlacement(placement: DealerLogoPlacement) {
+    if (!dealer) throw new Error('Dealer not found.')
+    const { data, error: updateError } = await supabase
+      .from('dealers')
+      .update({ logo_placement: placement })
+      .eq('id', dealer.id)
+      .select('*')
+      .single()
+    if (updateError) throw updateError
+    return data as AdminDealer
   }
 
   if (isLoading) {
@@ -326,6 +339,12 @@ export function DealerDetailPage({
         </section>
       </div>
 
+      <DealerLogoPlacementSettings
+        dealer={dealer}
+        onSave={saveLogoPlacement}
+        onUpdated={(updated) => onDealerUpdated(updated, 'Dealer logo placement saved.')}
+      />
+
       {isConfirmingDisable && (
         <section className="disable-confirmation" role="alertdialog" aria-labelledby="disable-title">
           <div>
@@ -368,6 +387,7 @@ export function DealerDetailPage({
           <DetailItem label="Logo URL" value={dealer.logo_url} />
           <DetailItem label="Light Logo URL" value={dealer.logo_light_url} />
           <DetailItem label="Generated Light Logo URL" value={dealer.logo_generated_light_url ?? null} />
+          <DetailItem label="Logo Placement" value={dealer.logo_placement === 'header' ? 'Header' : 'Hero'} />
           <DetailItem label="Website" value={dealer.website} />
           <DetailItem label="Address" value={dealer.address} />
           <DetailItem label="City" value={dealer.city} />

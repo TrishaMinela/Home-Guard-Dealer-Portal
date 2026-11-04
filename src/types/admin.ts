@@ -10,6 +10,7 @@ export type AdminDealer = {
   logo_url: string | null
   logo_light_url: string | null
   logo_generated_light_url?: string | null
+  logo_placement?: 'header' | 'hero' | null
   website: string | null
   address: string | null
   city: string | null

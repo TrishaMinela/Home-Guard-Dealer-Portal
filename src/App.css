@@ -1221,3 +1221,13 @@ select:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,10
   .billing-access-card__form .button { width: 100%; }
   .billing-access-card__list-heading { align-items: flex-start; }
 }
+.logo-placement-settings{display:grid;gap:18px}
+.logo-placement-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.logo-placement-option{display:flex;align-items:flex-start;gap:12px;padding:16px;border:1px solid var(--border,#d9e1e3);border-radius:10px;background:#fff;cursor:pointer}
+.logo-placement-option.is-selected{border-color:var(--teal,#0d666c);box-shadow:0 0 0 2px color-mix(in srgb,var(--teal,#0d666c) 18%,transparent)}
+.logo-placement-option input{margin-top:3px;accent-color:var(--teal,#0d666c)}
+.logo-placement-option span{display:grid;gap:4px}.logo-placement-option small{color:#5d686d;line-height:1.45}
+.logo-placement-preview{display:flex;min-height:88px;align-items:center;gap:20px;padding:18px;border:1px dashed #bac6c9;border-radius:10px;background:#f7f9f9;color:#233035}
+.logo-placement-preview--header{justify-content:space-between}.logo-placement-preview--hero{flex-direction:column;justify-content:center;text-align:center}
+.logo-placement-preview__logo{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:7px 12px;border-radius:6px;background:#123d58;color:#fff;font-size:12px;font-weight:700;text-transform:uppercase}
+@media(max-width:640px){.logo-placement-options{grid-template-columns:1fr}.logo-placement-preview{padding:14px}.logo-placement-preview--header{gap:10px;font-size:12px}}
