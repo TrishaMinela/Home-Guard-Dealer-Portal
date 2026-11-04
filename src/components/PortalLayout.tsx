@@ -9,8 +9,7 @@ import { PlaceholderPage } from '../pages/PlaceholderPage'
 import type { DealerAccount } from '../types/account'
 import { NavIcon } from './NavIcon'
 import { NotificationLauncher, type PortalNotification } from './NotificationLauncher'
-import { DealerBrandMark } from './DealerBrandMark'
-import { getDealerBrand } from '../utils/dealerBrand'
+import { dealerInitials } from '../utils/dealerBrand'
 
 const navigation = [
   { label: 'Dashboard', path: '/dashboard', icon: 'grid' },
@@ -36,7 +35,7 @@ export function PortalLayout({
   onDealerUpdated,
 }: PortalLayoutProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const brand = getDealerBrand(dealer)
+  const initials = dealerInitials(dealer.company_name)
   const leadData = useLeads()
   const notifications: PortalNotification[] = leadData.leads
     .filter((lead) => lead.status.trim().toLowerCase() === 'new')
@@ -50,11 +49,11 @@ export function PortalLayout({
     }))
 
   return (
-    <div className="portal-shell portal-shell--dealer" style={brand.themeStyle} data-dealer-id={brand.dealerId}>
-      <header className="mobile-header">
+    <div className="portal-shell">
+      <header className="mobile-header mobile-header--admin">
         <div className="brand-lockup brand-lockup--compact">
-          <DealerBrandMark key={`mobile-${brand.mobileLogos.join('|')}`} companyName={brand.companyName} initials={brand.initials} logoCandidates={brand.mobileLogos} context="mobile" />
-          <span className="brand-name dealer-brand-name">{brand.companyName}</span>
+          <div className="brand-mark brand-mark--admin" aria-hidden="true">HG</div>
+          <span className="brand-name">Home Guard Dealer Portal</span>
         </div>
         <button
           className="menu-button"
@@ -79,10 +78,10 @@ export function PortalLayout({
       <aside className={`sidebar ${isMenuOpen ? 'is-open' : ''}`}>
         <div className="sidebar__brand">
           <div className="brand-lockup">
-            <DealerBrandMark key={`sidebar-${brand.sidebarLogos.join('|')}`} companyName={brand.companyName} initials={brand.initials} logoCandidates={brand.sidebarLogos} context="sidebar" />
+            <div className="brand-mark brand-mark--admin" aria-hidden="true">HG</div>
             <div>
-              <span className="brand-name dealer-brand-name">{brand.companyName}</span>
-              <span className="brand-subtitle">Powered by Home Guard</span>
+              <span className="brand-name">Home Guard</span>
+              <span className="brand-subtitle">Dealer Portal</span>
             </div>
           </div>
           <button
@@ -114,7 +113,7 @@ export function PortalLayout({
 
         <div className="sidebar-account">
           <div className="dealer-avatar" aria-hidden="true">
-            {brand.initials}
+            {initials}
           </div>
           <div className="sidebar-account__details">
             <strong>{dealer.company_name}</strong>

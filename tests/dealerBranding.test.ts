@@ -16,6 +16,8 @@ const accountAccess = readFileSync('src/hooks/useAccountAccess.ts', 'utf8')
 const css = readFileSync('src/App.css', 'utf8')
 const app = readFileSync('src/App.tsx', 'utf8')
 const profile = readFileSync('src/pages/DealerCompanyProfilePage.tsx', 'utf8')
+const marketingTools = readFileSync('src/pages/MarketingToolsPage.tsx', 'utf8')
+const bannerRenderer = readFileSync('src/features/banner-generator/bannerRenderer.ts', 'utf8')
 
 type DealerBrandFixture = {
   id: string
@@ -65,11 +67,21 @@ test('invalid and missing dealer colors safely use Home Guard fallbacks', () => 
   assert.equal(normalizeBrandColor('#AbC', DEFAULT_DEALER_PRIMARY), '#aabbcc')
 })
 
-test('dealer theme is scoped away from admin and billing client layouts', () => {
-  assert.match(portalLayout, /portal-shell portal-shell--dealer/)
-  assert.match(css, /\.portal-shell--dealer/)
+test('Portal shell remains Home Guard branded for every account type', () => {
+  assert.doesNotMatch(portalLayout, /portal-shell--dealer|themeStyle|--dealer-primary/)
+  assert.match(portalLayout, /Home Guard Dealer Portal/)
+  assert.match(portalLayout, /Home Guard/)
+  assert.doesNotMatch(css, /\.portal-shell--dealer/)
   assert.doesNotMatch(adminLayout, /portal-shell--dealer/)
   assert.doesNotMatch(billingLayout, /portal-shell--dealer/)
+})
+
+test('dealer branding remains available only in dealer content and marketing previews', () => {
+  assert.match(profile, /primaryColor/)
+  assert.match(profile, /secondaryColor/)
+  assert.match(marketingTools, /renderBanner\(\{ canvas: renderedCanvas, dealer/)
+  assert.match(bannerRenderer, /dealer\.primary_color/)
+  assert.match(bannerRenderer, /dealer\.secondary_color/)
 })
 
 test('profile updates refresh the authenticated dealer shell without another lookup', () => {
