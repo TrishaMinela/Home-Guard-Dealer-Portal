@@ -4,11 +4,13 @@ import { supabase } from '../lib/supabase'
 import type { AdminDealer } from '../types/admin'
 import { getDealerVisualizerDisplayUrl } from '../config/visualizer'
 import { DealerUserAccess } from '../components/DealerUserAccess'
+import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
 
 const logoExtensions: Record<string, string> = {
   'image/png': 'png',
   'image/jpeg': 'jpg',
   'image/webp': 'webp',
+  'image/svg+xml': 'svg',
 }
 
 type DealerDetailPageProps = {
@@ -53,6 +55,7 @@ export function DealerDetailPage({
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [isReviewingSlug, setIsReviewingSlug] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState<'primary' | 'light' | null>(null)
+  const [isGeneratingLightLogo, setIsGeneratingLightLogo] = useState(false)
   const dealer = dealers.find((item) => item.id === dealerId)
 
   async function updateStatus(isActive: boolean) {
@@ -64,7 +67,7 @@ export function DealerDetailPage({
       .from('dealers')
       .update({ is_active: isActive })
       .eq('id', dealer.id)
-      .select('id, company_name, slug, logo_url, logo_light_url, primary_contact_name, email, phone, website, address, city, state, zip, primary_color, secondary_color, is_active, created_at, requested_slug, slug_request_status, slug_requested_at, heading_font_family, heading_font_weight, heading_font_size, body_font_family, body_font_weight, body_font_size, custom_heading_font_url, custom_heading_font_name, custom_heading_font_weight, custom_body_font_url, custom_body_font_name, custom_body_font_weight')
+      .select('id, company_name, slug, logo_url, logo_light_url, logo_generated_light_url, primary_contact_name, email, phone, website, address, city, state, zip, primary_color, secondary_color, is_active, created_at, requested_slug, slug_request_status, slug_requested_at, heading_font_family, heading_font_weight, heading_font_size, body_font_family, body_font_weight, body_font_size, custom_heading_font_url, custom_heading_font_name, custom_heading_font_weight, custom_body_font_url, custom_body_font_name, custom_body_font_weight')
       .single()
 
     if (updateError) {
@@ -126,7 +129,7 @@ export function DealerDetailPage({
     setActionError('')
     const extension = logoExtensions[file.type]
     if (!extension || file.size > 5 * 1024 * 1024) {
-      setActionError('Choose a PNG, JPEG, or WebP logo no larger than 5 MB.')
+      setActionError('Choose a PNG, JPEG, WebP, or SVG logo no larger than 5 MB.')
       return
     }
 
@@ -154,7 +157,7 @@ export function DealerDetailPage({
         [logoType === 'primary' ? 'logo_url' : 'logo_light_url']: versionedPublicUrl,
       })
       .eq('id', dealer.id)
-      .select('id, company_name, slug, logo_url, logo_light_url, primary_contact_name, email, phone, website, address, city, state, zip, primary_color, secondary_color, is_active, created_at, requested_slug, slug_request_status, slug_requested_at, heading_font_family, heading_font_weight, heading_font_size, body_font_family, body_font_weight, body_font_size, custom_heading_font_url, custom_heading_font_name, custom_heading_font_weight, custom_body_font_url, custom_body_font_name, custom_body_font_weight')
+      .select('id, company_name, slug, logo_url, logo_light_url, logo_generated_light_url, primary_contact_name, email, phone, website, address, city, state, zip, primary_color, secondary_color, is_active, created_at, requested_slug, slug_request_status, slug_requested_at, heading_font_family, heading_font_weight, heading_font_size, body_font_family, body_font_weight, body_font_size, custom_heading_font_url, custom_heading_font_name, custom_heading_font_weight, custom_body_font_url, custom_body_font_name, custom_body_font_weight')
       .single()
 
     if (updateError) {
@@ -164,8 +167,52 @@ export function DealerDetailPage({
       return
     }
 
-    onDealerUpdated(data, `${logoType === 'primary' ? 'Primary' : 'Light'} logo updated successfully.`)
+    let updatedDealer = data as AdminDealer
+    if (logoType === 'primary') {
+      setIsGeneratingLightLogo(true)
+      const generated = await generateDefaultDealerLightLogo(dealer.id)
+      setIsGeneratingLightLogo(false)
+      if (generated.error || !generated.generatedLightLogoUrl) {
+        onDealerUpdated(updatedDealer, 'Primary logo updated, but the default light version could not be generated.')
+        setActionError('Use Regenerate Default to retry the light-logo conversion.')
+        setUploadingLogo(null)
+        return
+      }
+      updatedDealer = { ...updatedDealer, logo_generated_light_url: generated.generatedLightLogoUrl }
+    }
+    onDealerUpdated(updatedDealer, `${logoType === 'primary' ? 'Primary logo and default light logo' : 'Custom light logo'} updated successfully.`)
     setUploadingLogo(null)
+  }
+
+  async function generateLightLogo() {
+    if (!dealer) return
+    setActionError('')
+    setIsGeneratingLightLogo(true)
+    const result = await generateDefaultDealerLightLogo(dealer.id)
+    setIsGeneratingLightLogo(false)
+    if (result.error || !result.generatedLightLogoUrl) {
+      setActionError(result.error ?? 'We could not generate the default light logo.')
+      return
+    }
+    onDealerUpdated({ ...dealer, logo_generated_light_url: result.generatedLightLogoUrl }, 'Default light logo generated successfully.')
+  }
+
+  async function removeCustomLightLogo() {
+    if (!dealer) return
+    setActionError('')
+    setIsGeneratingLightLogo(true)
+    const { data, error: updateError } = await supabase
+      .from('dealers')
+      .update({ logo_light_url: null })
+      .eq('id', dealer.id)
+      .select('id, company_name, slug, logo_url, logo_light_url, logo_generated_light_url, primary_contact_name, email, phone, website, address, city, state, zip, primary_color, secondary_color, is_active, created_at, requested_slug, slug_request_status, slug_requested_at, heading_font_family, heading_font_weight, heading_font_size, body_font_family, body_font_weight, body_font_size, custom_heading_font_url, custom_heading_font_name, custom_heading_font_weight, custom_body_font_url, custom_body_font_name, custom_body_font_weight')
+      .single()
+    setIsGeneratingLightLogo(false)
+    if (updateError) {
+      setActionError('We could not remove the custom light logo. Please try again.')
+      return
+    }
+    onDealerUpdated(data as AdminDealer, 'Custom light logo removed. The generated default is now in use.')
   }
 
   if (isLoading) {
@@ -243,28 +290,39 @@ export function DealerDetailPage({
           </div>
           <label className={`button button--outline upload-button ${uploadingLogo ? 'is-disabled' : ''}`}>
             {uploadingLogo === 'primary' ? 'Uploading...' : 'Upload Primary Logo'}
-            <input type="file" accept="image/png,image/jpeg,image/webp" disabled={uploadingLogo !== null} onChange={(event) => void handleLogoUpload(event, 'primary')} />
+            <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" disabled={uploadingLogo !== null} onChange={(event) => void handleLogoUpload(event, 'primary')} />
           </label>
         </section>
 
         <section className="content-card profile-logo-card">
           <div className="profile-logo-preview profile-logo-preview--dark">
-            {dealer.logo_light_url ? (
-              <img src={dealer.logo_light_url} alt={`${dealer.company_name} light logo`} />
+            {dealer.logo_light_url || dealer.logo_generated_light_url ? (
+              <img src={dealer.logo_light_url ?? dealer.logo_generated_light_url ?? ''} alt={`${dealer.company_name} light logo`} />
             ) : (
               <span>{dealer.company_name.charAt(0).toUpperCase()}</span>
             )}
           </div>
           <div>
-            <p className="eyebrow">Light Logo</p>
+            <p className="eyebrow">{dealer.logo_light_url ? 'Custom override' : 'Generated default'}</p>
             <h2>Light Logo</h2>
-            <p>Upload a white or light-colored version of your logo for use on dark backgrounds.</p>
-            <p className="logo-helper-note">This version should remain clearly visible when placed on a dark background. Recommended, but not required.</p>
+            <p>A white logo is generated from the primary logo. Upload a custom version to override it on dark backgrounds.</p>
           </div>
           <label className={`button button--outline upload-button ${uploadingLogo ? 'is-disabled' : ''}`}>
             {uploadingLogo === 'light' ? 'Uploading...' : 'Upload Light Logo'}
-            <input type="file" accept="image/png,image/jpeg,image/webp" disabled={uploadingLogo !== null} onChange={(event) => void handleLogoUpload(event, 'light')} />
+            <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" disabled={uploadingLogo !== null} onChange={(event) => void handleLogoUpload(event, 'light')} />
           </label>
+          <div className="page-actions">
+            {dealer.logo_url && (
+              <button className="button button--outline" type="button" disabled={isGeneratingLightLogo || uploadingLogo !== null} onClick={() => void generateLightLogo()}>
+                {isGeneratingLightLogo ? 'Generating...' : 'Regenerate Default'}
+              </button>
+            )}
+            {dealer.logo_light_url && (
+              <button className="button button--danger-outline" type="button" disabled={isGeneratingLightLogo || uploadingLogo !== null} onClick={() => void removeCustomLightLogo()}>
+                Remove Custom Logo
+              </button>
+            )}
+          </div>
         </section>
       </div>
 
@@ -309,6 +367,7 @@ export function DealerDetailPage({
           <DetailItem label="Phone" value={dealer.phone} />
           <DetailItem label="Logo URL" value={dealer.logo_url} />
           <DetailItem label="Light Logo URL" value={dealer.logo_light_url} />
+          <DetailItem label="Generated Light Logo URL" value={dealer.logo_generated_light_url ?? null} />
           <DetailItem label="Website" value={dealer.website} />
           <DetailItem label="Address" value={dealer.address} />
           <DetailItem label="City" value={dealer.city} />

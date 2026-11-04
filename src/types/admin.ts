@@ -9,6 +9,7 @@ export type AdminDealer = {
   phone: string | null
   logo_url: string | null
   logo_light_url: string | null
+  logo_generated_light_url?: string | null
   website: string | null
   address: string | null
   city: string | null

@@ -6,6 +6,7 @@ import { isReservedDealerSlug, normalizeDealerSlug } from '../utils/dealerSlug'
 import { getDealerVisualizerDisplayUrl } from '../config/visualizer'
 import { DealerTypographySettings } from '../components/DealerTypographySettings'
 import { typographyPayload, type DealerTypographyValues } from '../utils/dealerTypography'
+import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
 
 type DealerCompanyProfilePageProps = {
   dealer: DealerAccount
@@ -33,6 +34,7 @@ const logoExtensions: Record<string, string> = {
   'image/png': 'png',
   'image/jpeg': 'jpg',
   'image/webp': 'webp',
+  'image/svg+xml': 'svg',
 }
 
 export function DealerCompanyProfilePage({
@@ -45,6 +47,7 @@ export function DealerCompanyProfilePage({
   const [error, setError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState<'primary' | 'light' | null>(null)
+  const [isGeneratingLightLogo, setIsGeneratingLightLogo] = useState(false)
   const [isRequestingSlug, setIsRequestingSlug] = useState(false)
   const normalizedRequestedSlug = normalizeDealerSlug(requestedSlug)
 
@@ -116,7 +119,7 @@ export function DealerCompanyProfilePage({
 
     const extension = logoExtensions[file.type]
     if (!extension) {
-      setError('Choose a PNG, JPEG, or WebP logo.')
+      setError('Choose a PNG, JPEG, WebP, or SVG logo.')
       return
     }
     if (file.size > 5 * 1024 * 1024) {
@@ -155,9 +158,51 @@ export function DealerCompanyProfilePage({
       return
     }
 
-    onDealerUpdated(data as DealerAccount)
-    setMessage(`${logoType === 'primary' ? 'Primary' : 'Light'} logo updated successfully.`)
+    let updatedDealer = data as DealerAccount
+    if (logoType === 'primary') {
+      setIsGeneratingLightLogo(true)
+      const generated = await generateDefaultDealerLightLogo(dealer.id)
+      setIsGeneratingLightLogo(false)
+      if (generated.error || !generated.generatedLightLogoUrl) {
+        onDealerUpdated(updatedDealer)
+        setError('The primary logo was saved, but its default light version could not be generated. You can retry below.')
+        setUploadingLogo(null)
+        return
+      }
+      updatedDealer = { ...updatedDealer, logo_generated_light_url: generated.generatedLightLogoUrl }
+    }
+
+    onDealerUpdated(updatedDealer)
+    setMessage(`${logoType === 'primary' ? 'Primary logo and default light logo' : 'Custom light logo'} updated successfully.`)
     setUploadingLogo(null)
+  }
+
+  async function handleGenerateLightLogo() {
+    setMessage('')
+    setError('')
+    setIsGeneratingLightLogo(true)
+    const result = await generateDefaultDealerLightLogo(dealer.id)
+    setIsGeneratingLightLogo(false)
+    if (result.error || !result.generatedLightLogoUrl) {
+      setError(result.error ?? 'We could not generate the default light logo.')
+      return
+    }
+    onDealerUpdated({ ...dealer, logo_generated_light_url: result.generatedLightLogoUrl })
+    setMessage('Default light logo generated successfully.')
+  }
+
+  async function handleRemoveCustomLightLogo() {
+    setMessage('')
+    setError('')
+    setIsGeneratingLightLogo(true)
+    const { data, error: updateError } = await updateProfile(dealerToForm(dealer), dealer.logo_url, null)
+    setIsGeneratingLightLogo(false)
+    if (updateError) {
+      setError('We could not remove the custom light logo. Please try again.')
+      return
+    }
+    onDealerUpdated(data as DealerAccount)
+    setMessage('Custom light logo removed. The generated default is now in use.')
   }
 
   async function handleSlugRequest(event: FormEvent<HTMLFormElement>) {
@@ -235,13 +280,13 @@ export function DealerCompanyProfilePage({
             <p className="eyebrow">Primary Logo</p>
             <h2>Primary Logo</h2>
             <p>Upload your standard logo for use on light or white backgrounds.</p>
-            <p>PNG, JPEG, or WebP. Maximum file size 5 MB.</p>
+            <p>PNG, JPEG, WebP, or SVG. Maximum file size 5 MB.</p>
           </div>
           <label className={`button button--outline upload-button ${uploadingLogo ? 'is-disabled' : ''}`}>
             {uploadingLogo === 'primary' ? 'Uploading...' : 'Upload Primary Logo'}
             <input
               type="file"
-              accept="image/png,image/jpeg,image/webp"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
               disabled={uploadingLogo !== null}
               onChange={(event) => void handleLogoUpload(event, 'primary')}
             />
@@ -250,27 +295,38 @@ export function DealerCompanyProfilePage({
 
         <section className="content-card profile-logo-card">
           <div className="profile-logo-preview profile-logo-preview--dark">
-            {dealer.logo_light_url ? (
-              <img src={dealer.logo_light_url} alt={`${dealer.company_name} light logo`} />
+            {dealer.logo_light_url || dealer.logo_generated_light_url ? (
+              <img src={dealer.logo_light_url ?? dealer.logo_generated_light_url ?? ''} alt={`${dealer.company_name} light logo`} />
             ) : (
               <span>{dealer.company_name.charAt(0).toUpperCase()}</span>
             )}
           </div>
           <div>
-            <p className="eyebrow">Light Logo</p>
+            <p className="eyebrow">{dealer.logo_light_url ? 'Custom override' : 'Generated default'}</p>
             <h2>Light Logo</h2>
-            <p>Upload a white or light-colored version of your logo for use on dark backgrounds.</p>
-            <p className="logo-helper-note">This version should remain clearly visible when placed on a dark background. Recommended, but not required.</p>
+            <p>A white logo is generated from the primary logo. Upload a custom version to override it on dark backgrounds.</p>
           </div>
           <label className={`button button--outline upload-button ${uploadingLogo ? 'is-disabled' : ''}`}>
             {uploadingLogo === 'light' ? 'Uploading...' : 'Upload Light Logo'}
             <input
               type="file"
-              accept="image/png,image/jpeg,image/webp"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
               disabled={uploadingLogo !== null}
               onChange={(event) => void handleLogoUpload(event, 'light')}
             />
           </label>
+          <div className="page-actions">
+            {dealer.logo_url && (
+              <button className="button button--outline" type="button" disabled={isGeneratingLightLogo || uploadingLogo !== null} onClick={() => void handleGenerateLightLogo()}>
+                {isGeneratingLightLogo ? 'Generating...' : 'Regenerate Default'}
+              </button>
+            )}
+            {dealer.logo_light_url && (
+              <button className="button button--danger-outline" type="button" disabled={isGeneratingLightLogo || uploadingLogo !== null} onClick={() => void handleRemoveCustomLightLogo()}>
+                Remove Custom Logo
+              </button>
+            )}
+          </div>
         </section>
       </div>
 
