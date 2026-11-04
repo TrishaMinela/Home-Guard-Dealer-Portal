@@ -241,6 +241,7 @@ export function AdminLayout({ email, isInternalBillingAdmin, isBillingAccessMana
                 onDealerUpdated={handleDealerDetailUpdated}
                 onClearSuccess={() => setDealerDetailSuccess('')}
                 canManageDealerUsers={isBillingAccessManager || isInternalBillingAdmin}
+                canManageDealerCredentials={isBillingAccessManager}
               />
             }
           />

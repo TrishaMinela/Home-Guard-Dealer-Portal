@@ -7,6 +7,7 @@ const component = readFileSync('src/components/DealerUserAccess.tsx', 'utf8')
 const page = readFileSync('src/pages/DealerDetailPage.tsx', 'utf8')
 const layout = readFileSync('src/components/AdminLayout.tsx', 'utf8')
 const migration = readFileSync('supabase/migrations/20261030000100_add_dealer_user_access_audit.sql', 'utf8')
+const passwordAuditMigration = readFileSync('supabase/migrations/20261105000000_add_dealer_password_audit_action.sql', 'utf8')
 
 test('dealer-user management allows access managers and internal billing admins on server and UI', () => {
   assert.match(endpoint, /authorizeBillingAccessOperator\(authorization\)/)
@@ -45,4 +46,5 @@ test('dealer access mutations have a scoped audit trail', () => {
   assert.match(migration, /references public\.dealers\(id\)/)
   assert.match(migration, /is_billing_access_manager\(\)/)
   assert.match(endpoint, /dealer_user_access_audit_log/)
+  assert.match(passwordAuditMigration, /password_updated/)
 })

@@ -6,13 +6,14 @@ import type { DealerAccount } from '../types/account'
 
 type MarketingToolsPageProps = {
   dealer: DealerAccount
+  embedded?: boolean
 }
 
 async function copyText(value: string) {
   await navigator.clipboard.writeText(value)
 }
 
-export function MarketingToolsPage({ dealer }: MarketingToolsPageProps) {
+export function MarketingToolsPage({ dealer, embedded = false }: MarketingToolsPageProps) {
   const [sizeId, setSizeId] = useState(bannerSizes[0].id)
   const [templateId, setTemplateId] = useState(bannerTemplates[0].id)
   const [message, setMessage] = useState('')
@@ -93,11 +94,11 @@ export function MarketingToolsPage({ dealer }: MarketingToolsPageProps) {
   }
 
   return (
-    <div className="page-content">
+    <div className={embedded ? 'dealer-admin-marketing__content' : 'page-content'}>
       <header className="page-header">
-        <p className="eyebrow">Dealer Marketing</p>
+        <p className="eyebrow">{embedded ? dealer.company_name : 'Dealer Marketing'}</p>
         <h1>Marketing Tools</h1>
-        <p>Create website-ready graphics using your approved dealer branding.</p>
+        <p>Create website-ready graphics using {embedded ? `${dealer.company_name}’s` : 'your approved'} dealer branding.</p>
       </header>
 
       {message && <div className="portal-alert portal-alert--success" role="status">{message}</div>}

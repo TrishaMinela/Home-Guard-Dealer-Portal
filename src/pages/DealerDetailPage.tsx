@@ -6,6 +6,7 @@ import { getDealerVisualizerDisplayUrl } from '../config/visualizer'
 import { DealerUserAccess } from '../components/DealerUserAccess'
 import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
 import { DealerLogoPlacementSettings, type DealerLogoPlacement } from '../components/DealerLogoPlacementSettings'
+import { AdminDealerMarketingTools } from '../components/AdminDealerMarketingTools'
 
 const logoExtensions: Record<string, string> = {
   'image/png': 'png',
@@ -22,6 +23,7 @@ type DealerDetailPageProps = {
   onDealerUpdated: (dealer: AdminDealer, message: string) => void
   onClearSuccess: () => void
   canManageDealerUsers: boolean
+  canManageDealerCredentials: boolean
 }
 
 function formatDate(date: string) {
@@ -49,6 +51,7 @@ export function DealerDetailPage({
   onDealerUpdated,
   onClearSuccess,
   canManageDealerUsers,
+  canManageDealerCredentials,
 }: DealerDetailPageProps) {
   const { dealerId } = useParams()
   const [isConfirmingDisable, setIsConfirmingDisable] = useState(false)
@@ -287,7 +290,17 @@ export function DealerDetailPage({
       {successMessage && <div className="portal-alert portal-alert--success" role="status">{successMessage}</div>}
       {actionError && <div className="portal-alert" role="alert">{actionError}</div>}
 
-      <div className="profile-logo-grid">
+      <nav className="dealer-settings-nav" aria-label="Dealer management sections">
+        <a href="#company-details">Company Details</a>
+        <a href="#branding">Branding</a>
+        <a href="#design">Typography &amp; Design</a>
+        {canManageDealerCredentials && <a href="#marketing-tools">Marketing Tools</a>}
+        {canManageDealerUsers && <a href="#dealer-users">Dealer Users / Access</a>}
+      </nav>
+
+      <section id="branding" className="dealer-settings-section" aria-labelledby="branding-heading">
+        <div className="dealer-form__section-heading dealer-settings-heading"><p className="eyebrow">Branding</p><h2 id="branding-heading">Customer-facing Door Builder</h2><p>These settings control the appearance of this dealer’s branded Door Builder. They do not change the Portal interface.</p></div>
+        <div className="profile-logo-grid">
         <section className="content-card profile-logo-card">
           <div className="profile-logo-preview">
             {dealer.logo_url ? (
@@ -337,7 +350,8 @@ export function DealerDetailPage({
             )}
           </div>
         </section>
-      </div>
+        </div>
+      </section>
 
       <DealerLogoPlacementSettings
         dealer={dealer}
@@ -367,7 +381,7 @@ export function DealerDetailPage({
         </section>
       )}
 
-      <section className="content-card dealer-detail">
+      <section id="company-details" className="content-card dealer-detail">
         <div className="content-card__header dealer-detail__heading">
           <div>
             <p className="eyebrow">Company record</p>
@@ -393,12 +407,17 @@ export function DealerDetailPage({
           <DetailItem label="City" value={dealer.city} />
           <DetailItem label="State" value={dealer.state} />
           <DetailItem label="ZIP" value={dealer.zip} />
-          <DetailItem label="Primary Brand Color" value={dealer.primary_color} />
-          <DetailItem label="Secondary Brand Color" value={dealer.secondary_color} />
           <DetailItem label="Status" value={dealer.is_active ? 'Active' : 'Disabled'} />
           <DetailItem label="Created Date" value={formatDate(dealer.created_at)} />
         </dl>
       </section>
+
+      <section id="design" className="content-card dealer-settings-summary">
+        <div><p className="eyebrow">Typography &amp; Design</p><h2>Door Builder Design</h2><p>Manage heading, body/UI, custom fonts, weights, sizes, and previews separately from company details.</p></div>
+        <Link className="button button--outline" to={`/admin/dealers/${dealer.id}/edit`}>Manage Design</Link>
+      </section>
+
+      {canManageDealerCredentials && <AdminDealerMarketingTools dealerId={dealer.id} />}
 
       <section className="content-card slug-review-card">
         <div className="content-card__header">
@@ -440,7 +459,7 @@ export function DealerDetailPage({
           </div>
         )}
       </section>
-      {canManageDealerUsers && <DealerUserAccess dealerId={dealer.id} />}
+      {canManageDealerUsers && <DealerUserAccess dealerId={dealer.id} sectionId="dealer-users" canSetPassword={canManageDealerCredentials} />}
     </div>
   )
 }

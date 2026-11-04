@@ -4,7 +4,7 @@ import { authorizeBillingAccessOperator } from './_lib/authorizeBillingAccessMan
 import { classifyInvitationFailure } from './_lib/invitationDelivery.js'
 
 type JsonResponse = ServerResponse<IncomingMessage> & { json?: (value: unknown) => void }
-type Body = { action?: 'grant' | 'revoke' | 'resend'; dealerId?: string; email?: string }
+type Body = { action?: 'grant' | 'revoke' | 'resend' | 'set-password'; dealerId?: string; email?: string; password?: string }
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 function send(response: JsonResponse, status: number, value: unknown) {
@@ -30,6 +30,7 @@ type AuthAdminClient = {
   auth: { admin: {
     listUsers(options: { page: number; perPage: number }): Promise<{ data: { users: User[] }; error: Error | null }>
     inviteUserByEmail(email: string, options: { redirectTo: string }): Promise<{ data: { user: User | null }; error: unknown }>
+    updateUserById(userId: string, attributes: { password: string }): Promise<{ data: { user: User | null }; error: Error | null }>
   } }
 }
 
@@ -52,11 +53,13 @@ async function sendInvitation(admin: AuthAdminClient, email: string, expectedId?
 
 function safeUser(user: User, membership: { created_at: string; role: string }) {
   return {
+    name: typeof user.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : typeof user.user_metadata?.name === 'string' ? user.user_metadata.name : '',
     email: user.email ?? '',
     status: user.email_confirmed_at ? 'active' : 'pending',
     role: membership.role,
     accessGrantedAt: membership.created_at,
     invitedAt: user.invited_at ?? null,
+    lastSignInAt: user.last_sign_in_at ?? null,
   }
 }
 
@@ -145,6 +148,24 @@ export default async function handler(request: IncomingMessage, response: JsonRe
         const { error: auditError } = await admin.from('dealer_user_access_audit_log').insert({ dealer_id: dealerId, actor_user_id: access.userId, target_user_id: target.id, target_email: email, action: 'invite_resent' })
         if (auditError) throw auditError
         notice = 'A new dealer invitation was sent.'
+      } else if (body.action === 'set-password') {
+        if (!access.isAccessManager) return send(response, 403, { error: 'Dealer password management requires access-manager permission.' })
+        const password = body.password ?? ''
+        if (password.length < 6) return send(response, 400, { error: 'Password must be at least 6 characters.' })
+        const { data: membership, error: membershipError } = await admin.from('dealer_users').select('id').eq('dealer_id', dealerId).eq('user_id', target.id).maybeSingle()
+        if (membershipError) throw membershipError
+        if (!membership) return send(response, 404, { error: 'This user does not have access to the selected dealer.' })
+        const { error: passwordError } = await admin.auth.admin.updateUserById(target.id, { password })
+        if (passwordError) throw passwordError
+        const { error: auditError } = await admin.from('dealer_user_access_audit_log').insert({
+          dealer_id: dealerId,
+          actor_user_id: access.userId,
+          target_user_id: target.id,
+          target_email: email,
+          action: 'password_updated',
+        })
+        if (auditError) throw auditError
+        notice = 'Password updated successfully.'
       } else return send(response, 400, { error: 'Unsupported dealer access action.' })
     }
 
