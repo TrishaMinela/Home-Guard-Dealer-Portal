@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { ConfirmationModal } from './ConfirmationModal'
 import { DealerPasswordModal } from './DealerPasswordModal'
 import { supabase } from '../lib/supabase'
+import { DealerSectionHeader } from './DealerSectionHeader'
 
 type DealerUser = {
   name: string
@@ -87,10 +88,10 @@ export function DealerUserAccess({ dealerId, sectionId, canSetPassword = false }
 
   return <>
     <section className="content-card billing-access-card dealer-user-access" id={sectionId}>
-      <header className="billing-access-card__header"><p className="eyebrow">Dealer security</p><h2>Dealer Users</h2><p>Current users assigned to this dealer. Access managers can add existing accounts or send the secure Portal invitation to new users.</p></header>
+      <DealerSectionHeader eyebrow="Dealer security" title="Dealer Users / Access" description="Current users assigned to this dealer. Access managers can add existing accounts or send the secure Portal invitation to new users." actionLabel="Manage access" actionHref="#add-dealer-user" actionIcon="manage" />
       {error && <p className="message message--error" role="alert">{error}</p>}
       {success && <p className="message message--success" role="status">{success}</p>}
-      <div className="billing-access-card__form"><h3>Add Dealer User</h3><form onSubmit={(event) => void grant(event)}><label><span>Email address</span><input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="user@example.com" disabled={saving} /></label><button className="button button--primary" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Add Dealer User'}</button></form></div>
+      <div className="billing-access-card__form" id="add-dealer-user"><h3>Add Dealer User</h3><form onSubmit={(event) => void grant(event)}><label><span>Email address</span><input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="user@example.com" disabled={saving} /></label><button className="button button--primary" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Add Dealer User'}</button></form></div>
       <div className="billing-access-card__list"><div className="billing-access-card__list-heading"><div><h3>Current Access</h3><p>Membership is scoped only to this dealer.</p></div><span>{users.length} {users.length === 1 ? 'user' : 'users'}</span></div>
       {loading ? <div className="billing-access-empty"><strong>Loading dealer users…</strong></div> : users.length === 0 ? <div className="billing-access-empty"><strong>No dealer users assigned</strong><p>Add an existing account or invite a new dealer user.</p></div> : <div className="table-scroll"><table className="data-table"><thead><tr><th>Name / email</th><th>Account</th><th>Role</th><th>Access granted</th><th>Last sign-in</th><th>Invitation</th><th>Actions</th></tr></thead><tbody>{users.map((user) => <tr key={user.email}><td>{user.name && <span>{user.name}</span>}<strong>{user.email}</strong></td><td><span className={`billing-status billing-status--${user.status === 'active' ? 'paid' : 'draft'}`}>{user.status}</span></td><td>{user.role.replaceAll('_', ' ')}</td><td>{new Date(user.accessGrantedAt).toLocaleString()}</td><td>{user.lastSignInAt ? new Date(user.lastSignInAt).toLocaleString() : 'Never'}</td><td>{user.status === 'pending' ? user.invitedAt ? `Sent ${new Date(user.invitedAt).toLocaleDateString()}` : 'Pending setup' : 'Complete'}</td><td><div className="table-actions">{user.status === 'pending' && <button className="button button--outline button--compact" type="button" disabled={saving} onClick={() => void update(user, 'resend')}>Resend Invite</button>}{canSetPassword && <button className="button button--outline button--compact" type="button" disabled={saving} onClick={() => setPendingPasswordConfirmation(user)}>Set Password</button>}<button className="button button--outline button--compact" type="button" disabled={saving} onClick={() => setPendingRemoval(user)}>Remove Dealer Access</button></div></td></tr>)}</tbody></table></div>}</div>
     </section>

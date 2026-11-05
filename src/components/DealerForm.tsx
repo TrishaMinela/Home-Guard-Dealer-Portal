@@ -138,24 +138,6 @@ export function DealerForm({
               />
             </div>
           </div>
-          <div className="filter-field">
-            <label htmlFor="primary-color">Primary Brand Color</label>
-            <input
-              id="primary-color"
-              value={form.primaryColor}
-              onChange={(event) => updateField('primaryColor', event.target.value)}
-              placeholder="#0d666c"
-            />
-          </div>
-          <div className="filter-field">
-            <label htmlFor="secondary-color">Secondary Brand Color</label>
-            <input
-              id="secondary-color"
-              value={form.secondaryColor}
-              onChange={(event) => updateField('secondaryColor', event.target.value)}
-              placeholder="#f8d30e"
-            />
-          </div>
         </div>
       </div>
 

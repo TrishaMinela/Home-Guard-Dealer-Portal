@@ -33,7 +33,7 @@ export function DealerLogoPlacementSettings({ dealer, onSave, onUpdated }: Props
   }
 
   return (
-    <section className="content-card logo-placement-settings">
+    <section className="content-card dealer-management-card logo-placement-settings">
       <div className="dealer-form__section-heading">
         <p className="eyebrow">Dealer branding</p>
         <h2>Dealer Logo Placement</h2>

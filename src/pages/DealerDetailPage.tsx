@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from 'react'
+import { useState, type ChangeEvent, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { AdminDealer } from '../types/admin'
@@ -7,6 +7,7 @@ import { DealerUserAccess } from '../components/DealerUserAccess'
 import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
 import { DealerLogoPlacementSettings, type DealerLogoPlacement } from '../components/DealerLogoPlacementSettings'
 import { AdminDealerMarketingTools } from '../components/AdminDealerMarketingTools'
+import { DealerSectionHeader } from '../components/DealerSectionHeader'
 
 const logoExtensions: Record<string, string> = {
   'image/png': 'png',
@@ -34,13 +35,17 @@ function formatDate(date: string) {
   }).format(new Date(date))
 }
 
-function DetailItem({ label, value }: { label: string; value: string | null }) {
+function DetailItem({ label, value, href }: { label: string; value: string | null; href?: string }) {
   return (
     <div className="dealer-detail__item">
       <dt>{label}</dt>
-      <dd>{value || '—'}</dd>
+      <dd>{href && value ? <a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noreferrer' : undefined}>{value}</a> : value || '—'}</dd>
     </div>
   )
+}
+
+function DetailGroup({ title, children }: { title: string; children: ReactNode }) {
+  return <section className="dealer-detail-group"><h3>{title}</h3><dl>{children}</dl></section>
 }
 
 export function DealerDetailPage({
@@ -252,20 +257,14 @@ export function DealerDetailPage({
 
   return (
     <div className="page-content">
-      <header className="page-header admin-page-header page-header--with-action">
+      <header className="page-header admin-page-header dealer-page-header page-header--with-action">
         <div>
           <p className="eyebrow">Dealer company</p>
           <h1>{dealer.company_name}</h1>
-          <p>{getDealerVisualizerDisplayUrl(dealer.slug)}</p>
+          <a className="dealer-page-header__url" href={getDealerVisualizerDisplayUrl(dealer.slug)} target="_blank" rel="noreferrer">{getDealerVisualizerDisplayUrl(dealer.slug)}</a>
+          <div className="dealer-page-header__meta"><span className={`status-badge ${dealer.is_active ? 'status-badge--active' : 'status-badge--inactive'}`}>{dealer.is_active ? 'Active' : 'Disabled'}</span><span>Added {formatDate(dealer.created_at)}</span></div>
         </div>
         <div className="page-actions">
-          <Link
-            className="button button--outline"
-            to={`/admin/dealers/${dealer.id}/edit`}
-            onClick={onClearSuccess}
-          >
-            Edit Dealer
-          </Link>
           {dealer.is_active ? (
             <button
               className="button button--danger-outline"
@@ -298,10 +297,27 @@ export function DealerDetailPage({
         {canManageDealerUsers && <a href="#dealer-users">Dealer Users / Access</a>}
       </nav>
 
-      <section id="branding" className="dealer-settings-section" aria-labelledby="branding-heading">
-        <div className="dealer-form__section-heading dealer-settings-heading"><p className="eyebrow">Branding</p><h2 id="branding-heading">Customer-facing Door Builder</h2><p>These settings control the appearance of this dealer’s branded Door Builder. They do not change the Portal interface.</p></div>
+      {isConfirmingDisable && (
+        <section className="disable-confirmation" role="alertdialog" aria-labelledby="disable-title">
+          <div><h2 id="disable-title">Disable {dealer.company_name}?</h2><p>This dealer will remain in Home Guard records, but will be marked inactive.</p></div>
+          <div className="page-actions"><button className="button button--outline" type="button" onClick={() => setIsConfirmingDisable(false)}>Cancel</button><button className="button button--danger" type="button" disabled={isUpdatingStatus} onClick={() => void updateStatus(false)}>{isUpdatingStatus ? 'Disabling...' : 'Disable'}</button></div>
+        </section>
+      )}
+
+      <section id="company-details" className="content-card dealer-management-card dealer-detail" aria-labelledby="company-details-heading">
+        <DealerSectionHeader eyebrow="Company record" title="Company Details" headingId="company-details-heading" description="Core identity, contact information, location, and public links for this dealer." actionLabel="Edit" actionTo={`/admin/dealers/${dealer.id}/edit#company`} onActionClick={onClearSuccess} trailing={<span className={`status-badge ${dealer.is_active ? 'status-badge--active' : 'status-badge--inactive'}`}>{dealer.is_active ? 'Active' : 'Disabled'}</span>} />
+        <div className="dealer-detail-groups">
+          <DetailGroup title="Core identity"><DetailItem label="Company Name" value={dealer.company_name} /><DetailItem label="Dealer Slug" value={dealer.slug} /><DetailItem label="Status" value={dealer.is_active ? 'Active' : 'Disabled'} /><DetailItem label="Created Date" value={formatDate(dealer.created_at)} /></DetailGroup>
+          <DetailGroup title="Contact information"><DetailItem label="Primary Contact" value={dealer.primary_contact_name} /><DetailItem label="Email" value={dealer.email} href={dealer.email ? `mailto:${dealer.email}` : undefined} /><DetailItem label="Phone" value={dealer.phone} href={dealer.phone ? `tel:${dealer.phone}` : undefined} /></DetailGroup>
+          <DetailGroup title="Address & location"><DetailItem label="Street Address" value={dealer.address} /><DetailItem label="City" value={dealer.city} /><DetailItem label="State" value={dealer.state} /><DetailItem label="ZIP" value={dealer.zip} /></DetailGroup>
+          <DetailGroup title="Public links"><DetailItem label="Door Builder URL" value={getDealerVisualizerDisplayUrl(dealer.slug)} href={getDealerVisualizerDisplayUrl(dealer.slug)} /><DetailItem label="Website" value={dealer.website} href={dealer.website ?? undefined} /></DetailGroup>
+        </div>
+      </section>
+
+      <section id="branding" className="content-card dealer-management-card dealer-settings-section dealer-branding-panel" aria-labelledby="branding-heading">
+        <DealerSectionHeader eyebrow="Branding" title="Customer-facing Door Builder" headingId="branding-heading" description="Manage the logo assets and placement used by this dealer’s public Door Builder. Portal colors remain HGI branded." actionLabel="Edit colors" actionTo={`/admin/dealers/${dealer.id}/edit#branding`} onActionClick={onClearSuccess} />
         <div className="profile-logo-grid">
-        <section className="content-card profile-logo-card">
+        <section className="profile-logo-card">
           <div className="profile-logo-preview">
             {dealer.logo_url ? (
               <img src={dealer.logo_url} alt={`${dealer.company_name} primary logo`} />
@@ -320,7 +336,7 @@ export function DealerDetailPage({
           </label>
         </section>
 
-        <section className="content-card profile-logo-card">
+        <section className="profile-logo-card">
           <div className="profile-logo-preview profile-logo-preview--dark">
             {dealer.logo_light_url || dealer.logo_generated_light_url ? (
               <img src={dealer.logo_light_url ?? dealer.logo_generated_light_url ?? ''} alt={`${dealer.company_name} light logo`} />
@@ -359,62 +375,9 @@ export function DealerDetailPage({
         onUpdated={(updated) => onDealerUpdated(updated, 'Dealer logo placement saved.')}
       />
 
-      {isConfirmingDisable && (
-        <section className="disable-confirmation" role="alertdialog" aria-labelledby="disable-title">
-          <div>
-            <h2 id="disable-title">Disable {dealer.company_name}?</h2>
-            <p>This dealer will remain in Home Guard records, but will be marked inactive.</p>
-          </div>
-          <div className="page-actions">
-            <button className="button button--outline" type="button" onClick={() => setIsConfirmingDisable(false)}>
-              Cancel
-            </button>
-            <button
-              className="button button--danger"
-              type="button"
-              disabled={isUpdatingStatus}
-              onClick={() => void updateStatus(false)}
-            >
-              {isUpdatingStatus ? 'Disabling...' : 'Disable'}
-            </button>
-          </div>
-        </section>
-      )}
-
-      <section id="company-details" className="content-card dealer-detail">
-        <div className="content-card__header dealer-detail__heading">
-          <div>
-            <p className="eyebrow">Company record</p>
-            <h2>Dealer Details</h2>
-          </div>
-          <span className={`status-badge ${dealer.is_active ? 'status-badge--active' : 'status-badge--inactive'}`}>
-            {dealer.is_active ? 'Active' : 'Disabled'}
-          </span>
-        </div>
-        <dl className="dealer-detail__grid">
-          <DetailItem label="Company Name" value={dealer.company_name} />
-          <DetailItem label="Slug" value={dealer.slug} />
-          <DetailItem label="Visualizer URL" value={getDealerVisualizerDisplayUrl(dealer.slug)} />
-          <DetailItem label="Primary Contact Name" value={dealer.primary_contact_name} />
-          <DetailItem label="Email" value={dealer.email} />
-          <DetailItem label="Phone" value={dealer.phone} />
-          <DetailItem label="Logo URL" value={dealer.logo_url} />
-          <DetailItem label="Light Logo URL" value={dealer.logo_light_url} />
-          <DetailItem label="Generated Light Logo URL" value={dealer.logo_generated_light_url ?? null} />
-          <DetailItem label="Logo Placement" value={dealer.logo_placement === 'header' ? 'Header' : 'Hero'} />
-          <DetailItem label="Website" value={dealer.website} />
-          <DetailItem label="Address" value={dealer.address} />
-          <DetailItem label="City" value={dealer.city} />
-          <DetailItem label="State" value={dealer.state} />
-          <DetailItem label="ZIP" value={dealer.zip} />
-          <DetailItem label="Status" value={dealer.is_active ? 'Active' : 'Disabled'} />
-          <DetailItem label="Created Date" value={formatDate(dealer.created_at)} />
-        </dl>
-      </section>
-
-      <section id="design" className="content-card dealer-settings-summary">
-        <div><p className="eyebrow">Typography &amp; Design</p><h2>Door Builder Design</h2><p>Manage heading, body/UI, custom fonts, weights, sizes, and previews separately from company details.</p></div>
-        <Link className="button button--outline" to={`/admin/dealers/${dealer.id}/edit`}>Manage Design</Link>
+      <section id="design" className="content-card dealer-management-card dealer-settings-summary">
+        <DealerSectionHeader eyebrow="Typography & Design" title="Door Builder Design" description="Manage heading and UI fonts, weights, sizes, custom font files, and a live typography preview." actionLabel="Edit design" actionTo={`/admin/dealers/${dealer.id}/edit#design`} onActionClick={onClearSuccess} />
+        <div className="dealer-design-preview" aria-hidden="true"><span>Aa</span><div><strong>Build a Door Made for Your Home.</strong><small>Heading and interface typography preview</small></div></div>
       </section>
 
       {canManageDealerCredentials && <AdminDealerMarketingTools dealerId={dealer.id} />}
