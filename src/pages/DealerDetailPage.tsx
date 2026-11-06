@@ -8,6 +8,7 @@ import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
 import { DealerLogoPlacementSettings, type DealerLogoPlacement } from '../components/DealerLogoPlacementSettings'
 import { AdminDealerMarketingTools } from '../components/AdminDealerMarketingTools'
 import { DealerSectionHeader } from '../components/DealerSectionHeader'
+import { DealerCrmIntegrations } from '../components/DealerCrmIntegrations'
 
 const logoExtensions: Record<string, string> = {
   'image/png': 'png',
@@ -294,6 +295,7 @@ export function DealerDetailPage({
         <a href="#branding">Branding</a>
         <a href="#design">Typography &amp; Design</a>
         {canManageDealerCredentials && <a href="#marketing-tools">Marketing Tools</a>}
+        {canManageDealerCredentials && <a href="#crm-integrations">CRM Integrations</a>}
         {canManageDealerUsers && <a href="#dealer-users">Dealer Users / Access</a>}
       </nav>
 
@@ -381,6 +383,8 @@ export function DealerDetailPage({
       </section>
 
       {canManageDealerCredentials && <AdminDealerMarketingTools dealerId={dealer.id} />}
+
+      {canManageDealerCredentials && <DealerCrmIntegrations dealerId={dealer.id} />}
 
       <section className="content-card slug-review-card">
         <div className="content-card__header">
