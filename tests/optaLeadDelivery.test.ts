@@ -62,11 +62,13 @@ test('accepted test response requires leadStatus and testLead, and the request s
   assert.equal(body.campid, 'campaign-test')
   assert.equal(body.auth, 'auth-test')
   assert.equal(body.phone, '5550100199')
-  assert.equal(body.state, 'OH')
   assert.equal(body.zip, '43215')
-  assert.equal(body.price, '0.0')
   assert.equal(body.first, 'Synthetic')
   assert.equal(body.email, 'synthetic.opta.test@example.com')
+  assert.equal(Object.hasOwn(body, 'address'), false)
+  assert.equal(Object.hasOwn(body, 'city'), false)
+  assert.equal(Object.hasOwn(body, 'state'), false)
+  assert.equal(Object.hasOwn(body, 'price'), false)
   assert.equal(Object.hasOwn(body, 'tf'), false)
   assert.doesNotMatch(calls[0].url, /company-test|auth-test/)
 })
@@ -95,24 +97,18 @@ test('unauthorized responses are not treated as accepted', async () => {
   assert.deepEqual(result, { ok: false, disposition: 'unauthorized', httpStatus: 401 })
 })
 
-test('missing required address fields do not send a request', async () => {
+test('missing collected phone or ZIP does not send a request', async () => {
   let called = false
   const transport: OptaTransport = async () => {
     called = true
     return jsonResponse(200, { leadStatus: true, testLead: true })
   }
-  const lead: OptaDeliveryLead = {
-    ...syntheticAmericasBestOptaLead(),
-    address: '   ',
-    city: null,
-    state: null,
-    trustedFormUrl: null,
-  }
+  const lead: OptaDeliveryLead = { ...syntheticAmericasBestOptaLead(), phone: '   ', zip: null }
   const result = await deliverOptaTestLead(lead, credentials, transport)
   assert.equal(called, false)
   assert.equal(result.ok, false)
   if (result.ok || result.disposition !== 'missing_field') return
-  assert.deepEqual(result.missing, ['address', 'city', 'state'])
+  assert.deepEqual(result.missing, ['phone', 'zip'])
 })
 
 test('network failure is reported and is not a successful delivery', async () => {

@@ -12,15 +12,36 @@ import { standardLeadFields, validateCrmCredentials, type TrustedLeadRecord } fr
 export const AMERICAS_BEST_DEALER_SLUG = 'americas-best-windows-and-doors'
 export const OPTA_SUBMIT_URL = 'https://abw.opta.io/ca/submit'
 export const OPTA_TEST_VALUE = 'true'
-/** Documented sample for the required price field. Door Builder does not collect a price. */
+/** Documented sample for the price field. Door Builder does not collect a price, so this is never applied unless a caller sets it explicitly. */
 export const OPTA_DOCUMENTED_SAMPLE_PRICE = '0.0'
 
 export type OptaDeliveryMode = 'test' | 'live'
+export type OptaPresencePolicy = 'omit' | 'require_present'
+export type OptaPricePolicy = 'omit' | 'require_present' | 'configured_default'
+
+/** Unconfirmed Opta fields stay omitted until Opta confirms they can be dropped or a caller sets an explicit policy. */
+export type OptaUnconfirmedFieldPolicy = {
+  address: OptaPresencePolicy
+  city: OptaPresencePolicy
+  state: OptaPresencePolicy
+  price: OptaPricePolicy
+  tf: OptaPresencePolicy
+  priceDefault?: string | null
+}
+
+export const DEFAULT_OPTA_UNCONFIRMED_POLICY: OptaUnconfirmedFieldPolicy = {
+  address: 'omit',
+  city: 'omit',
+  state: 'omit',
+  price: 'omit',
+  tf: 'omit',
+}
 
 export type OptaDeliveryLead = TrustedLeadRecord & {
   dealerSlug: string
   price?: string | null
   notes?: string | null
+  comments?: string | null
   trustedFormUrl?: string | null
   subId1?: string | null
   subId2?: string | null
@@ -38,11 +59,11 @@ export type OptaSubmitBody = {
   last: string
   email: string
   phone: string
-  address: string
-  city: string
-  state: string
   zip: string
-  price: string
+  address?: string
+  city?: string
+  state?: string
+  price?: string
   notes?: string
   lead_id?: string
   tf?: string
@@ -103,6 +124,7 @@ export function buildOptaTestLeadRequest(
   lead: OptaDeliveryLead,
   credentials: Record<string, unknown>,
   mode: OptaDeliveryMode = 'test',
+  policy: OptaUnconfirmedFieldPolicy = DEFAULT_OPTA_UNCONFIRMED_POLICY,
 ): { ready: true; request: OptaPreparedRequest } | Exclude<OptaDeliveryResult, { ok: true }> {
   if (mode !== 'test') return { ok: false, disposition: 'ineligible', reason: 'live_delivery_disabled' }
   if (lead.dealerSlug.trim() !== AMERICAS_BEST_DEALER_SLUG) {
@@ -123,13 +145,13 @@ export function buildOptaTestLeadRequest(
   const last = requiredText(fields.customer.last_name, 'last', missing)
   const email = requiredEmail(fields.customer.email, missing, invalid)
   const phone = requiredPhone(fields.customer.phone, missing, invalid)
-  const address = requiredText(fields.customer.address, 'address', missing)
-  const city = requiredText(fields.customer.city, 'city', missing)
-  const state = requiredState(fields.customer.state, missing, invalid)
   const zip = requiredZip(fields.customer.postal_code, missing, invalid)
-  const price = requiredText(lead.price, 'price', missing)
-  const trustedForm = optionalTrustedForm(lead.trustedFormUrl, invalid)
-  if (missing.length > 0 || invalid.length > 0 || !first || !last || !email || !phone || !address || !city || !state || !zip || !price || trustedForm === 'invalid') {
+  const address = applyPresencePolicy('address', policy.address, presentText(fields.customer.address), missing)
+  const city = applyPresencePolicy('city', policy.city, presentText(fields.customer.city), missing)
+  const state = applyStatePolicy(policy.state, fields.customer.state, missing, invalid)
+  const price = applyPricePolicy(policy, lead.price, missing, invalid)
+  const trustedForm = applyTrustedFormPolicy(policy.tf, lead.trustedFormUrl, missing, invalid)
+  if (missing.length > 0 || invalid.length > 0 || !first || !last || !email || !phone || !zip) {
     return { ok: false, disposition: missing.length > 0 ? 'missing_field' : 'invalid_field', missing, invalid }
   }
 
@@ -143,13 +165,13 @@ export function buildOptaTestLeadRequest(
     last,
     email,
     phone,
-    address,
-    city,
-    state,
     zip,
-    price,
   }
-  const notes = optionalText(lead.notes)
+  if (address) body.address = address
+  if (city) body.city = city
+  if (state) body.state = state
+  if (price) body.price = price
+  const notes = optionalText(lead.notes) ?? optionalText(lead.comments)
   const leadId = optionalText(lead.id)
   const subId1 = optionalText(lead.subId1) ?? optionalText(lead.source)
   const subId2 = optionalText(lead.subId2)
@@ -160,7 +182,7 @@ export function buildOptaTestLeadRequest(
   }
   if (notes) body.notes = notes
   if (leadId) body.lead_id = leadId
-  if (trustedForm) body.tf = trustedForm
+  if (typeof trustedForm === 'string') body.tf = trustedForm
   if (subId1) body.subid1 = subId1
   if (subId2) body.subid2 = subId2
   if (userAgent) body.user_agent = userAgent
@@ -183,8 +205,9 @@ export async function deliverOptaTestLead(
   credentials: Record<string, unknown>,
   transport: OptaTransport,
   mode: OptaDeliveryMode = 'test',
+  policy: OptaUnconfirmedFieldPolicy = DEFAULT_OPTA_UNCONFIRMED_POLICY,
 ): Promise<OptaDeliveryResult> {
-  const prepared = buildOptaTestLeadRequest(lead, credentials, mode)
+  const prepared = buildOptaTestLeadRequest(lead, credentials, mode, policy)
   if (!('ready' in prepared)) return prepared
   if (prepared.request.body.test !== OPTA_TEST_VALUE || prepared.request.url !== OPTA_SUBMIT_URL) {
     return { ok: false, disposition: 'ineligible', reason: 'live_delivery_disabled' }
@@ -235,6 +258,61 @@ async function interpretOptaResponse(response: OptaTransportResponse): Promise<O
   return { ok: false, disposition: 'unexpected_response', httpStatus: response.status, leadStatus, testLead }
 }
 
+function presentText(value: string | null | undefined) {
+  const text = value?.trim() ?? ''
+  return text || null
+}
+
+function applyPresencePolicy(parameter: 'address' | 'city', policy: OptaPresencePolicy, value: string | null, missing: string[]) {
+  if (policy === 'omit') return null
+  if (!value) missing.push(parameter)
+  return value
+}
+
+function applyStatePolicy(policy: OptaPresencePolicy, value: string | null | undefined, missing: string[], invalid: string[]) {
+  if (policy === 'omit') return null
+  const raw = value?.trim() ?? ''
+  if (!raw) {
+    missing.push('state')
+    return null
+  }
+  const code = raw.toUpperCase()
+  if (!/^[A-Z]{2}$/.test(code)) {
+    invalid.push('state')
+    return null
+  }
+  return code
+}
+
+function explicitPrice(value: string | null | undefined) {
+  const text = value?.trim() ?? ''
+  return /^[0-9]+(\.[0-9]{1,2})?$/.test(text) ? text : null
+}
+
+function applyPricePolicy(policy: OptaUnconfirmedFieldPolicy, leadPrice: string | null | undefined, missing: string[], invalid: string[]) {
+  if (policy.price === 'omit') return null
+  const source = policy.price === 'configured_default' ? policy.priceDefault : leadPrice
+  const raw = source?.trim() ?? ''
+  if (!raw) {
+    missing.push('price')
+    return null
+  }
+  const price = explicitPrice(raw)
+  if (!price) invalid.push('price')
+  return price
+}
+
+function applyTrustedFormPolicy(policy: OptaPresencePolicy, value: string | null | undefined, missing: string[], invalid: string[]) {
+  if (policy === 'omit') return null
+  const raw = value?.trim() ?? ''
+  if (!raw) {
+    missing.push('tf')
+    return null
+  }
+  const trustedForm = optionalTrustedForm(raw, invalid)
+  return trustedForm === 'invalid' ? null : trustedForm
+}
+
 function requiredText(value: string | null | undefined, parameter: string, missing: string[]) {
   const text = value?.trim() ?? ''
   if (!text) missing.push(parameter)
@@ -267,20 +345,6 @@ function requiredPhone(value: string | null | undefined, missing: string[], inva
     return null
   }
   return normalized
-}
-
-function requiredState(value: string | null | undefined, missing: string[], invalid: string[]) {
-  const raw = value?.trim() ?? ''
-  if (!raw) {
-    missing.push('state')
-    return null
-  }
-  const code = raw.toUpperCase()
-  if (!/^[A-Z]{2}$/.test(code)) {
-    invalid.push('state')
-    return null
-  }
-  return code
 }
 
 function requiredZip(value: string | null | undefined, missing: string[], invalid: string[]) {
