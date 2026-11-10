@@ -8,6 +8,7 @@ import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
 import { DealerLogoPlacementSettings, type DealerLogoPlacement } from '../components/DealerLogoPlacementSettings'
 import { AdminDealerMarketingTools } from '../components/AdminDealerMarketingTools'
 import { DealerSectionHeader } from '../components/DealerSectionHeader'
+import { DealerDetailSectionNav } from '../components/DealerDetailSectionNav'
 import { DealerCrmIntegrations } from '../components/DealerCrmIntegrations'
 
 const logoExtensions: Record<string, string> = {
@@ -257,9 +258,9 @@ export function DealerDetailPage({
   }
 
   return (
-    <div className="page-content">
+    <div className="page-content dealer-detail-page">
       <header className="page-header admin-page-header dealer-page-header page-header--with-action">
-        <div>
+        <div className="dealer-page-header__copy">
           <p className="eyebrow">Dealer company</p>
           <h1>{dealer.company_name}</h1>
           <a className="dealer-page-header__url" href={getDealerVisualizerDisplayUrl(dealer.slug)} target="_blank" rel="noreferrer">{getDealerVisualizerDisplayUrl(dealer.slug)}</a>
@@ -290,14 +291,10 @@ export function DealerDetailPage({
       {successMessage && <div className="portal-alert portal-alert--success" role="status">{successMessage}</div>}
       {actionError && <div className="portal-alert" role="alert">{actionError}</div>}
 
-      <nav className="dealer-settings-nav" aria-label="Dealer management sections">
-        <a href="#company-details">Company Details</a>
-        <a href="#branding">Branding</a>
-        <a href="#design">Typography &amp; Design</a>
-        {canManageDealerCredentials && <a href="#marketing-tools">Marketing Tools</a>}
-        {canManageDealerCredentials && <a href="#crm-integrations">CRM Integrations</a>}
-        {canManageDealerUsers && <a href="#dealer-users">Dealer Users / Access</a>}
-      </nav>
+      <DealerDetailSectionNav
+        canManageDealerCredentials={canManageDealerCredentials}
+        canManageDealerUsers={canManageDealerUsers}
+      />
 
       {isConfirmingDisable && (
         <section className="disable-confirmation" role="alertdialog" aria-labelledby="disable-title">
@@ -306,6 +303,7 @@ export function DealerDetailPage({
         </section>
       )}
 
+      <div className="dealer-detail-page__sections">
       <section id="company-details" className="content-card dealer-management-card dealer-detail" aria-labelledby="company-details-heading">
         <DealerSectionHeader eyebrow="Company record" title="Company Details" headingId="company-details-heading" description="Core identity, contact information, location, and public links for this dealer." actionLabel="Edit" actionTo={`/admin/dealers/${dealer.id}/edit#company`} onActionClick={onClearSuccess} trailing={<span className={`status-badge ${dealer.is_active ? 'status-badge--active' : 'status-badge--inactive'}`}>{dealer.is_active ? 'Active' : 'Disabled'}</span>} />
         <div className="dealer-detail-groups">
@@ -377,8 +375,8 @@ export function DealerDetailPage({
         onUpdated={(updated) => onDealerUpdated(updated, 'Dealer logo placement saved.')}
       />
 
-      <section id="design" className="content-card dealer-management-card dealer-settings-summary">
-        <DealerSectionHeader eyebrow="Typography & Design" title="Door Builder Design" description="Manage heading and UI fonts, weights, sizes, custom font files, and a live typography preview." actionLabel="Edit design" actionTo={`/admin/dealers/${dealer.id}/edit#design`} onActionClick={onClearSuccess} />
+      <section id="design" className="content-card dealer-management-card dealer-settings-summary" aria-labelledby="design-heading">
+        <DealerSectionHeader eyebrow="Typography & Design" title="Door Builder Design" headingId="design-heading" description="Manage heading and UI fonts, weights, sizes, custom font files, and a live typography preview." actionLabel="Edit design" actionTo={`/admin/dealers/${dealer.id}/edit#design`} onActionClick={onClearSuccess} />
         <div className="dealer-design-preview" aria-hidden="true"><span>Aa</span><div><strong>Build a Door Made for Your Home.</strong><small>Heading and interface typography preview</small></div></div>
       </section>
 
@@ -427,6 +425,7 @@ export function DealerDetailPage({
         )}
       </section>
       {canManageDealerUsers && <DealerUserAccess dealerId={dealer.id} sectionId="dealer-users" canSetPassword={canManageDealerCredentials} />}
+      </div>
     </div>
   )
 }
