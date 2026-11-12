@@ -60,6 +60,49 @@ test('visible dealer detail sections follow the same access flags as the page', 
   )
 })
 
+test('CRM Integrations renders for superadmins and stays hidden for everyone else', () => {
+  const layout = readFileSync('src/components/AdminLayout.tsx', 'utf8')
+  const endpoint = readFileSync('api/dealer-crm-integrations.ts', 'utf8')
+  const users = readFileSync('src/components/DealerUserAccess.tsx', 'utf8')
+  assert.match(layout, /canManageDealerCredentials=\{isBillingAccessManager\}/)
+  assert.match(page, /canManageDealerCredentials=\{canManageDealerCredentials\}/)
+  assert.match(page, /canManageDealerUsers=\{canManageDealerUsers\}/)
+  assert.match(nav, /visibleDealerDetailSections\(\{ canManageDealerCredentials, canManageDealerUsers \}\)/)
+  assert.match(nav, /\{section\.label\}/)
+  assert.match(endpoint, /authorizeBillingAccessManager\(authorization\)/)
+  assert.doesNotMatch(endpoint, /authorizeHgiAdmin|authorizeBillingAccessOperator/)
+  assert.match(page, /\{canManageDealerCredentials && <DealerCrmIntegrations dealerId=\{dealer\.id\} \/>\}/)
+  assert.match(crm, /id="crm-integrations"/)
+  assert.match(crm, />CRM Integrations</)
+  assert.doesNotMatch(page, /slug === ['"]americas-best|company_name === ['"]America/)
+  assert.doesNotMatch(crm, /return null/)
+
+  const superadmin = visibleDealerDetailSections({ canManageDealerCredentials: true, canManageDealerUsers: true })
+  const internalAdmin = visibleDealerDetailSections({ canManageDealerCredentials: false, canManageDealerUsers: true })
+  const plainAdmin = visibleDealerDetailSections({ canManageDealerCredentials: false, canManageDealerUsers: false })
+  assert.ok(superadmin.some((section) => section.id === 'crm-integrations' && section.label === 'CRM Integrations'))
+  assert.equal(internalAdmin.some((section) => section.id === 'crm-integrations'), false)
+  assert.equal(plainAdmin.some((section) => section.id === 'crm-integrations'), false)
+
+  for (const item of superadmin) {
+    const mounted = item.id === 'dealer-users'
+      ? page.includes('sectionId="dealer-users"') && users.includes('id={sectionId}')
+      : item.id === 'marketing-tools'
+        ? marketing.includes(`id="${item.id}"`)
+        : item.id === 'crm-integrations'
+          ? crm.includes(`id="${item.id}"`)
+          : page.includes(`id="${item.id}"`)
+    assert.equal(mounted, true, item.id)
+  }
+})
+
+test('dealer detail nav keeps every authorized item on screen', () => {
+  assert.match(styles, /\.dealer-detail-nav\s*\{[^}]*flex-wrap:\s*wrap/)
+  assert.match(styles, /\.dealer-detail-nav\s*\{[^}]*overflow:\s*visible/)
+  assert.doesNotMatch(styles, /\.dealer-detail-nav\s*\{[^}]*scrollbar-width:\s*none/)
+  assert.doesNotMatch(styles, /\.dealer-detail-nav::-webkit-scrollbar\s*\{[^}]*display:\s*none/)
+})
+
 test('section scroll offset clears the sticky header and nav', () => {
   assert.equal(dealerDetailStickyOffset(0, 52), 64)
   assert.equal(dealerDetailStickyOffset(66, 52), 130)
