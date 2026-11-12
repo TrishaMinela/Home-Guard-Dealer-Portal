@@ -20,10 +20,23 @@ export type SavedOptaCredentialRow = {
   credentials_auth_tag: unknown
 }
 
+export type OptaCredentialReadReason =
+  | 'encryption_key_missing'
+  | 'supabase_not_configured'
+  | 'wrong_supabase_project'
+  | 'supabase_auth_failed'
+  | 'supabase_permission_denied'
+  | 'dealer_not_found'
+  | 'integration_not_found'
+  | 'query_failed'
+  | 'credentials_missing'
+  | 'credentials_invalid'
+
 export type OptaCredentialReport = {
   mode: 'verify-credentials'
   dealerSlug: typeof AMERICAS_BEST_DEALER_SLUG
   provider: 'opta'
+  dealerFound: boolean
   rowFound: boolean
   state: string | null
   credentialsPresent: boolean
@@ -31,14 +44,18 @@ export type OptaCredentialReport = {
   fields: Record<(typeof OPTA_FIELDS)[number], boolean>
   keyVersion: number | null
   optaRequestSent: false
-  reason?: 'encryption_key_missing' | 'supabase_not_configured' | 'wrong_supabase_project' | 'credentials_unreadable' | 'credentials_missing' | 'credentials_invalid'
+  reason?: OptaCredentialReadReason
+  supabaseCode?: string
 }
+
+export type CredentialLookup = { dealerFound: boolean; row: SavedOptaCredentialRow | null }
 
 export function emptyCredentialReport(reason?: OptaCredentialReport['reason']): OptaCredentialReport {
   return {
     mode: 'verify-credentials',
     dealerSlug: AMERICAS_BEST_DEALER_SLUG,
     provider: 'opta',
+    dealerFound: false,
     rowFound: false,
     state: null,
     credentialsPresent: false,
@@ -60,9 +77,39 @@ export function credentialByteaToBase64(value: unknown) {
   return /^[A-Za-z0-9+/]+={0,2}$/.test(trimmed) ? trimmed : null
 }
 
+const SAFE_SUPABASE_CODE = /^[A-Za-z0-9_]{1,32}$/
+
+export function isNewSupabaseApiKey(key: string) {
+  return key.startsWith('sb_publishable_') || key.startsWith('sb_secret_')
+}
+
+/** supabase-js 2.112 sends every key as Authorization Bearer. New sb_secret keys are not JWTs and must stay in the apikey header only. */
+export function fetchWithoutNewKeyBearer(supabaseKey: string, baseFetch: typeof fetch = fetch): typeof fetch {
+  if (!isNewSupabaseApiKey(supabaseKey)) return baseFetch
+  return async (input, init) => {
+    const headers = new Headers(init?.headers)
+    if (headers.get('Authorization')?.startsWith('Bearer sb_')) headers.delete('Authorization')
+    return baseFetch(input, { ...init, headers })
+  }
+}
+
+export function classifySupabaseReadError(error: { code?: unknown; message?: unknown; status?: unknown } | null) {
+  const code = typeof error?.code === 'string' && SAFE_SUPABASE_CODE.test(error.code) ? error.code : undefined
+  const status = typeof error?.status === 'number' ? error.status : undefined
+  const message = typeof error?.message === 'string' ? error.message.toLowerCase() : ''
+  if (code === '42501' || message.includes('permission denied')) {
+    return { reason: 'supabase_permission_denied' as const, ...(code ? { supabaseCode: code } : { supabaseCode: '42501' }) }
+  }
+  if (code === 'PGRST301' || code === 'PGRST302' || status === 401 || message.includes('invalid api key') || message.includes('jwt') || message.includes('unauthorized')) {
+    return { reason: 'supabase_auth_failed' as const, ...(code ? { supabaseCode: code } : {}) }
+  }
+  return { reason: 'query_failed' as const, ...(code ? { supabaseCode: code } : {}) }
+}
+
 export function inspectSavedOptaCredentials(row: SavedOptaCredentialRow | null, encryptionKey: string | undefined): { report: OptaCredentialReport; credentials: Record<string, unknown> | null } {
-  if (!row) return { report: emptyCredentialReport('credentials_missing'), credentials: null }
+  if (!row) return { report: { ...emptyCredentialReport('credentials_missing'), dealerFound: true }, credentials: null }
   const report = emptyCredentialReport()
+  report.dealerFound = true
   report.rowFound = true
   report.state = row.state
   report.keyVersion = row.credential_key_version
@@ -95,18 +142,36 @@ export function savedCredentialReadiness(env: Record<string, string | undefined>
   return { ok: true as const, supabaseUrl }
 }
 
-export async function readAmericasBestOptaCredentialRow(env: Record<string, string | undefined>): Promise<SavedOptaCredentialRow | null> {
+function readFailure(reason: OptaCredentialReadReason, supabaseCode?: string): never {
+  const error = new Error(reason) as Error & { code: OptaCredentialReadReason; supabaseCode?: string }
+  error.code = reason
+  if (supabaseCode) error.supabaseCode = supabaseCode
+  throw error
+}
+
+export async function readAmericasBestOptaCredentialRow(env: Record<string, string | undefined>): Promise<CredentialLookup> {
   const ready = savedCredentialReadiness(env)
-  if (!ready.ok) throw Object.assign(new Error(ready.reason), { code: ready.reason })
-  const admin = createClient(ready.supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY as string, { auth: { persistSession: false, autoRefreshToken: false } })
+  if (!ready.ok) readFailure(ready.reason)
+  const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY as string
+  const admin = createClient(ready.supabaseUrl, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { fetch: fetchWithoutNewKeyBearer(serviceKey) },
+  })
   const { data: dealer, error: dealerError } = await admin.from('dealers').select('id').eq('slug', AMERICAS_BEST_DEALER_SLUG).maybeSingle()
-  if (dealerError || !dealer?.id) throw Object.assign(new Error('credentials_unreadable'), { code: 'credentials_unreadable' })
+  if (dealerError) {
+    const failure = classifySupabaseReadError(dealerError)
+    readFailure(failure.reason, failure.supabaseCode)
+  }
+  if (!dealer?.id) return { dealerFound: false, row: null }
   const { data, error } = await admin
     .from('dealer_crm_integrations')
     .select('id,state,credential_key_version,credentials_ciphertext,credentials_iv,credentials_auth_tag')
     .eq('dealer_id', dealer.id)
     .eq('provider', 'opta')
     .maybeSingle()
-  if (error) throw Object.assign(new Error('credentials_unreadable'), { code: 'credentials_unreadable' })
-  return data
+  if (error) {
+    const failure = classifySupabaseReadError(error)
+    readFailure(failure.reason, failure.supabaseCode)
+  }
+  return { dealerFound: true, row: data }
 }

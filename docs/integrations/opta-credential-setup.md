@@ -49,6 +49,8 @@ Changing the key later does not re-encrypt existing rows. Save credentials only 
 
 This command reads the America's Best Opta row and prints only true/false field flags. It does not send a lead. Vercel will not return a Secret-type `CRM_CREDENTIAL_ENCRYPTION_KEY` from `vercel env pull`. Put that key, `SUPABASE_URL` (`https://udbcnpjtwhmjzpjjhoph.supabase.co`), and `SUPABASE_SERVICE_ROLE_KEY` in a mode `600` file named `.env.opta-verify.local`, which is already gitignored. Delete the file when finished. Do not pass the values as shell arguments.
 
+`SUPABASE_SERVICE_ROLE_KEY` must be the service-role secret: the legacy `service_role` JWT, or a new `sb_secret_` key. The publishable or anon key cannot read the credential columns. A bad key now reports `supabase_auth_failed`. A key that signs in but lacks permission reports `supabase_permission_denied`. A missing dealer reports `dealer_not_found`. Do not wrap values in quotes or leave a trailing space. `@supabase/supabase-js` 2.112.4 accepts `sb_secret_` keys and this check sends them only in the `apikey` header.
+
 ```bash
 node --env-file=.env.opta-verify.local --experimental-strip-types scripts/opta-synthetic-test.ts --verify-credentials
 ```

@@ -1,10 +1,12 @@
 import { leadDeliveryIdempotencyKey } from './dealerCrmIntegration.ts'
 import {
+  classifySupabaseReadError,
+  emptyCredentialReport,
   inspectSavedOptaCredentials,
   readAmericasBestOptaCredentialRow,
   savedCredentialReadiness,
+  type CredentialLookup,
   type OptaCredentialReport,
-  type SavedOptaCredentialRow,
 } from './optaSavedCredentials.ts'
 import {
   AMERICAS_BEST_DEALER_SLUG,
@@ -198,7 +200,7 @@ export async function optaSyntheticTestCli(
   io?: {
     log?: (line: string) => void
     error?: (line: string) => void
-    readCredentialRow?: (env: Record<string, string | undefined>) => Promise<SavedOptaCredentialRow | null>
+    readCredentialRow?: (env: Record<string, string | undefined>) => Promise<CredentialLookup>
   },
 ) {
   const log = io?.log ?? console.log
@@ -252,7 +254,7 @@ export async function optaSyntheticTestCli(
 
 async function verifySavedOptaCredentials(
   env: Record<string, string | undefined>,
-  readCredentialRow?: (env: Record<string, string | undefined>) => Promise<SavedOptaCredentialRow | null>,
+  readCredentialRow?: (env: Record<string, string | undefined>) => Promise<CredentialLookup>,
 ) {
   const loaded = await loadSavedOptaCredentials(env, readCredentialRow)
   return loaded.report
@@ -260,33 +262,25 @@ async function verifySavedOptaCredentials(
 
 async function loadSavedOptaCredentials(
   env: Record<string, string | undefined>,
-  readCredentialRow?: (env: Record<string, string | undefined>) => Promise<SavedOptaCredentialRow | null>,
+  readCredentialRow?: (env: Record<string, string | undefined>) => Promise<CredentialLookup>,
 ): Promise<{ report: OptaCredentialReport; credentials: Record<string, unknown> | null; integrationId: string | null }> {
   const ready = savedCredentialReadiness(env)
-  if (!ready.ok) return { report: emptyReport(ready.reason), credentials: null, integrationId: null }
+  if (!ready.ok) return { report: emptyCredentialReport(ready.reason), credentials: null, integrationId: null }
   try {
-    const row = await (readCredentialRow ?? readAmericasBestOptaCredentialRow)(env)
-    const inspected = inspectSavedOptaCredentials(row, env.CRM_CREDENTIAL_ENCRYPTION_KEY)
-    return { ...inspected, integrationId: row?.id ?? null }
+    const lookup = await (readCredentialRow ?? readAmericasBestOptaCredentialRow)(env)
+    if (!lookup.dealerFound) return { report: { ...emptyCredentialReport('dealer_not_found'), dealerFound: false }, credentials: null, integrationId: null }
+    if (!lookup.row) return { report: { ...emptyCredentialReport('integration_not_found'), dealerFound: true }, credentials: null, integrationId: null }
+    const inspected = inspectSavedOptaCredentials(lookup.row, env.CRM_CREDENTIAL_ENCRYPTION_KEY)
+    return { ...inspected, integrationId: lookup.row.id ?? null }
   } catch (error) {
-    const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : ''
-    const reason = code === 'wrong_supabase_project' || code === 'supabase_not_configured' || code === 'credentials_unreadable' ? code : 'credentials_unreadable'
-    return { report: emptyReport(reason), credentials: null, integrationId: null }
-  }
-}
-
-function emptyReport(reason: OptaCredentialReport['reason']): OptaCredentialReport {
-  return {
-    mode: 'verify-credentials',
-    dealerSlug: 'americas-best-windows-and-doors',
-    provider: 'opta',
-    rowFound: false,
-    state: null,
-    credentialsPresent: false,
-    decrypted: false,
-    fields: { companyId: false, sourceId: false, campaignId: false, authenticationKey: false },
-    keyVersion: null,
-    optaRequestSent: false,
-    ...(reason ? { reason } : {}),
+    const coded = error && typeof error === 'object' && 'code' in error ? String(error.code) : ''
+    const known = coded === 'wrong_supabase_project' || coded === 'supabase_not_configured' || coded === 'dealer_not_found' || coded === 'integration_not_found'
+      || coded === 'supabase_auth_failed' || coded === 'supabase_permission_denied' || coded === 'query_failed'
+    if (known) {
+      const supabaseCode = error && typeof error === 'object' && 'supabaseCode' in error && typeof error.supabaseCode === 'string' ? error.supabaseCode : undefined
+      return { report: { ...emptyCredentialReport(coded), ...(supabaseCode ? { supabaseCode } : {}) }, credentials: null, integrationId: null }
+    }
+    const classified = classifySupabaseReadError(error && typeof error === 'object' ? error as { code?: unknown; message?: unknown; status?: unknown } : null)
+    return { report: { ...emptyCredentialReport(classified.reason), ...(classified.supabaseCode ? { supabaseCode: classified.supabaseCode } : {}) }, credentials: null, integrationId: null }
   }
 }

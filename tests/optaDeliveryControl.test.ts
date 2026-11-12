@@ -4,7 +4,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import test from 'node:test'
 import { encryptCrmCredentials, leadDeliveryIdempotencyKey } from '../api/_lib/dealerCrmIntegration.ts'
-import type { SavedOptaCredentialRow } from '../api/_lib/optaSavedCredentials.ts'
+import { classifySupabaseReadError, fetchWithoutNewKeyBearer, type SavedOptaCredentialRow } from '../api/_lib/optaSavedCredentials.ts'
 import {
   DOOR_BUILDER_OPTA_FIELDS,
   OPTA_AUTOMATIC_DELIVERY_ENABLED,
@@ -202,7 +202,7 @@ test('the manual command dry-runs unless confirmation, the post gate, and saved 
   const io = {
     log: (line: string) => lines.push(line),
     error: (line: string) => lines.push(line),
-    readCredentialRow: async () => savedCredentialRow(envelope),
+    readCredentialRow: async () => ({ dealerFound: true, row: savedCredentialRow(envelope) }),
   }
   const savedEnv = {
     SUPABASE_URL: 'https://udbcnpjtwhmjzpjjhoph.supabase.co',
@@ -248,7 +248,7 @@ test('verify-credentials reports field booleans and does not call Opta', async (
     error: (line) => lines.push(line),
     readCredentialRow: async () => {
       reads += 1
-      return savedCredentialRow(envelope)
+      return { dealerFound: true, row: savedCredentialRow(envelope) }
     },
   })
   assert.equal(result.sent, false)
@@ -270,10 +270,42 @@ test('verify-credentials reports field booleans and does not call Opta', async (
     CRM_CREDENTIAL_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
   }, transportThatThrows(), {
     log: (line) => lines.push(line),
-    readCredentialRow: async () => savedCredentialRow(envelope),
+    readCredentialRow: async () => ({ dealerFound: true, row: savedCredentialRow(envelope) }),
   })
   assert.equal(wrongKey.sent, false)
   assert.match(lines.at(-1) ?? '', /"decrypted":false/)
+})
+
+test('database errors stay distinct and do not echo the provider message', async () => {
+  const lines: string[] = []
+  const env = {
+    SUPABASE_URL: 'https://udbcnpjtwhmjzpjjhoph.supabase.co',
+    SUPABASE_SERVICE_ROLE_KEY: 'service-role-test',
+    CRM_CREDENTIAL_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
+  }
+  const denied = await optaSyntheticTestCli(['--verify-credentials'], env, transportThatThrows(), {
+    log: (line) => lines.push(line),
+    readCredentialRow: async () => {
+      throw { code: '42501', message: 'permission denied for column credentials_ciphertext secret-leak-value' }
+    },
+  })
+  assert.equal(denied.sent, false)
+  const report = JSON.parse(lines.at(-1) ?? '{}') as { reason: string; supabaseCode?: string; rowFound: boolean }
+  assert.equal(report.reason, 'supabase_permission_denied')
+  assert.equal(report.supabaseCode, '42501')
+  assert.equal(report.rowFound, false)
+  assert.equal(lines.at(-1)?.includes('secret-leak-value'), false)
+  assert.deepEqual(classifySupabaseReadError({ code: 'PGRST301', message: 'Invalid API key sb_secret_should_not_print' }), {
+    reason: 'supabase_auth_failed',
+    supabaseCode: 'PGRST301',
+  })
+  const headers = new Headers({ Authorization: 'Bearer sb_secret_example', apikey: 'sb_secret_example' })
+  let sentAuthorization: string | null = 'unset'
+  await fetchWithoutNewKeyBearer('sb_secret_example', async (_input, init) => {
+    sentAuthorization = new Headers(init?.headers).get('Authorization')
+    return new Response('{}')
+  })('https://example.test', { headers })
+  assert.equal(sentAuthorization, null)
 })
 
 function savedCredentialRow(envelope: { ciphertext: string; iv: string; authTag: string; keyVersion: number }): SavedOptaCredentialRow {
