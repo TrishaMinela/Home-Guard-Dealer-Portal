@@ -1,4 +1,11 @@
-import { decryptCrmCredentials, isCrmCredentialEncryptionConfigured, leadDeliveryIdempotencyKey, type EncryptedCredentialEnvelope } from './dealerCrmIntegration.ts'
+import { leadDeliveryIdempotencyKey } from './dealerCrmIntegration.ts'
+import {
+  inspectSavedOptaCredentials,
+  readAmericasBestOptaCredentialRow,
+  savedCredentialReadiness,
+  type OptaCredentialReport,
+  type SavedOptaCredentialRow,
+} from './optaSavedCredentials.ts'
 import {
   AMERICAS_BEST_DEALER_SLUG,
   DEFAULT_OPTA_UNCONFIRMED_POLICY,
@@ -188,7 +195,11 @@ export async function optaSyntheticTestCli(
   argv: string[],
   env: Record<string, string | undefined>,
   transport: OptaTransport,
-  io?: { log?: (line: string) => void; error?: (line: string) => void; readFile?: (path: string) => Promise<string> },
+  io?: {
+    log?: (line: string) => void
+    error?: (line: string) => void
+    readCredentialRow?: (env: Record<string, string | undefined>) => Promise<SavedOptaCredentialRow | null>
+  },
 ) {
   const log = io?.log ?? console.log
   const error = io?.error ?? console.error
@@ -196,8 +207,14 @@ export async function optaSyntheticTestCli(
     error('Refusing to send. Live delivery is disabled.')
     return { exitCode: 2, sent: false as const }
   }
+  const verify = argv.includes('--verify-credentials')
   const send = argv.includes('--send')
   const confirmation = argv.find((arg) => arg.startsWith('--confirm='))?.slice('--confirm='.length)
+  if (verify) {
+    const report = await verifySavedOptaCredentials(env, io?.readCredentialRow)
+    log(JSON.stringify(report))
+    return { exitCode: report.decrypted ? 0 : 2, sent: false as const, report }
+  }
   if (!send) {
     const prepared = buildOptaTestLeadRequest(syntheticAmericasBestOptaLead(), {
       companyId: '<companyId from secure storage>',
@@ -213,30 +230,63 @@ export async function optaSyntheticTestCli(
     error('Refusing to send. Synthetic Opta posts stay disabled until the confirmation flag and OPTA_SYNTHETIC_POST_ENABLED=true are both set.')
     return { exitCode: 2, sent: false as const }
   }
-  const encryptionKey = env.CRM_CREDENTIAL_ENCRYPTION_KEY
-  const envelopeFile = env.OPTA_CREDENTIAL_ENVELOPE_FILE
-  if (!encryptionKey || !isCrmCredentialEncryptionConfigured(encryptionKey) || !envelopeFile || !io?.readFile) {
-    error('Refusing to send. Encrypted Opta credentials are not available to this command.')
-    return { exitCode: 2, sent: false as const }
-  }
-  let credentials: Record<string, unknown>
-  try {
-    const envelope = JSON.parse(await io.readFile(envelopeFile)) as EncryptedCredentialEnvelope
-    credentials = decryptCrmCredentials(envelope, encryptionKey)
-  } catch {
-    error('Refusing to send. Encrypted Opta credentials could not be read.')
-    return { exitCode: 2, sent: false as const }
+  const loaded = await loadSavedOptaCredentials(env, io?.readCredentialRow)
+  if (!loaded.credentials) {
+    error('Refusing to send. Saved Opta credentials could not be verified.')
+    log(JSON.stringify(loaded.report))
+    return { exitCode: 2, sent: false as const, report: loaded.report }
   }
   const logs: OptaSafeLog[] = []
   await runAuthorizedSyntheticOptaTest({
     confirmation,
-    credentials,
+    credentials: loaded.credentials,
     transport,
-    integrationId: env.OPTA_TEST_INTEGRATION_ID?.trim() || 'synthetic-integration',
+    integrationId: env.OPTA_TEST_INTEGRATION_ID?.trim() || loaded.integrationId || 'synthetic-integration',
     logger: (event) => {
       logs.push(event)
       log(JSON.stringify(event))
     },
   })
   return { exitCode: 0, sent: true as const, logs }
+}
+
+async function verifySavedOptaCredentials(
+  env: Record<string, string | undefined>,
+  readCredentialRow?: (env: Record<string, string | undefined>) => Promise<SavedOptaCredentialRow | null>,
+) {
+  const loaded = await loadSavedOptaCredentials(env, readCredentialRow)
+  return loaded.report
+}
+
+async function loadSavedOptaCredentials(
+  env: Record<string, string | undefined>,
+  readCredentialRow?: (env: Record<string, string | undefined>) => Promise<SavedOptaCredentialRow | null>,
+): Promise<{ report: OptaCredentialReport; credentials: Record<string, unknown> | null; integrationId: string | null }> {
+  const ready = savedCredentialReadiness(env)
+  if (!ready.ok) return { report: emptyReport(ready.reason), credentials: null, integrationId: null }
+  try {
+    const row = await (readCredentialRow ?? readAmericasBestOptaCredentialRow)(env)
+    const inspected = inspectSavedOptaCredentials(row, env.CRM_CREDENTIAL_ENCRYPTION_KEY)
+    return { ...inspected, integrationId: row?.id ?? null }
+  } catch (error) {
+    const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : ''
+    const reason = code === 'wrong_supabase_project' || code === 'supabase_not_configured' || code === 'credentials_unreadable' ? code : 'credentials_unreadable'
+    return { report: emptyReport(reason), credentials: null, integrationId: null }
+  }
+}
+
+function emptyReport(reason: OptaCredentialReport['reason']): OptaCredentialReport {
+  return {
+    mode: 'verify-credentials',
+    dealerSlug: 'americas-best-windows-and-doors',
+    provider: 'opta',
+    rowFound: false,
+    state: null,
+    credentialsPresent: false,
+    decrypted: false,
+    fields: { companyId: false, sourceId: false, campaignId: false, authenticationKey: false },
+    keyVersion: null,
+    optaRequestSent: false,
+    ...(reason ? { reason } : {}),
+  }
 }
