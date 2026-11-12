@@ -58,6 +58,9 @@ test('admin drawer locks scroll, traps focus, and closes from Escape or the back
 
 test('admin sidebar is a compact neutral rail and does not restyle the other shells', () => {
   assert.match(css, /\.admin-sidebar \{[\s\S]*width: 252px/)
+  assert.match(css, /\.admin-sidebar \{[\s\S]*position: fixed; top: 0;[\s\S]*height: 100dvh/)
+  assert.match(css, /\.admin-nav \{[\s\S]*overflow-y: auto/)
+  assert.match(css, /\.admin-account \{ flex: 0 0 auto; margin-top: auto/)
   assert.match(css, /\.portal-shell--admin \.portal-main \{ margin-left: 252px; \}/)
   assert.match(css, /@media \(max-width: 960px\)/)
   assert.match(css, /\.admin-nav__link:focus-visible/)

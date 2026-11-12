@@ -1414,11 +1414,12 @@ body.admin-drawer-open { overflow: hidden; overscroll-behavior: none; }
 .portal-shell--admin .portal-main { margin-left: 252px; }
 .admin-topbar { display: none; }
 .admin-sidebar {
-  position: fixed; inset: 0 auto 0 0; z-index: 30; width: 252px; display: flex; flex-direction: column;
+  position: fixed; top: 0; left: 0; z-index: 30; width: 252px; height: 100vh; height: 100dvh;
+  display: flex; flex-direction: column; overflow: hidden;
   padding: 16px 8px 12px; color: #182124; background: #fbfcfc; border-right: 1px solid #e4eae8;
 }
 .admin-sidebar__header {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 8px;
   margin: 0 6px; padding: 2px 6px 14px; border-bottom: 1px solid #e6ebe9;
 }
 .admin-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -1444,7 +1445,7 @@ body.admin-drawer-open { overflow: hidden; overscroll-behavior: none; }
 }
 .admin-sidebar__close:hover { border-color: #b7c4c1; background: #f4f7f6; }
 .admin-nav {
-  flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 12px 6px 16px;
+  flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; padding: 12px 6px 16px;
 }
 .admin-nav__section { display: grid; gap: 2px; }
 .admin-nav__section + .admin-nav__section { margin-top: 18px; }
@@ -1482,7 +1483,7 @@ body.admin-drawer-open { overflow: hidden; overscroll-behavior: none; }
 }
 .admin-nav__child:hover { color: #14201f; background: rgba(24,33,36,.045); }
 .admin-nav__child.is-active { color: #0b5c61; background: rgba(13,102,108,.1); font-weight: 600; box-shadow: inset 2px 0 0 #0d666c; }
-.admin-account { margin-top: auto; padding: 12px 8px 2px; border-top: 1px solid #e6ebe9; }
+.admin-account { flex: 0 0 auto; margin-top: auto; padding: 12px 8px 2px; border-top: 1px solid #e6ebe9; }
 .admin-account__row { display: grid; grid-template-columns: 28px minmax(0,1fr); gap: 8px; align-items: center; }
 .admin-account__avatar {
   width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%;
@@ -1525,8 +1526,8 @@ body.admin-drawer-open { overflow: hidden; overscroll-behavior: none; }
     backdrop-filter: blur(12px);
   }
   .admin-sidebar {
-    z-index: 150; width: min(300px, calc(100vw - 48px)); transform: translateX(-105%);
-    transition: transform 180ms ease; box-shadow: none;
+    z-index: 150; width: min(300px, calc(100vw - 48px)); height: 100dvh; max-height: 100dvh;
+    transform: translateX(-105%); transition: transform 180ms ease; box-shadow: none;
   }
   .admin-sidebar.is-open { transform: translateX(0); box-shadow: 16px 0 48px rgba(16,24,24,.18); }
 }
