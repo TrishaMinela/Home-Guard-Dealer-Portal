@@ -27,7 +27,7 @@ import { NotificationLauncher, type PortalNotification } from './NotificationLau
 const navigation: Array<{ label: string; path: string; icon: string; end?: boolean; internalOnly?: boolean; accessManagerOnly?: boolean }> = [
   { label: 'Dashboard', path: '/admin', icon: 'grid', end: true },
   { label: 'Dealers', path: '/admin/dealers', icon: 'building' },
-  { label: 'Banner Library', path: '/admin/marketing-banners', icon: 'megaphone' },
+  { label: 'Marketing Banners', path: '/admin/marketing-banners', icon: 'megaphone' },
   { label: 'All Leads', path: '/admin/leads', icon: 'users' },
   { label: 'Inventory', path: '/admin/inventory', icon: 'inventory' },
 ]
