@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { useAdminData } from '../hooks/useAdminData'
 import { useAdminNotifications, type PersistedAdminNotification } from '../hooks/useAdminNotifications'
@@ -19,6 +19,7 @@ import { AdminDoorStyleDetailPage } from '../pages/AdminDoorStyleDetailPage'
 import { DealerDetailPage } from '../pages/DealerDetailPage'
 import { EditDealerPage } from '../pages/EditDealerPage'
 import type { AdminDealer } from '../types/admin'
+import { adminAccountInitial, adminRoleLabel } from './adminAccount'
 import { NavIcon } from './NavIcon'
 import { NotificationLauncher, type PortalNotification } from './NotificationLauncher'
 
@@ -29,22 +30,57 @@ const navigation: Array<{ label: string; path: string; icon: string; end?: boole
   { label: 'Inventory', path: '/admin/inventory', icon: 'inventory' },
 ]
 
+const drawerQuery = '(max-width: 960px)'
+const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
 type AdminLayoutProps = {
   email: string
+  displayName?: string
   isInternalBillingAdmin: boolean
   isBillingAccessManager: boolean
   signOutError: string
   onSignOut: () => Promise<void>
 }
 
-export function AdminLayout({ email, isInternalBillingAdmin, isBillingAccessManager, signOutError, onSignOut }: AdminLayoutProps) {
+function useDrawerLayout() {
+  const [isDrawer, setIsDrawer] = useState(() => typeof window !== 'undefined' && window.matchMedia(drawerQuery).matches)
+
+  useEffect(() => {
+    const media = window.matchMedia(drawerQuery)
+    const update = () => setIsDrawer(media.matches)
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
+
+  return isDrawer
+}
+
+export function AdminLayout({ email, displayName = '', isInternalBillingAdmin, isBillingAccessManager, signOutError, onSignOut }: AdminLayoutProps) {
   const location = useLocation()
+  const isDrawer = useDrawerLayout()
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const sidebarRef = useRef<HTMLElement>(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [trackedPath, setTrackedPath] = useState(location.pathname)
+  const [trackedDrawer, setTrackedDrawer] = useState(isDrawer)
+  if (trackedPath !== location.pathname || trackedDrawer !== isDrawer) {
+    setTrackedPath(location.pathname)
+    setTrackedDrawer(isDrawer)
+    if (trackedPath !== location.pathname || !isDrawer) setIsMenuOpen(false)
+  }
   const [isBillingNavOpen, setIsBillingNavOpen] = useState(() => location.pathname.startsWith('/admin/ai-usage') || location.pathname.startsWith('/admin/billing'))
   const [dealerSuccess, setDealerSuccess] = useState('')
   const [dealerDetailSuccess, setDealerDetailSuccess] = useState('')
   const adminData = useAdminData()
   const aiIssueState = useAiAdminIssues()
+  const accountPrimary = displayName.trim() || email.trim()
+  const accountRole = adminRoleLabel(isBillingAccessManager, isInternalBillingAdmin)
+  const accountInitial = adminAccountInitial(accountPrimary)
+  const visibleNavigation = navigation.filter((item) => (!item.internalOnly || isInternalBillingAdmin) && (!item.accessManagerOnly || isBillingAccessManager))
+  const overviewItems = visibleNavigation.filter((item) => item.path === '/admin')
+  const operationItems = visibleNavigation.filter((item) => item.path !== '/admin')
+  const billingSectionActive = location.pathname.startsWith('/admin/ai-usage') || location.pathname.startsWith('/admin/billing')
   const allNotifications: PersistedAdminNotification[] = [
     ...aiIssueState.issues.map((issue) => ({
       id: `ai-issue-${issue.id}`,
@@ -90,6 +126,41 @@ export function AdminLayout({ email, isInternalBillingAdmin, isBillingAccessMana
   ]
   const notificationState = useAdminNotifications(allNotifications)
 
+  useEffect(() => {
+    if (!isDrawer || !isMenuOpen) return
+    const sidebar = sidebarRef.current
+    const restoreFocus = menuButtonRef.current
+    closeButtonRef.current?.focus()
+    document.body.classList.add('admin-drawer-open')
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setIsMenuOpen(false)
+        return
+      }
+      if (event.key !== 'Tab' || !sidebar) return
+      const focusable = [...sidebar.querySelectorAll<HTMLElement>(focusableSelector)].filter((element) => !element.closest('[hidden]'))
+      if (!focusable.length) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.body.classList.remove('admin-drawer-open')
+      restoreFocus?.focus()
+    }
+  }, [isDrawer, isMenuOpen])
+
   function handleNotificationOpen(notification: PortalNotification) {
     const persistedNotification = allNotifications.find((item) => item.id === notification.id)
     if (persistedNotification?.receipt) notificationState.markAsRead(persistedNotification)
@@ -110,97 +181,122 @@ export function AdminLayout({ email, isInternalBillingAdmin, isBillingAccessMana
     setDealerDetailSuccess(message)
   }
 
+  function closeMenu() {
+    setIsMenuOpen(false)
+  }
+
+  const drawerOpen = isDrawer && isMenuOpen
+
   return (
     <div className="portal-shell portal-shell--admin">
-      <header className="mobile-header mobile-header--admin">
-        <div className="brand-lockup brand-lockup--compact">
+      <header className="admin-topbar">
+        <div className="admin-brand admin-brand--bar">
           <div className="brand-mark brand-mark--admin" aria-hidden="true">HG</div>
-          <span className="brand-name">Home Guard Admin</span>
+          <div className="admin-brand__copy">
+            <span className="admin-brand__product">Dealer Portal</span>
+            <span className="admin-brand__org">Home Guard</span>
+          </div>
         </div>
         <button
-          className="menu-button"
+          ref={menuButtonRef}
+          className="admin-menu"
           type="button"
           aria-label="Open navigation"
           aria-expanded={isMenuOpen}
+          aria-controls="admin-sidebar"
           onClick={() => setIsMenuOpen(true)}
         >
           <span /><span /><span />
         </button>
       </header>
 
-      <button
-        className={`sidebar-overlay ${isMenuOpen ? 'is-visible' : ''}`}
-        type="button"
-        aria-label="Close navigation"
-        onClick={() => setIsMenuOpen(false)}
-      />
+      {drawerOpen && (
+        <button className="admin-sidebar__backdrop" type="button" aria-label="Close navigation" tabIndex={-1} onClick={closeMenu} />
+      )}
 
-      <aside className={`sidebar sidebar--admin ${isMenuOpen ? 'is-open' : ''}`}>
-        <div className="sidebar__brand">
-          <div className="brand-lockup">
+      <aside
+        ref={sidebarRef}
+        className={`admin-sidebar ${isMenuOpen ? 'is-open' : ''}`}
+        id="admin-sidebar"
+        aria-label="Dealer Portal admin"
+        role={drawerOpen ? 'dialog' : undefined}
+        aria-modal={drawerOpen ? true : undefined}
+        aria-hidden={isDrawer && !isMenuOpen ? true : undefined}
+        inert={isDrawer && !isMenuOpen ? true : undefined}
+      >
+        <div className="admin-sidebar__header">
+          <div className="admin-brand">
             <div className="brand-mark brand-mark--admin" aria-hidden="true">HG</div>
-            <div>
-              <span className="brand-name">Home Guard</span>
-              <span className="brand-subtitle">Admin</span>
+            <div className="admin-brand__copy">
+              <span className="admin-brand__product" id="admin-sidebar-title">Dealer Portal</span>
+              <span className="admin-brand__org">Home Guard</span>
             </div>
           </div>
-          <button
-            className="sidebar-close"
-            type="button"
-            aria-label="Close navigation"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            ×
-          </button>
+          {isDrawer && (
+            <button ref={closeButtonRef} className="admin-sidebar__close" type="button" aria-label="Close navigation" onClick={closeMenu}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18" /></svg>
+            </button>
+          )}
         </div>
 
-        <nav className="sidebar-nav" aria-label="Home Guard Admin navigation">
-          <span className="sidebar-nav__label">Administration</span>
-          {navigation.filter((item) => (!item.internalOnly || isInternalBillingAdmin) && (!item.accessManagerOnly || isBillingAccessManager)).map((item) => (
-            <NavLink
-              className={({ isActive }) => `sidebar-nav__link ${isActive ? 'is-active' : ''}`}
-              end={item.end}
-              key={item.path}
-              to={item.path}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <NavIcon name={item.icon} />
-              {item.label}
-            </NavLink>
-          ))}
-          <div className={`sidebar-nav__group ${location.pathname.startsWith('/admin/ai-usage') || location.pathname.startsWith('/admin/billing') ? 'is-section-active' : ''}`}>
-            <button className="sidebar-nav__group-toggle" type="button" aria-expanded={isBillingNavOpen} aria-controls="billing-navigation" onClick={() => setIsBillingNavOpen((open) => !open)}>
-              <NavIcon name="billing" />
-              <span>AI Usage &amp; Billing</span>
-              <svg className="sidebar-nav__chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
-            </button>
-            <div className="sidebar-nav__children" id="billing-navigation" hidden={!isBillingNavOpen}>
-              <NavLink className={({ isActive }) => `sidebar-nav__child ${isActive ? 'is-active' : ''}`} to="/admin/ai-usage" onClick={() => setIsMenuOpen(false)}>AI Usage</NavLink>
-              {isInternalBillingAdmin && <NavLink className={({ isActive }) => `sidebar-nav__child ${isActive ? 'is-active' : ''}`} end to="/admin/billing" onClick={() => setIsMenuOpen(false)}>Billing</NavLink>}
-              {(isBillingAccessManager || isInternalBillingAdmin) && <NavLink className={({ isActive }) => `sidebar-nav__child ${isActive ? 'is-active' : ''}`} to="/admin/billing/access" onClick={() => setIsMenuOpen(false)}>Billing Access</NavLink>}
+        <nav className="admin-nav" aria-label="Home Guard Admin navigation">
+          {overviewItems.length > 0 && (
+            <div className="admin-nav__section">
+              <h2 className="admin-nav__label">Overview</h2>
+              {overviewItems.map((item) => (
+                <NavLink className={({ isActive }) => `admin-nav__link ${isActive ? 'is-active' : ''}`} end={item.end} key={item.path} to={item.path} onClick={closeMenu}>
+                  <NavIcon name={item.icon} />
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
+          )}
+          {operationItems.length > 0 && (
+            <div className="admin-nav__section">
+              <h2 className="admin-nav__label">Operations</h2>
+              {operationItems.map((item) => (
+                <NavLink className={({ isActive }) => `admin-nav__link ${isActive ? 'is-active' : ''}`} end={item.end} key={item.path} to={item.path} onClick={closeMenu}>
+                  <NavIcon name={item.icon} />
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
+          )}
+          <div className="admin-nav__section">
+            <h2 className="admin-nav__label">Billing</h2>
+            <div className={`admin-nav__group ${billingSectionActive ? 'is-current' : ''}`}>
+              <button className="admin-nav__toggle" type="button" aria-expanded={isBillingNavOpen} aria-controls="billing-navigation" onClick={() => setIsBillingNavOpen((open) => !open)}>
+                <NavIcon name="billing" />
+                <span>AI Usage &amp; Billing</span>
+                <svg className="admin-nav__chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+              </button>
+              <div className="admin-nav__children" id="billing-navigation" hidden={!isBillingNavOpen}>
+                <NavLink className={({ isActive }) => `admin-nav__child ${isActive ? 'is-active' : ''}`} to="/admin/ai-usage" onClick={closeMenu}>AI Usage</NavLink>
+                {isInternalBillingAdmin && <NavLink className={({ isActive }) => `admin-nav__child ${isActive ? 'is-active' : ''}`} end to="/admin/billing" onClick={closeMenu}>Billing</NavLink>}
+                {(isBillingAccessManager || isInternalBillingAdmin) && <NavLink className={({ isActive }) => `admin-nav__child ${isActive ? 'is-active' : ''}`} to="/admin/billing/access" onClick={closeMenu}>Billing Access</NavLink>}
+              </div>
             </div>
           </div>
-          <NavLink className={({ isActive }) => `sidebar-nav__link ${isActive ? 'is-active' : ''}`} to="/admin/settings" onClick={() => setIsMenuOpen(false)}><NavIcon name="settings" />Settings</NavLink>
+          <div className="admin-nav__section">
+            <h2 className="admin-nav__label">System</h2>
+            <NavLink className={({ isActive }) => `admin-nav__link ${isActive ? 'is-active' : ''}`} to="/admin/settings" onClick={closeMenu}><NavIcon name="settings" /><span>Settings</span></NavLink>
+          </div>
         </nav>
 
-        <div className="sidebar-account sidebar-account--admin">
-          <div className="dealer-avatar dealer-avatar--admin" aria-hidden="true">A</div>
-          <div className="sidebar-account__details">
-            <strong>Home Guard Admin</strong>
-            <span title={email}>{email}</span>
+        <footer className="admin-account">
+          <div className="admin-account__row">
+            <span className="admin-account__avatar" aria-hidden="true">{accountInitial || '·'}</span>
+            <div className="admin-account__meta">
+              <strong title={email || undefined}>{accountPrimary || 'Signed in'}</strong>
+              <span title={accountRole}>{accountRole}</span>
+            </div>
           </div>
-          {signOutError && <p className="message message--error">{signOutError}</p>}
-          <button
-            className="button button--secondary button--full"
-            type="button"
-            onClick={() => void onSignOut()}
-          >
-            Sign Out
-          </button>
-        </div>
+          {signOutError && <p className="message message--error" role="alert">{signOutError}</p>}
+          <button className="admin-account__signout" type="button" onClick={() => void onSignOut()}>Sign Out</button>
+        </footer>
       </aside>
 
-      <main className="portal-main">
+      <main className="portal-main" inert={drawerOpen ? true : undefined}>
         <Routes>
           <Route
             path="/admin"

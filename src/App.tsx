@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import type { AuthError, User } from '@supabase/supabase-js'
 import { BrowserRouter } from 'react-router-dom'
+import { adminDisplayName } from './components/adminAccount'
 import { AdminLayout } from './components/AdminLayout'
 import { BillingClientLayout } from './components/BillingClientLayout'
 import { ForgotPasswordPage } from './components/ForgotPasswordPage'
@@ -128,6 +129,7 @@ function App() {
       <BrowserRouter>
         <AdminLayout
           email={user.email ?? ''}
+          displayName={adminDisplayName(user.user_metadata)}
           isInternalBillingAdmin={access.isInternalBillingAdmin}
           isBillingAccessManager={access.isBillingAccessManager}
           signOutError={error}
