@@ -1,4 +1,5 @@
 import { standardLeadFields, validateCrmCredentials, type TrustedLeadRecord } from './dealerCrmIntegration.ts'
+import { optaDoorConfigurationNotes } from './optaDoorNotes.ts'
 
 /**
  * Server-only Opta test delivery for America's Best Windows & Doors.
@@ -12,14 +13,14 @@ import { standardLeadFields, validateCrmCredentials, type TrustedLeadRecord } fr
 export const AMERICAS_BEST_DEALER_SLUG = 'americas-best-windows-and-doors'
 export const OPTA_SUBMIT_URL = 'https://abw.opta.io/ca/submit'
 export const OPTA_TEST_VALUE = 'true'
-/** Documented sample for the price field. Door Builder does not collect a price, so this is never applied unless a caller sets it explicitly. */
+/** America's Best is not charged per lead. Sent only through the configured_default price policy. */
 export const OPTA_DOCUMENTED_SAMPLE_PRICE = '0.0'
 
 export type OptaDeliveryMode = 'test' | 'live'
 export type OptaPresencePolicy = 'omit' | 'require_present'
 export type OptaPricePolicy = 'omit' | 'require_present' | 'configured_default'
 
-/** Unconfirmed Opta fields stay omitted until Opta confirms they can be dropped or a caller sets an explicit policy. */
+/** Address, city, state, and Trusted Form stay omitted. Price uses the approved America's Best default. */
 export type OptaUnconfirmedFieldPolicy = {
   address: OptaPresencePolicy
   city: OptaPresencePolicy
@@ -33,7 +34,8 @@ export const DEFAULT_OPTA_UNCONFIRMED_POLICY: OptaUnconfirmedFieldPolicy = {
   address: 'omit',
   city: 'omit',
   state: 'omit',
-  price: 'omit',
+  price: 'configured_default',
+  priceDefault: OPTA_DOCUMENTED_SAMPLE_PRICE,
   tf: 'omit',
 }
 
@@ -104,18 +106,38 @@ export function syntheticAmericasBestOptaLead(): OptaDeliveryLead {
     id: '00000000-0000-4000-8000-000000000001',
     dealerId: 'synthetic-dealer',
     dealerSlug: AMERICAS_BEST_DEALER_SLUG,
-    firstName: 'Synthetic',
-    lastName: 'Testlead',
-    email: 'synthetic.opta.test@example.com',
+    firstName: 'Hgi',
+    lastName: 'Synthetic Test',
+    email: 'hgi-synthetic-test@example.com',
     phone: '5550100199',
     address: '100 Test Street',
     city: 'Columbus',
     state: 'OH',
     zip: '43215',
     source: 'door_builder',
-    doorConfiguration: null,
-    price: OPTA_DOCUMENTED_SAMPLE_PRICE,
-    notes: 'HGI Door Builder synthetic Opta test. Not a customer.',
+    doorConfiguration: {
+      schemaVersion: 1,
+      configuration: {
+        doorConfigurationType: 'single',
+        doorLine: 'Smooth-Star',
+        product: { doorType: 'Smooth-Star' },
+        style: { code: 'F101', name: 'Craftsman' },
+        doorFinishType: 'paint',
+        doorFinishColor: 'Black',
+        finish: { name: 'Black', finishType: 'paint' },
+        mainDoorGlass: { name: 'Clear' },
+        grid: { gridLocation: 'No Grids' },
+        hardware: { manufacturer: 'Schlage', style: 'Latitude', finish: 'Matte Black' },
+        doorSwing: { id: 'LHI', name: 'Left Hand Inswing' },
+        sidelitePlacement: 'both',
+        sideliteStyle: 'F101 SL',
+        sideliteGlass: { glass: 'Clear' },
+        jambType: 'timber',
+        jambFinishType: 'paint',
+        jambFinishColor: 'Black',
+      },
+    },
+    comments: 'Synthetic homeowner note. Not a real customer.',
     subId1: 'HGI-AB-door-builder',
   }
 }
@@ -171,7 +193,7 @@ export function buildOptaTestLeadRequest(
   if (city) body.city = city
   if (state) body.state = state
   if (price) body.price = price
-  const notes = optionalText(lead.notes) ?? optionalText(lead.comments)
+  const notes = optaDoorConfigurationNotes(lead.doorConfiguration, optionalText(lead.comments) ?? optionalText(lead.notes))
   const leadId = optionalText(lead.id)
   const subId1 = optionalText(lead.subId1) ?? optionalText(lead.source)
   const subId2 = optionalText(lead.subId2)

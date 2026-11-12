@@ -51,18 +51,20 @@ test('default mapping sends collected Door Builder fields and omits unconfirmed 
   assert.equal('ready' in prepared, true)
   if (!('ready' in prepared)) return
   const body = prepared.request.body
-  assert.equal(body.first, 'Synthetic')
-  assert.equal(body.last, 'Testlead')
-  assert.equal(body.email, 'synthetic.opta.test@example.com')
+  assert.equal(body.first, 'Hgi')
+  assert.equal(body.last, 'Synthetic Test')
+  assert.equal(body.email, 'hgi-synthetic-test@example.com')
   assert.equal(body.phone, '5550100199')
   assert.equal(body.zip, '43215')
-  assert.equal(body.notes, 'HGI Door Builder synthetic Opta test. Not a customer.')
+  assert.equal(body.price, '0.0')
+  assert.match(body.notes ?? '', /Door line: Smooth-Star/)
+  assert.match(body.notes ?? '', /Customer note: Synthetic homeowner note/)
+  assert.doesNotMatch(body.notes ?? '', /\{|schemaVersion/)
   assert.equal(body.lead_id, '00000000-0000-4000-8000-000000000001')
   assert.equal(body.test, 'true')
   assert.equal(Object.hasOwn(body, 'address'), false)
   assert.equal(Object.hasOwn(body, 'city'), false)
   assert.equal(Object.hasOwn(body, 'state'), false)
-  assert.equal(Object.hasOwn(body, 'price'), false)
   assert.equal(Object.hasOwn(body, 'tf'), false)
   assert.equal(DOOR_BUILDER_OPTA_FIELDS.zip, 'customer.postal_code')
   assert.equal(optaPolicyFromFieldMapping({ address: 'customer.email' }).address, 'omit')
@@ -79,7 +81,7 @@ test('require_present blocks missing address data and configured price is explic
   if (missing.disposition !== 'missing_field') return
   assert.deepEqual(missing.missing, ['address', 'city', 'state'])
 
-  const invented = buildOptaTestLeadRequest(lead, credentials, 'test', { ...DEFAULT_OPTA_UNCONFIRMED_POLICY, price: 'configured_default' })
+  const invented = buildOptaTestLeadRequest(lead, credentials, 'test', { ...DEFAULT_OPTA_UNCONFIRMED_POLICY, price: 'configured_default', priceDefault: null })
   assert.equal('ready' in invented, false)
   const explicit = buildOptaTestLeadRequest(lead, credentials, 'test', {
     ...DEFAULT_OPTA_UNCONFIRMED_POLICY,
@@ -130,7 +132,7 @@ test('synthetic authorization never posts without the exact confirmation and ski
   assert.equal(planOptaDuplicateDelivery({ delivery_status: 'test_failed' }).retry, true)
   const logged = logs.join('\n')
   assert.equal(logged.includes('auth-test'), false)
-  assert.equal(logged.includes('synthetic.opta.test@example.com'), false)
+  assert.equal(logged.includes('hgi-synthetic-test@example.com'), false)
   assert.equal(logged.includes('5550100199'), false)
   assert.deepEqual(Object.keys(optaSafeLog(sent)).sort(), ['disposition', 'event', 'httpStatus', 'leadStatus', 'testLead'])
 })
@@ -176,7 +178,7 @@ test('a real lead can draft one sanitized delivery row and a missing lead is not
   assert.equal(draft.delivery_status, 'test_succeeded')
   assert.equal(draft.error_message, null)
   assert.equal(JSON.stringify(draft).includes('auth-test'), false)
-  assert.equal(JSON.stringify(draft).includes('synthetic.opta.test@example.com'), false)
+  assert.equal(JSON.stringify(draft).includes('hgi-synthetic-test@example.com'), false)
   const unsaved: unknown[] = []
   await evaluateOptaDeliveryHook(true, {
     integration: { id: 'integration-test', state: 'test' },
