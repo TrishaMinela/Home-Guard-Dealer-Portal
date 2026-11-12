@@ -32,5 +32,15 @@ export function AdminDealerMarketingTools({ dealerId }: { dealerId: string }) {
 
   if (error) return <section className="content-card dealer-settings-section" id="marketing-tools"><div className="portal-alert" role="alert">{error}</div></section>
   if (!dealer) return <section className="content-card dealer-settings-section" id="marketing-tools"><div className="data-state">Loading Marketing Tools…</div></section>
-  return <section className="dealer-settings-section dealer-admin-marketing" id="marketing-tools"><MarketingToolsPage dealer={dealer} embedded /></section>
+  return (
+    <section className="dealer-settings-section dealer-admin-marketing" id="marketing-tools">
+      <MarketingToolsPage
+        dealer={dealer}
+        embedded
+        logoManagementHref="#branding"
+        logoManagementLabel="Open branding logos"
+        bannerAdminHref="/admin/marketing-banners"
+      />
+    </section>
+  )
 }

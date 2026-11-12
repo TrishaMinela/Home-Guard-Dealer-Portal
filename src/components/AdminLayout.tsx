@@ -17,6 +17,7 @@ import { AdminInventoryReviewPage } from '../pages/AdminInventoryReviewPage'
 import { AdminDoorStylesPage } from '../pages/AdminDoorStylesPage'
 import { AdminDoorStyleDetailPage } from '../pages/AdminDoorStyleDetailPage'
 import { DealerDetailPage } from '../pages/DealerDetailPage'
+import { AdminMarketingBannersPage } from '../pages/AdminMarketingBannersPage'
 import { EditDealerPage } from '../pages/EditDealerPage'
 import type { AdminDealer } from '../types/admin'
 import { adminAccountInitial, adminRoleLabel } from './adminAccount'
@@ -26,6 +27,7 @@ import { NotificationLauncher, type PortalNotification } from './NotificationLau
 const navigation: Array<{ label: string; path: string; icon: string; end?: boolean; internalOnly?: boolean; accessManagerOnly?: boolean }> = [
   { label: 'Dashboard', path: '/admin', icon: 'grid', end: true },
   { label: 'Dealers', path: '/admin/dealers', icon: 'building' },
+  { label: 'Banner Library', path: '/admin/marketing-banners', icon: 'megaphone' },
   { label: 'All Leads', path: '/admin/leads', icon: 'users' },
   { label: 'Inventory', path: '/admin/inventory', icon: 'inventory' },
 ]
@@ -352,6 +354,7 @@ export function AdminLayout({ email, displayName = '', isInternalBillingAdmin, i
               />
             }
           />
+          <Route path="/admin/marketing-banners" element={<AdminMarketingBannersPage dealers={adminData.dealers} />} />
           <Route path="/admin/leads/:leadId?" element={<AdminLeadsPage {...adminData} />} />
           <Route path="/admin/ai-usage" element={<AdminAiUsagePage showInternalDetails={isInternalBillingAdmin} />} />
           <Route path="/admin/billing" element={isInternalBillingAdmin ? <AdminBillingPage showInternalDetails /> : <Navigate to="/admin" replace />} />

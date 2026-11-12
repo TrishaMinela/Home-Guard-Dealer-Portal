@@ -26,7 +26,7 @@ export default async function handler(request: IncomingMessage, response: JsonRe
 
   try {
     const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } })
-    const { data, error } = await admin.from('dealers').select('id,company_name,slug,logo_url,logo_light_url,primary_contact_name,email,phone,website,address,city,state,zip,primary_color,secondary_color,is_active,created_at,requested_slug,slug_request_status,slug_requested_at,heading_font_family,heading_font_weight,heading_font_size,body_font_family,body_font_weight,body_font_size,custom_heading_font_url,custom_heading_font_name,custom_heading_font_weight,custom_body_font_url,custom_body_font_name,custom_body_font_weight').eq('id', dealerId).maybeSingle()
+    const { data, error } = await admin.from('dealers').select('id,company_name,slug,logo_url,logo_light_url,logo_generated_light_url,primary_contact_name,email,phone,website,address,city,state,zip,primary_color,secondary_color,is_active,created_at,requested_slug,slug_request_status,slug_requested_at,heading_font_family,heading_font_weight,heading_font_size,body_font_family,body_font_weight,body_font_size,custom_heading_font_url,custom_heading_font_name,custom_heading_font_weight,custom_body_font_url,custom_body_font_name,custom_body_font_weight').eq('id', dealerId).maybeSingle()
     if (error) throw error
     if (!data) return send(response, 404, { error: 'Dealer not found.' })
     return send(response, 200, { dealer: data })

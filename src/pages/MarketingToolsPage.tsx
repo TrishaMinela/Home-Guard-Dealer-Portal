@@ -2,18 +2,28 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { getDealerVisualizerUrl } from '../config/visualizer'
 import { bannerSizes, bannerTemplates } from '../features/banner-generator/bannerTemplates'
 import { renderBanner } from '../features/banner-generator/bannerRenderer'
+import { MarketingBannerLibrary } from '../components/marketing-banners/MarketingBannerLibrary'
 import type { DealerAccount } from '../types/account'
 
 type MarketingToolsPageProps = {
   dealer: DealerAccount
   embedded?: boolean
+  logoManagementHref?: string
+  logoManagementLabel?: string
+  bannerAdminHref?: string
 }
 
 async function copyText(value: string) {
   await navigator.clipboard.writeText(value)
 }
 
-export function MarketingToolsPage({ dealer, embedded = false }: MarketingToolsPageProps) {
+export function MarketingToolsPage({
+  dealer,
+  embedded = false,
+  logoManagementHref = '/company#dealer-logos',
+  logoManagementLabel = 'Add a logo in Company Profile',
+  bannerAdminHref,
+}: MarketingToolsPageProps) {
   const [sizeId, setSizeId] = useState(bannerSizes[0].id)
   const [templateId, setTemplateId] = useState(bannerTemplates[0].id)
   const [message, setMessage] = useState('')
@@ -162,6 +172,13 @@ export function MarketingToolsPage({ dealer, embedded = false }: MarketingToolsP
           <button className="button button--outline" type="button" onClick={() => void handleCopy(embedCode, 'Embed code copied.')}>Copy Embed Code</button>
         </div>
       </section>
+
+      <MarketingBannerLibrary
+        dealer={dealer}
+        logoManagementHref={logoManagementHref}
+        logoManagementLabel={logoManagementLabel}
+        adminHref={bannerAdminHref}
+      />
     </div>
   )
 }

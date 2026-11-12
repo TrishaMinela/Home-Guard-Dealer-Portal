@@ -279,7 +279,7 @@ export function DealerCompanyProfilePage({
       {message && <div className="portal-alert portal-alert--success" role="status">{message}</div>}
       {error && <div className="portal-alert" role="alert">{error}</div>}
 
-      <div className="profile-logo-grid">
+      <div className="profile-logo-grid" id="dealer-logos">
         <section className="content-card profile-logo-card">
           <div className="profile-logo-preview">
             {dealer.logo_url ? (
