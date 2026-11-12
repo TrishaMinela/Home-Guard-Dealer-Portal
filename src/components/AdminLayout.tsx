@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { useAdminData } from '../hooks/useAdminData'
 import { useAdminNotifications, type PersistedAdminNotification } from '../hooks/useAdminNotifications'
@@ -39,8 +39,22 @@ type AdminLayoutProps = {
 
 export function AdminLayout({ email, isInternalBillingAdmin, isBillingAccessManager, signOutError, onSignOut }: AdminLayoutProps) {
   const location = useLocation()
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isBillingNavOpen, setIsBillingNavOpen] = useState(() => location.pathname.startsWith('/admin/ai-usage') || location.pathname.startsWith('/admin/billing'))
+  const visibleNavigation = navigation.filter((item) => (!item.internalOnly || isInternalBillingAdmin) && (!item.accessManagerOnly || isBillingAccessManager))
+  const overviewNavigation = visibleNavigation.filter((item) => item.end)
+  const workspaceNavigation = visibleNavigation.filter((item) => !item.end)
+
+  useEffect(() => {
+    if (!isMenuOpen) return
+    closeButtonRef.current?.focus()
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setIsMenuOpen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isMenuOpen])
   const [dealerSuccess, setDealerSuccess] = useState('')
   const [dealerDetailSuccess, setDealerDetailSuccess] = useState('')
   const adminData = useAdminData()
@@ -122,6 +136,7 @@ export function AdminLayout({ email, isInternalBillingAdmin, isBillingAccessMana
           type="button"
           aria-label="Open navigation"
           aria-expanded={isMenuOpen}
+          aria-controls="admin-sidebar"
           onClick={() => setIsMenuOpen(true)}
         >
           <span /><span /><span />
@@ -135,7 +150,7 @@ export function AdminLayout({ email, isInternalBillingAdmin, isBillingAccessMana
         onClick={() => setIsMenuOpen(false)}
       />
 
-      <aside className={`sidebar sidebar--admin ${isMenuOpen ? 'is-open' : ''}`}>
+      <aside className={`sidebar sidebar--admin ${isMenuOpen ? 'is-open' : ''}`} id="admin-sidebar">
         <div className="sidebar__brand">
           <div className="brand-lockup">
             <div className="brand-mark brand-mark--admin" aria-hidden="true">HG</div>
@@ -145,6 +160,7 @@ export function AdminLayout({ email, isInternalBillingAdmin, isBillingAccessMana
             </div>
           </div>
           <button
+            ref={closeButtonRef}
             className="sidebar-close"
             type="button"
             aria-label="Close navigation"
@@ -155,32 +171,55 @@ export function AdminLayout({ email, isInternalBillingAdmin, isBillingAccessMana
         </div>
 
         <nav className="sidebar-nav" aria-label="Home Guard Admin navigation">
-          <span className="sidebar-nav__label">Administration</span>
-          {navigation.filter((item) => (!item.internalOnly || isInternalBillingAdmin) && (!item.accessManagerOnly || isBillingAccessManager)).map((item) => (
-            <NavLink
-              className={({ isActive }) => `sidebar-nav__link ${isActive ? 'is-active' : ''}`}
-              end={item.end}
-              key={item.path}
-              to={item.path}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <NavIcon name={item.icon} />
-              {item.label}
-            </NavLink>
-          ))}
-          <div className={`sidebar-nav__group ${location.pathname.startsWith('/admin/ai-usage') || location.pathname.startsWith('/admin/billing') ? 'is-section-active' : ''}`}>
-            <button className="sidebar-nav__group-toggle" type="button" aria-expanded={isBillingNavOpen} aria-controls="billing-navigation" onClick={() => setIsBillingNavOpen((open) => !open)}>
-              <NavIcon name="billing" />
-              <span>AI Usage &amp; Billing</span>
-              <svg className="sidebar-nav__chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
-            </button>
-            <div className="sidebar-nav__children" id="billing-navigation" hidden={!isBillingNavOpen}>
-              <NavLink className={({ isActive }) => `sidebar-nav__child ${isActive ? 'is-active' : ''}`} to="/admin/ai-usage" onClick={() => setIsMenuOpen(false)}>AI Usage</NavLink>
-              {isInternalBillingAdmin && <NavLink className={({ isActive }) => `sidebar-nav__child ${isActive ? 'is-active' : ''}`} end to="/admin/billing" onClick={() => setIsMenuOpen(false)}>Billing</NavLink>}
-              {(isBillingAccessManager || isInternalBillingAdmin) && <NavLink className={({ isActive }) => `sidebar-nav__child ${isActive ? 'is-active' : ''}`} to="/admin/billing/access" onClick={() => setIsMenuOpen(false)}>Billing Access</NavLink>}
+          <div className="sidebar-nav__section">
+            <span className="sidebar-nav__label">Overview</span>
+            {overviewNavigation.map((item) => (
+              <NavLink
+                className={({ isActive }) => `sidebar-nav__link ${isActive ? 'is-active' : ''}`}
+                end={item.end}
+                key={item.path}
+                to={item.path}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <NavIcon name={item.icon} />
+                {item.label}
+              </NavLink>
+            ))}
+          </div>
+          <div className="sidebar-nav__section">
+            <span className="sidebar-nav__label">Workspace</span>
+            {workspaceNavigation.map((item) => (
+              <NavLink
+                className={({ isActive }) => `sidebar-nav__link ${isActive ? 'is-active' : ''}`}
+                end={item.end}
+                key={item.path}
+                to={item.path}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <NavIcon name={item.icon} />
+                {item.label}
+              </NavLink>
+            ))}
+          </div>
+          <div className="sidebar-nav__section">
+            <span className="sidebar-nav__label">Billing</span>
+            <div className={`sidebar-nav__group ${location.pathname.startsWith('/admin/ai-usage') || location.pathname.startsWith('/admin/billing') ? 'is-section-active' : ''}`}>
+              <button className="sidebar-nav__group-toggle" type="button" aria-expanded={isBillingNavOpen} aria-controls="billing-navigation" onClick={() => setIsBillingNavOpen((open) => !open)}>
+                <NavIcon name="billing" />
+                <span>AI Usage &amp; Billing</span>
+                <svg className="sidebar-nav__chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+              </button>
+              <div className="sidebar-nav__children" id="billing-navigation" hidden={!isBillingNavOpen}>
+                <NavLink className={({ isActive }) => `sidebar-nav__child ${isActive ? 'is-active' : ''}`} to="/admin/ai-usage" onClick={() => setIsMenuOpen(false)}>AI Usage</NavLink>
+                {isInternalBillingAdmin && <NavLink className={({ isActive }) => `sidebar-nav__child ${isActive ? 'is-active' : ''}`} end to="/admin/billing" onClick={() => setIsMenuOpen(false)}>Billing</NavLink>}
+                {(isBillingAccessManager || isInternalBillingAdmin) && <NavLink className={({ isActive }) => `sidebar-nav__child ${isActive ? 'is-active' : ''}`} to="/admin/billing/access" onClick={() => setIsMenuOpen(false)}>Billing Access</NavLink>}
+              </div>
             </div>
           </div>
-          <NavLink className={({ isActive }) => `sidebar-nav__link ${isActive ? 'is-active' : ''}`} to="/admin/settings" onClick={() => setIsMenuOpen(false)}><NavIcon name="settings" />Settings</NavLink>
+          <div className="sidebar-nav__section">
+            <span className="sidebar-nav__label">System</span>
+            <NavLink className={({ isActive }) => `sidebar-nav__link ${isActive ? 'is-active' : ''}`} to="/admin/settings" onClick={() => setIsMenuOpen(false)}><NavIcon name="settings" />Settings</NavLink>
+          </div>
         </nav>
 
         <div className="sidebar-account sidebar-account--admin">
