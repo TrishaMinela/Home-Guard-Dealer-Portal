@@ -9,7 +9,7 @@ export type MarketingBannerDefinition = {
   width: number
   height: number
   placement: BannerPlacement
-  /** Approximate region. These are unverified defaults for Phase 1. */
+  /** Approximate logo region. These positions are unverified defaults. */
   region: string
 }
 
@@ -21,7 +21,7 @@ export const MARKETING_BANNERS: readonly MarketingBannerDefinition[] = [
     width: 851,
     height: 315,
     region: 'upper left',
-    placement: { x: 4, y: 8, width: 34, height: 36, padding: 2, maxLogoWidth: null, maxLogoHeight: null },
+    placement: { x: 4, y: 6, width: 30, height: 42, padding: 2, maxLogoWidth: null, maxLogoHeight: null },
   },
   {
     slot: 2,
@@ -29,8 +29,8 @@ export const MARKETING_BANNERS: readonly MarketingBannerDefinition[] = [
     headline: 'Your Home. Your Style. Your Door.',
     width: 851,
     height: 315,
-    region: 'lower right',
-    placement: { x: 62, y: 54, width: 34, height: 38, padding: 2, maxLogoWidth: null, maxLogoHeight: null },
+    region: 'right edge, beside the door',
+    placement: { x: 91, y: 10, width: 7.5, height: 36, padding: 0.5, maxLogoWidth: null, maxLogoHeight: null },
   },
   {
     slot: 3,
@@ -38,8 +38,8 @@ export const MARKETING_BANNERS: readonly MarketingBannerDefinition[] = [
     headline: 'A New Look Starts at Your Door',
     width: 851,
     height: 315,
-    region: 'lower right',
-    placement: { x: 60, y: 56, width: 36, height: 36, padding: 2, maxLogoWidth: null, maxLogoHeight: null },
+    region: 'lower right, below the button',
+    placement: { x: 66, y: 70, width: 30, height: 26, padding: 1.5, maxLogoWidth: null, maxLogoHeight: null },
   },
   {
     slot: 4,
@@ -47,44 +47,44 @@ export const MARKETING_BANNERS: readonly MarketingBannerDefinition[] = [
     headline: 'See Your Vision Come to Life',
     width: 851,
     height: 315,
-    region: 'lower right',
-    placement: { x: 58, y: 50, width: 38, height: 42, padding: 2, maxLogoWidth: null, maxLogoHeight: null },
+    region: 'lower right, below the button',
+    placement: { x: 54, y: 74, width: 42, height: 22, padding: 1.5, maxLogoWidth: null, maxLogoHeight: null },
   },
   {
     slot: 5,
     category: 'square',
     headline: 'Build a Door Made for Your Home',
-    width: 1024,
-    height: 1024,
+    width: 1080,
+    height: 1080,
     region: 'upper area, slightly left of center',
-    placement: { x: 30, y: 6, width: 32, height: 18, padding: 1.5, maxLogoWidth: null, maxLogoHeight: null },
+    placement: { x: 28, y: 4, width: 36, height: 20, padding: 1.5, maxLogoWidth: null, maxLogoHeight: null },
   },
   {
     slot: 6,
     category: 'square',
     headline: 'Your Home. Your Style. Your Door.',
-    width: 1024,
-    height: 1024,
-    region: 'lower left',
-    placement: { x: 5, y: 74, width: 36, height: 20, padding: 1.5, maxLogoWidth: null, maxLogoHeight: null },
+    width: 1080,
+    height: 1080,
+    region: 'upper left, above the headline',
+    placement: { x: 4, y: 2, width: 32, height: 11, padding: 1, maxLogoWidth: null, maxLogoHeight: null },
   },
   {
     slot: 7,
     category: 'square',
     headline: 'A New Look Starts at Your Door',
-    width: 1024,
-    height: 1024,
-    region: 'left side, above the headline',
-    placement: { x: 5, y: 24, width: 32, height: 16, padding: 1.5, maxLogoWidth: null, maxLogoHeight: null },
+    width: 1080,
+    height: 1080,
+    region: 'upper left, above the headline',
+    placement: { x: 2, y: 2, width: 14, height: 15, padding: 1, maxLogoWidth: null, maxLogoHeight: null },
   },
   {
     slot: 8,
     category: 'square',
     headline: 'See Your Vision Come to Life',
-    width: 1024,
-    height: 1024,
+    width: 1080,
+    height: 1080,
     region: 'upper right',
-    placement: { x: 62, y: 6, width: 32, height: 18, padding: 1.5, maxLogoWidth: null, maxLogoHeight: null },
+    placement: { x: 62, y: 5, width: 32, height: 22, padding: 1.5, maxLogoWidth: null, maxLogoHeight: null },
   },
 ]
 
@@ -124,7 +124,7 @@ export type BannerLibraryData = {
   notice: string | null
 }
 
-const FIXTURE_NOTICE = 'Demo templates are shown until Home Guard publishes the final artwork. Logo positions are unverified defaults until an admin sets them.'
+const FIXTURE_NOTICE = 'Logo positions are unverified defaults until an admin sets them.'
 
 function fixtureBanner(definition: MarketingBannerDefinition): ResolvedMarketingBanner {
   return {
@@ -178,7 +178,7 @@ export function resolveMarketingBanners(remote: RemoteBannerInput[] | null): Ban
   return {
     source: 'remote',
     notice: usingDemoArt
-      ? 'Template records are available. Slots without a clean upload still show the labeled demo fixture. Placements stay unverified until an admin marks them.'
+      ? 'Saved template records are in use. Slots without a stored image still use the bundled artwork. Placements stay unverified until an admin marks them.'
       : null,
     templates,
   }

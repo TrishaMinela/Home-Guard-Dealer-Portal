@@ -52,7 +52,7 @@ export function BannerPreviewDialog({
           <div className="mbl-dialog__header">
             <p className="eyebrow">Banner {banner.slot}</p>
             <h2 id={titleId}>{banner.headline}</h2>
-            <p className="mbl-help">{banner.placementLabel}. Demo artwork is labeled until the final template is uploaded.</p>
+            <p className="mbl-help">{banner.placementLabel}.</p>
           </div>
           <div className="mbl-dialog__body">
             <BannerPreviewCanvas templateUrl={banner.imageUrl} logoUrl={logoUrl} placement={banner.placement} label={`${banner.headline} preview`} />

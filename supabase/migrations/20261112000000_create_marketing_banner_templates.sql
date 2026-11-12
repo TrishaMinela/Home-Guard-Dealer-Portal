@@ -1,9 +1,10 @@
 -- Dealer-branded marketing banner templates.
--- Phase 1 seeds eight unverified default logo regions. Do not treat those
--- percentages as final artwork placement. Home Guard admins replace the
--- template image and placement per banner. Dealers can read templates and
--- generate files for their own dealership; they cannot write templates.
--- This migration is intentionally not applied by the Phase 1 change.
+-- Seeds eight unverified logo regions for the supplied final artwork.
+-- Landscape files are 851x315. Square files are 1080x1080.
+-- Do not treat the seeded percentages as a verified placement. Home Guard
+-- admins can replace the stored image and placement per banner. Dealers can
+-- read templates and generate files for their own dealership; they cannot
+-- write templates. This migration is intentionally not applied yet.
 
 create table public.marketing_banner_templates (
   slot smallint primary key check (slot between 1 and 8),
@@ -76,14 +77,14 @@ execute function public.protect_marketing_banner_template();
 insert into public.marketing_banner_templates
   (slot, category, headline, image_path, image_width, image_height, placement, placement_verified)
 values
-  (1, 'landscape', 'Build a Door Made for Your Home', null, 851, 315, '{"x":4,"y":8,"width":34,"height":36,"padding":2,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
-  (2, 'landscape', 'Your Home. Your Style. Your Door.', null, 851, 315, '{"x":62,"y":54,"width":34,"height":38,"padding":2,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
-  (3, 'landscape', 'A New Look Starts at Your Door', null, 851, 315, '{"x":60,"y":56,"width":36,"height":36,"padding":2,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
-  (4, 'landscape', 'See Your Vision Come to Life', null, 851, 315, '{"x":58,"y":50,"width":38,"height":42,"padding":2,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
-  (5, 'square', 'Build a Door Made for Your Home', null, 1024, 1024, '{"x":30,"y":6,"width":32,"height":18,"padding":1.5,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
-  (6, 'square', 'Your Home. Your Style. Your Door.', null, 1024, 1024, '{"x":5,"y":74,"width":36,"height":20,"padding":1.5,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
-  (7, 'square', 'A New Look Starts at Your Door', null, 1024, 1024, '{"x":5,"y":24,"width":32,"height":16,"padding":1.5,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
-  (8, 'square', 'See Your Vision Come to Life', null, 1024, 1024, '{"x":62,"y":6,"width":32,"height":18,"padding":1.5,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false);
+  (1, 'landscape', 'Build a Door Made for Your Home', null, 851, 315, '{"x":4,"y":6,"width":30,"height":42,"padding":2,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
+  (2, 'landscape', 'Your Home. Your Style. Your Door.', null, 851, 315, '{"x":91,"y":10,"width":7.5,"height":36,"padding":0.5,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
+  (3, 'landscape', 'A New Look Starts at Your Door', null, 851, 315, '{"x":66,"y":70,"width":30,"height":26,"padding":1.5,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
+  (4, 'landscape', 'See Your Vision Come to Life', null, 851, 315, '{"x":54,"y":74,"width":42,"height":22,"padding":1.5,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
+  (5, 'square', 'Build a Door Made for Your Home', null, 1080, 1080, '{"x":28,"y":4,"width":36,"height":20,"padding":1.5,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
+  (6, 'square', 'Your Home. Your Style. Your Door.', null, 1080, 1080, '{"x":4,"y":2,"width":32,"height":11,"padding":1,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
+  (7, 'square', 'A New Look Starts at Your Door', null, 1080, 1080, '{"x":2,"y":2,"width":14,"height":15,"padding":1,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
+  (8, 'square', 'See Your Vision Come to Life', null, 1080, 1080, '{"x":62,"y":5,"width":32,"height":22,"padding":1.5,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false);
 
 alter table public.marketing_banner_templates enable row level security;
 

@@ -342,7 +342,7 @@ function EditorPanel({
       {message ? <div className="portal-alert portal-alert--success" role="status">{message}</div> : null}
       {error ? <div className="portal-alert" role="alert">{error}</div> : null}
       <div className="mbl-inline-meta">
-        <span className="mbl-badge">{banner.imageSource === 'fixture' ? 'Demo template' : 'Uploaded template'}</span>
+        {banner.imageSource === 'storage' ? <span className="mbl-badge">Uploaded template</span> : null}
         <span className={`mbl-badge ${verified ? 'mbl-badge--verified' : 'mbl-badge--warning'}`}>{verified ? 'Verified placement' : `Unverified default · ${banner.region}`}</span>
       </div>
       <h2>{banner.slot}. {banner.headline}</h2>

@@ -119,7 +119,7 @@ export function MarketingBannerLibrary({
       <div className="content-card__header">
         <p className="eyebrow">Dealer branding</p>
         <h2 id={`${baseId}-title`}>Banner Library</h2>
-        <p className="mbl-intro">Choose a Home Guard template and place {dealer.company_name}’s existing logo on it. These Phase 1 files are labeled demo templates until final artwork is uploaded.</p>
+        <p className="mbl-intro">Choose a Home Guard template and place {dealer.company_name}’s existing logo on it. Logo positions are unverified defaults until an admin sets them.</p>
       </div>
       <div className="mbl-body">
         {message ? <div className="portal-alert portal-alert--success" role="status">{message}</div> : null}
@@ -178,7 +178,6 @@ export function MarketingBannerLibrary({
                   </div>
                   <div className="mbl-card__body">
                     <div className="mbl-card__meta">
-                      {banner.imageSource === 'fixture' ? <span className="mbl-badge">Demo template</span> : null}
                       <span className={`mbl-badge ${banner.placementVerified ? 'mbl-badge--verified' : 'mbl-badge--warning'}`}>{banner.placementLabel}</span>
                     </div>
                     <h3>{banner.headline}</h3>

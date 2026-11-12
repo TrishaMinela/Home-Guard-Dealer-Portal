@@ -220,7 +220,7 @@ test('catalog headlines, sizes, and unverified default regions are the Phase 1 s
     'See Your Vision Come to Life',
   ])
   for (const banner of MARKETING_BANNERS.slice(0, 4)) assert.deepEqual([banner.width, banner.height], [851, 315])
-  for (const banner of MARKETING_BANNERS.slice(4)) assert.deepEqual([banner.width, banner.height], [1024, 1024])
+  for (const banner of MARKETING_BANNERS.slice(4)) assert.deepEqual([banner.width, banner.height], [1080, 1080])
   assert.match(MARKETING_BANNERS[0]?.region ?? '', /upper left/)
   assert.match(MARKETING_BANNERS[4]?.region ?? '', /left of center/)
   assert.match(MARKETING_BANNERS[6]?.region ?? '', /above the headline/)
