@@ -78,12 +78,12 @@ insert into public.marketing_banner_templates
   (slot, category, headline, image_path, image_width, image_height, placement, placement_verified)
 values
   (1, 'landscape', 'Build a Door Made for Your Home', null, 851, 315, '{"x":4,"y":6,"width":30,"height":42,"padding":2,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
-  (2, 'landscape', 'Your Home. Your Style. Your Door.', null, 851, 315, '{"x":91,"y":10,"width":7.5,"height":36,"padding":0.5,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
+  (2, 'landscape', 'Your Home. Your Style. Your Door.', null, 851, 315, '{"x":90.2,"y":56,"width":8.2,"height":30,"padding":0.4,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
   (3, 'landscape', 'A New Look Starts at Your Door', null, 851, 315, '{"x":66,"y":70,"width":30,"height":26,"padding":1.5,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
   (4, 'landscape', 'See Your Vision Come to Life', null, 851, 315, '{"x":54,"y":74,"width":42,"height":22,"padding":1.5,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
   (5, 'square', 'Build a Door Made for Your Home', null, 1080, 1080, '{"x":28,"y":4,"width":36,"height":20,"padding":1.5,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
-  (6, 'square', 'Your Home. Your Style. Your Door.', null, 1080, 1080, '{"x":4,"y":2,"width":32,"height":11,"padding":1,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
-  (7, 'square', 'A New Look Starts at Your Door', null, 1080, 1080, '{"x":2,"y":2,"width":14,"height":15,"padding":1,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
+  (6, 'square', 'Your Home. Your Style. Your Door.', null, 1080, 1080, '{"x":3,"y":2,"width":42,"height":16,"padding":1.2,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
+  (7, 'square', 'A New Look Starts at Your Door', null, 1080, 1080, '{"x":2,"y":8,"width":17,"height":46,"padding":1,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false),
   (8, 'square', 'See Your Vision Come to Life', null, 1080, 1080, '{"x":62,"y":5,"width":32,"height":22,"padding":1.5,"maxLogoWidth":null,"maxLogoHeight":null}'::jsonb, false);
 
 alter table public.marketing_banner_templates enable row level security;

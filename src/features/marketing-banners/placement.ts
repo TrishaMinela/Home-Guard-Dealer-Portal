@@ -153,7 +153,8 @@ export function containLogoRect(input: {
   if (input.logoWidth <= 0 || input.logoHeight <= 0 || maxWidth <= 0 || maxHeight <= 0) {
     return { x: innerX, y: innerY, width: 0, height: 0 }
   }
-  const fit = Math.min(maxWidth / input.logoWidth, maxHeight / input.logoHeight)
+  // Cap at the preview scale so a logo is never drawn larger than its native pixels.
+  const fit = Math.min(maxWidth / input.logoWidth, maxHeight / input.logoHeight, scale)
   const width = input.logoWidth * fit
   const height = input.logoHeight * fit
   return {

@@ -47,7 +47,7 @@ test('contain-fit centers wide, tall, and square logos inside the padded rectang
   const shared = { placement: samplePlacement, imageWidth: 1000, imageHeight: 500 }
   closeRect(containLogoRect({ ...shared, logoWidth: 800, logoHeight: 100 }), { x: 120, y: 202.5, width: 360, height: 45 })
   closeRect(containLogoRect({ ...shared, logoWidth: 100, logoHeight: 800 }), { x: 286.875, y: 120, width: 26.25, height: 210 })
-  closeRect(containLogoRect({ ...shared, logoWidth: 200, logoHeight: 200 }), { x: 195, y: 120, width: 210, height: 210 })
+  closeRect(containLogoRect({ ...shared, logoWidth: 200, logoHeight: 200 }), { x: 200, y: 125, width: 200, height: 200 })
 })
 
 test('transparent logos use the same rectangle as an opaque logo with the same pixel size', () => {
@@ -56,6 +56,14 @@ test('transparent logos use the same rectangle as an opaque logo with the same p
   const transparent = containLogoRect(shared)
   closeRect(transparent, opaque)
   assert.ok(opaque.width > 0 && opaque.height > 0)
+})
+
+test('a small logo stays at its native size and is centered in the box', () => {
+  const placement = { x: 10, y: 10, width: 80, height: 80, padding: 0, maxLogoWidth: null, maxLogoHeight: null }
+  const rect = containLogoRect({ placement, imageWidth: 1000, imageHeight: 1000, logoWidth: 120, logoHeight: 40 })
+  closeRect(rect, { x: 100 + (800 - 120) / 2, y: 100 + (800 - 40) / 2, width: 120, height: 40 })
+  const preview = containLogoRect({ placement, imageWidth: 1000, imageHeight: 1000, logoWidth: 120, logoHeight: 40, scale: 0.5 })
+  closeRect(preview, { x: rect.x * 0.5, y: rect.y * 0.5, width: 60, height: 20 })
 })
 
 test('optional max logo dimensions cap the fitted logo and keep it centered', () => {
