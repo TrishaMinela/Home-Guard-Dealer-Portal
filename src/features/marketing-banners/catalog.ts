@@ -29,8 +29,8 @@ export const MARKETING_BANNERS: readonly MarketingBannerDefinition[] = [
     headline: 'Your Home. Your Style. Your Door.',
     width: 851,
     height: 315,
-    region: 'lower right, on the brick beside the door',
-    placement: { x: 90.2, y: 56, width: 8.2, height: 30, padding: 0.4, maxLogoWidth: null, maxLogoHeight: null },
+    region: 'lower-right brick; too narrow for a wide logo',
+    placement: { x: 90.01, y: 50.16, width: 9.4, height: 24.13, padding: 0.4, maxLogoWidth: null, maxLogoHeight: null },
   },
   {
     slot: 3,
@@ -75,7 +75,7 @@ export const MARKETING_BANNERS: readonly MarketingBannerDefinition[] = [
     width: 1080,
     height: 1080,
     region: 'left side, above the headline',
-    placement: { x: 2, y: 8, width: 17, height: 46, padding: 1, maxLogoWidth: null, maxLogoHeight: null },
+    placement: { x: 0.8, y: 44, width: 18.5, height: 13, padding: 0.6, maxLogoWidth: null, maxLogoHeight: null },
   },
   {
     slot: 8,

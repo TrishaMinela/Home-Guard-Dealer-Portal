@@ -66,6 +66,20 @@ test('a small logo stays at its native size and is centered in the box', () => {
   closeRect(preview, { x: rect.x * 0.5, y: rect.y * 0.5, width: 60, height: 20 })
 })
 
+test('catalog boxes never draw a small logo larger than its native pixels', () => {
+  for (const banner of MARKETING_BANNERS) {
+    const rect = containLogoRect({
+      placement: banner.placement,
+      imageWidth: banner.width,
+      imageHeight: banner.height,
+      logoWidth: 120,
+      logoHeight: 40,
+    })
+    assert.ok(rect.width <= 120.001 && rect.height <= 40.001, `slot ${banner.slot} upscaled a 120x40 logo to ${rect.width}x${rect.height}`)
+    assert.ok(rect.width > 0 && rect.height > 0)
+  }
+})
+
 test('optional max logo dimensions cap the fitted logo and keep it centered', () => {
   const capped = containLogoRect({
     placement: { ...samplePlacement, maxLogoWidth: 20, maxLogoHeight: null },
