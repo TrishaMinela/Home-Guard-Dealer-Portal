@@ -118,7 +118,7 @@ export function MarketingBannerLibrary({
     <section className="content-card mbl" aria-labelledby={`${baseId}-title`}>
       <div className="content-card__header">
         <p className="eyebrow">Dealer branding</p>
-        <h2 id={`${baseId}-title`}>Banner Library</h2>
+        <h2 id={`${baseId}-title`}>Marketing Banner Library</h2>
         <p className="mbl-intro">Choose a Home Guard template and place {dealer.company_name}’s existing logo on it. Logo positions are unverified defaults until an admin sets them.</p>
       </div>
       <div className="mbl-body">
@@ -143,7 +143,7 @@ export function MarketingBannerLibrary({
               </button>
             ))}
           </div>
-          {adminHref ? <Link className="mbl-admin-link" to={adminHref}>Edit template placements</Link> : null}
+          {adminHref ? <Link className="button button--outline" to={adminHref}>Manage Banner Templates</Link> : null}
         </div>
         <div role="tabpanel" id={`${baseId}-panel`} aria-labelledby={`${baseId}-tab-${category}`}>
           {status === 'loading' ? <div className="mbl-grid mbl-grid--landscape" role="status">{[0, 1, 2, 3].map((item) => <div className="mbl-skeleton" key={item} />)}</div> : null}

@@ -39,6 +39,8 @@ test('admin navigation keeps the existing destinations and permission gates', ()
   assert.match(layout, /canManageAdministrators=\{isBillingAccessManager\}/)
   assert.match(layout, /path="\/admin\/ai-usage"/)
   assert.match(layout, /Sign Out/)
+  assert.doesNotMatch(layout, /label: 'Marketing Banners'/)
+  assert.match(layout, /path="\/admin\/marketing-banners"/)
 })
 
 test('admin drawer locks scroll, traps focus, and closes from Escape or the backdrop', () => {
