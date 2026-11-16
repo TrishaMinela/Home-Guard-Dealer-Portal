@@ -80,6 +80,7 @@ export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrate
         }
         if (changed) onHydratedRef.current?.({ ...current, ...fields })
       })
+      .catch(() => undefined)
     return () => {
       active = false
     }
