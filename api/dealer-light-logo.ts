@@ -43,7 +43,7 @@ export default async function handler(request: IncomingMessage, response: JsonRe
 
     const [homeGuard, membership, dealerResult] = await Promise.all([
       admin.from('home_guard_admins').select('id').eq('user_id', userData.user.id).maybeSingle(),
-      admin.from('dealer_users').select('id').eq('user_id', userData.user.id).eq('dealer_id', body.dealerId).maybeSingle(),
+      admin.from('dealer_users').select('id').eq('user_id', userData.user.id).eq('dealer_id', body.dealerId).eq('role', 'dealer_admin').maybeSingle(),
       admin.from('dealers').select('id,logo_url').eq('id', body.dealerId).maybeSingle(),
     ])
     const lookupError = homeGuard.error ?? membership.error ?? dealerResult.error

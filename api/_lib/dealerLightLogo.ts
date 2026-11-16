@@ -11,11 +11,24 @@ export type GeneratedWhiteLogo = {
   usable: boolean
 }
 
+const SOURCE_LOGO_PATH = /^\/storage\/v1\/object\/public\/dealer-logos\/([^/]+)\/(logo|logo-source)\.(png|jpg|jpeg|webp)$/
+
 export function validatePrimaryLogoUrl(value: string, dealerId: string, supabaseUrl: string): URL {
   const logoUrl = new URL(value)
   const expectedOrigin = new URL(supabaseUrl).origin
-  const expectedPrefix = `/storage/v1/object/public/dealer-logos/${dealerId}/logo.`
-  if (logoUrl.origin !== expectedOrigin || !decodeURIComponent(logoUrl.pathname).startsWith(expectedPrefix)) {
+  const path = decodeURIComponent(logoUrl.pathname)
+  const match = path.match(SOURCE_LOGO_PATH)
+  const allowedQuery = logoUrl.search === '' || /^\?v=[0-9]+$/.test(logoUrl.search)
+  if (
+    logoUrl.protocol !== 'https:'
+    || logoUrl.origin !== expectedOrigin
+    || logoUrl.username
+    || logoUrl.password
+    || logoUrl.hash
+    || !match
+    || match[1] !== dealerId
+    || !allowedQuery
+  ) {
     throw new Error('Primary logo is not an approved dealer-logo asset.')
   }
   return logoUrl

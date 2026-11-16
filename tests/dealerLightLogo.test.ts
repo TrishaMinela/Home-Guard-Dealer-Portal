@@ -52,6 +52,31 @@ test('primary-logo URL validation prevents external fetches and cross-dealer acc
     'dealer-1',
     projectUrl,
   ))
+  assert.doesNotThrow(() => validatePrimaryLogoUrl(
+    'https://udbcnpjtwhmjzpjjhoph.supabase.co/storage/v1/object/public/dealer-logos/26d3286e-954c-4e4b-b8ef-9372825c3d79/logo.webp?v=1793396742763',
+    '26d3286e-954c-4e4b-b8ef-9372825c3d79',
+    'https://udbcnpjtwhmjzpjjhoph.supabase.co',
+  ))
+  assert.doesNotThrow(() => validatePrimaryLogoUrl(
+    'https://example.supabase.co/storage/v1/object/public/dealer-logos/dealer-1/logo-source.png?v=1794860040546',
+    'dealer-1',
+    projectUrl,
+  ))
+  assert.throws(() => validatePrimaryLogoUrl(
+    'https://example.supabase.co/storage/v1/object/public/dealer-logos/dealer-1/logo-light.png',
+    'dealer-1',
+    projectUrl,
+  ))
+  assert.throws(() => validatePrimaryLogoUrl(
+    'https://example.supabase.co/storage/v1/object/public/dealer-logos/dealer-1/logo-generated-light.png?v=1',
+    'dealer-1',
+    projectUrl,
+  ))
+  assert.throws(() => validatePrimaryLogoUrl(
+    'https://example.supabase.co/storage/v1/object/public/dealer-logos/dealer-1/logo.png?v=1&next=https://evil.example',
+    'dealer-1',
+    projectUrl,
+  ))
 })
 
 test('Portal light-logo UI preserves custom override and generated fallback controls', async () => {
@@ -110,4 +135,7 @@ test('light-logo generation stores the readability flag and does not replace the
   assert.match(api, /logo_generated_light_usable: generated\.usable/)
   assert.doesNotMatch(api, /logo_url:/)
   assert.doesNotMatch(api, /update\(\{[^}]*\blogo_url\b/)
+  assert.match(api, /from\('home_guard_admins'\)/)
+  assert.match(api, /\.eq\('dealer_id', body\.dealerId\)\.eq\('role', 'dealer_admin'\)/)
+  assert.match(api, /if \(!homeGuard\.data && !membership\.data\) return send\(response, 403/)
 })
