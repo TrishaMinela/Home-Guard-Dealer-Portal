@@ -54,12 +54,13 @@ export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrate
     setHeader(normalizeLogoVariant(dealerRef.current.logo_header_variant))
     setPages(normalizeLogoVariant(dealerRef.current.logo_pages_variant))
     let active = true
-    void supabase
-      .from('dealers')
-      .select('logo_header_variant, logo_pages_variant, logo_generated_light_usable')
-      .eq('id', dealer.id)
-      .maybeSingle()
-      .then(({ data, error: loadError }) => {
+    void (async () => {
+      try {
+        const { data, error: loadError } = await supabase
+          .from('dealers')
+          .select('logo_header_variant, logo_pages_variant, logo_generated_light_usable')
+          .eq('id', dealer.id)
+          .maybeSingle()
         if (!active || loadError || !data) return
         const fields: VariantFields = {
           logo_header_variant: normalizeLogoVariant(data.logo_header_variant),
@@ -79,8 +80,10 @@ export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrate
           setPages(fields.logo_pages_variant)
         }
         if (changed) onHydratedRef.current?.({ ...current, ...fields })
-      })
-      .catch(() => undefined)
+      } catch {
+        // The columns are absent until the migration is applied.
+      }
+    })()
     return () => {
       active = false
     }

@@ -69,6 +69,35 @@ export function resolveVariantLogoUrl(dealer: DealerLogoVariantSource, variant: 
   return null
 }
 
+export type DoorBuilderLegacySurface = 'dark-header' | 'light-surface' | 'hero'
+
+/**
+ * Door Builder PR #11 keeps today's logo when logo_header_variant or
+ * logo_pages_variant is null. A null usable flag still counts as the legacy
+ * generated light logo there. The Portal does not offer that file until the
+ * flag is true.
+ */
+export function doorBuilderLegacyLightLogo(dealer: DealerLogoVariantSource) {
+  const custom = cleanUrl(dealer.logo_light_url)
+  if (custom) return custom
+  if (dealer.logo_generated_light_usable === false) return null
+  return cleanUrl(dealer.logo_generated_light_url)
+}
+
+export function doorBuilderLogoWhenVariantUnset(dealer: DealerLogoVariantSource, surface: DoorBuilderLegacySurface) {
+  const light = doorBuilderLegacyLightLogo(dealer)
+  const original = cleanUrl(dealer.logo_url)
+  if (surface === 'dark-header') return light || original
+  return original || light
+}
+
+export function logoVariantWrite(header: DealerLogoVariant | null, pages: DealerLogoVariant | null) {
+  return {
+    logo_header_variant: normalizeLogoVariant(header),
+    logo_pages_variant: normalizeLogoVariant(pages),
+  }
+}
+
 export function generatedLightLogoMessage(usable: boolean | null, source: 'primary' | 'regenerate') {
   if (usable === true) {
     return source === 'primary'

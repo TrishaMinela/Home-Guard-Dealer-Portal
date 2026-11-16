@@ -5,6 +5,7 @@ export type DealerLogoSource = {
   logo_url: string | null
   logo_light_url: string | null
   logo_generated_light_url?: string | null
+  logo_generated_light_usable?: boolean | null
 }
 
 export type DealerLogoVariantId = 'primary' | 'light-custom' | 'light-generated'
@@ -21,11 +22,23 @@ function cleanUrl(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null
 }
 
+export function automaticBannerLogo(dealer: DealerLogoSource): string | null {
+  const customLight = cleanUrl(dealer.logo_light_url)
+  if (customLight) return customLight
+  if (dealer.logo_generated_light_usable === true) {
+    const generatedLight = cleanUrl(dealer.logo_generated_light_url)
+    if (generatedLight) return generatedLight
+  }
+  return cleanUrl(dealer.logo_url)
+}
+
 export function dealerLogoVariants(dealer: DealerLogoSource): DealerLogoVariant[] {
   const variants: DealerLogoVariant[] = []
   const primary = cleanUrl(dealer.logo_url)
   const customLight = cleanUrl(dealer.logo_light_url)
-  const generatedLight = cleanUrl(dealer.logo_generated_light_url)
+  const generatedLight = dealer.logo_generated_light_usable === true
+    ? cleanUrl(dealer.logo_generated_light_url)
+    : null
   if (primary) {
     variants.push({
       id: 'primary',

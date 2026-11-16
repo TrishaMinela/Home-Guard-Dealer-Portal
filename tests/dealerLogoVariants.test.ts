@@ -5,6 +5,10 @@ import {
   DOOR_BUILDER_PAGE_BACKGROUND,
   coloredLogoNeedsNeutralPlate,
   doorBuilderColor,
+  doorBuilderLegacyLightLogo,
+  doorBuilderLogoWhenVariantUnset,
+  logoVariantWrite,
+  normalizeLogoVariant,
   resolveLightLogoUrl,
   resolveVariantLogoUrl,
 } from '../src/utils/dealerLogoVariants.ts'
@@ -43,8 +47,56 @@ test('logo variant migration adds nullable choices without backfilling rows', as
   assert.match(migration, /check \(logo_pages_variant in \('original', 'light'\)\)/)
   assert.match(migration, /role = 'dealer_admin'/)
   assert.match(migration, /grant execute on function public\.update_my_dealer_logo_variants\(uuid, text, text\) to authenticated/)
-  assert.doesNotMatch(migration, /update\s+public\.dealers\s+set(?![\s\S]*logo_header_variant = v_header)/i)
-  assert.doesNotMatch(migration, /update public\.dealers\s+set\s+logo_header_variant\s*=\s*'/)
+  const executable = migration.replace(/--[^\n]*/g, '')
+  const updates = executable.match(/update\s+public\.dealers[\s\S]*?;/gi) ?? []
+  assert.equal(updates.length, 1)
+  assert.match(updates[0] ?? '', /logo_header_variant = v_header/)
+  assert.match(updates[0] ?? '', /logo_pages_variant = v_pages/)
+  assert.doesNotMatch(updates[0] ?? '', /logo_url|primary_color|secondary_color|logo_placement|logo_light_url|logo_generated_light_url/)
+  assert.doesNotMatch(executable, /update\s+public\.dealers[\s\S]*where\s+true|update\s+public\.dealers\s+set[^;]*logo_header_variant\s*=\s*'/)
+})
+
+test('null logo variants keep the Door Builder legacy choice and the Portal does not invent one', () => {
+  const dealer = {
+    logo_url: 'https://cdn.example/original.png',
+    logo_light_url: null,
+    logo_generated_light_url: 'https://cdn.example/generated.png',
+    logo_generated_light_usable: null as boolean | null,
+    logo_header_variant: null,
+    logo_pages_variant: null,
+    secondary_color: '#40454c',
+  }
+  assert.equal(normalizeLogoVariant(null), null)
+  assert.equal(normalizeLogoVariant(undefined), null)
+  assert.equal(normalizeLogoVariant('automatic'), null)
+  assert.deepEqual(logoVariantWrite(null, null), { logo_header_variant: null, logo_pages_variant: null })
+  assert.equal(resolveVariantLogoUrl(dealer, null), null)
+  assert.equal(resolveLightLogoUrl(dealer), null)
+  assert.equal(doorBuilderLegacyLightLogo(dealer), 'https://cdn.example/generated.png')
+  assert.equal(doorBuilderLogoWhenVariantUnset(dealer, 'dark-header'), 'https://cdn.example/generated.png')
+  assert.equal(doorBuilderLogoWhenVariantUnset(dealer, 'light-surface'), 'https://cdn.example/original.png')
+  assert.equal(doorBuilderLogoWhenVariantUnset(dealer, 'hero'), 'https://cdn.example/original.png')
+  assert.equal(doorBuilderLegacyLightLogo({ ...dealer, logo_generated_light_usable: false }), null)
+  assert.equal(doorBuilderLogoWhenVariantUnset({ ...dealer, logo_generated_light_usable: false }, 'dark-header'), 'https://cdn.example/original.png')
+  assert.equal(resolveVariantLogoUrl({ ...dealer, logo_generated_light_usable: true }, 'light'), 'https://cdn.example/generated.png')
+  assert.equal(resolveVariantLogoUrl({ ...dealer, logo_header_variant: 'original' }, null), null)
+})
+
+test('admin and dealer branding settings share the same choices and saved fields', async () => {
+  const component = await readFile(new URL('../src/components/DealerLogoVariantSettings.tsx', import.meta.url), 'utf8')
+  const detail = await readFile(new URL('../src/pages/DealerDetailPage.tsx', import.meta.url), 'utf8')
+  const profile = await readFile(new URL('../src/pages/DealerCompanyProfilePage.tsx', import.meta.url), 'utf8')
+  for (const page of [detail, profile]) {
+    assert.match(page, /<DealerLogoVariantSettings/)
+    assert.match(page, /logoVariantWrite\(variants\.header, variants\.pages\)/)
+    assert.doesNotMatch(page, /Homepage\/Header Logo|Normal Pages Logo|Original Colored Logo|White\/Light Logo/)
+  }
+  assert.match(component, /choice\.value === 'light' && !lightAvailable/)
+  assert.match(detail, /\.update\(written\)/)
+  assert.match(profile, /p_logo_header_variant: written\.logo_header_variant/)
+  assert.match(profile, /p_logo_pages_variant: written\.logo_pages_variant/)
+  assert.deepEqual(logoVariantWrite('original', 'light'), { logo_header_variant: 'original', logo_pages_variant: 'light' })
+  assert.deepEqual(logoVariantWrite(null, 'light'), { logo_header_variant: null, logo_pages_variant: 'light' })
 })
 
 test('branding settings expose independent homepage and pages logo choices', async () => {
@@ -56,6 +108,6 @@ test('branding settings expose independent homepage and pages logo choices', asy
   assert.match(component, /Original Colored Logo/)
   assert.match(component, /White\/Light Logo/)
   assert.match(component, /DOOR_BUILDER_PAGE_BACKGROUND/)
-  assert.match(detail, /logo_header_variant: variants\.header/)
+  assert.match(detail, /logoVariantWrite\(variants\.header, variants\.pages\)/)
   assert.match(profile, /update_my_dealer_logo_variants/)
 })

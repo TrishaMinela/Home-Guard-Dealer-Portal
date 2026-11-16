@@ -7,7 +7,7 @@ import { DealerUserAccess } from '../components/DealerUserAccess'
 import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
 import { DealerLogoPlacementSettings, type DealerLogoPlacement } from '../components/DealerLogoPlacementSettings'
 import { DealerLogoVariantSettings } from '../components/DealerLogoVariantSettings'
-import { generatedLightLogoMessage, lightLogoEyebrow, type DealerLogoVariant } from '../utils/dealerLogoVariants'
+import { generatedLightLogoMessage, lightLogoEyebrow, logoVariantWrite, type DealerLogoVariant } from '../utils/dealerLogoVariants'
 import { AdminDealerMarketingTools } from '../components/AdminDealerMarketingTools'
 import { DealerSectionHeader } from '../components/DealerSectionHeader'
 import { DealerDetailSectionNav } from '../components/DealerDetailSectionNav'
@@ -244,19 +244,13 @@ export function DealerDetailPage({
 
   async function saveLogoVariants(variants: { header: DealerLogoVariant | null; pages: DealerLogoVariant | null }) {
     if (!dealer) throw new Error('Dealer not found.')
+    const written = logoVariantWrite(variants.header, variants.pages)
     const { error: updateError } = await supabase
       .from('dealers')
-      .update({
-        logo_header_variant: variants.header,
-        logo_pages_variant: variants.pages,
-      })
+      .update(written)
       .eq('id', dealer.id)
     if (updateError) throw updateError
-    return {
-      ...dealer,
-      logo_header_variant: variants.header,
-      logo_pages_variant: variants.pages,
-    }
+    return { ...dealer, ...written }
   }
 
   async function saveLogoPlacement(placement: DealerLogoPlacement) {

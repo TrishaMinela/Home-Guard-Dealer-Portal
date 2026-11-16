@@ -9,7 +9,7 @@ import { typographyPayload, type DealerTypographyValues } from '../utils/dealerT
 import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
 import { DealerLogoPlacementSettings, type DealerLogoPlacement } from '../components/DealerLogoPlacementSettings'
 import { DealerLogoVariantSettings } from '../components/DealerLogoVariantSettings'
-import { generatedLightLogoMessage, lightLogoEyebrow, type DealerLogoVariant } from '../utils/dealerLogoVariants'
+import { generatedLightLogoMessage, lightLogoEyebrow, logoVariantWrite, type DealerLogoVariant } from '../utils/dealerLogoVariants'
 
 type DealerCompanyProfilePageProps = {
   dealer: DealerAccount
@@ -274,15 +274,16 @@ export function DealerCompanyProfilePage({
   }
 
   async function saveLogoVariants(variants: { header: DealerLogoVariant | null; pages: DealerLogoVariant | null }) {
+    const written = logoVariantWrite(variants.header, variants.pages)
     const { data, error: saveError } = await supabase
       .rpc('update_my_dealer_logo_variants', {
         p_dealer_id: dealer.id,
-        p_logo_header_variant: variants.header,
-        p_logo_pages_variant: variants.pages,
+        p_logo_header_variant: written.logo_header_variant,
+        p_logo_pages_variant: written.logo_pages_variant,
       })
       .single()
     if (saveError) throw saveError
-    return { ...dealer, ...(data as DealerAccount), logo_header_variant: variants.header, logo_pages_variant: variants.pages }
+    return { ...dealer, ...(data as DealerAccount), ...written }
   }
 
   async function saveLogoPlacement(placement: DealerLogoPlacement) {

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { loadMarketingBanners } from '../../features/marketing-banners/bannerStore.ts'
 import { bannersInCategory, type BannerCategory, type BannerLibraryData, type ResolvedMarketingBanner } from '../../features/marketing-banners/catalog.ts'
 import { marketingBannerFilename } from '../../features/marketing-banners/filename.ts'
-import { dealerLogoVariants, type DealerLogoSource } from '../../features/marketing-banners/logos.ts'
+import { automaticBannerLogo, dealerLogoVariants, type DealerLogoSource } from '../../features/marketing-banners/logos.ts'
 import { exportMarketingBanner } from '../../features/marketing-banners/renderBanner.ts'
 import '../../features/marketing-banners/marketing-banners.css'
 import { BannerCustomizeDialog, BannerPreviewDialog } from './BannerLibraryDialogs'
@@ -41,7 +41,10 @@ export function MarketingBannerLibrary({
   const tabRefs = useRef<Partial<Record<BannerCategory, HTMLButtonElement | null>>>({})
   const baseId = useId()
   const variants = useMemo(() => dealerLogoVariants(dealer), [dealer])
-  const selectedLogo = variants.find((item) => item.id === logoId) ?? variants[0] ?? null
+  const automaticLogo = useMemo(() => automaticBannerLogo(dealer), [dealer])
+  const selectedLogo = (logoId ? variants.find((item) => item.id === logoId) : null)
+    ?? variants.find((item) => item.url === automaticLogo)
+    ?? null
 
   useEffect(() => {
     let current = true
