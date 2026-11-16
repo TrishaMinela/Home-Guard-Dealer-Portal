@@ -135,6 +135,17 @@ test('preview and export plans match at different scales', () => {
   }
 })
 
+test('exports keep the template pixel size for PNG and JPG', async () => {
+  const renderer = await readFile(new URL('../src/features/marketing-banners/renderBanner.ts', import.meta.url), 'utf8')
+  const library = await readFile(new URL('../src/components/marketing-banners/MarketingBannerLibrary.tsx', import.meta.url), 'utf8')
+  assert.match(renderer, /canvas\.width = template\.naturalWidth/)
+  assert.match(renderer, /canvas\.height = template\.naturalHeight/)
+  assert.match(renderer, /input\.format === 'jpeg' \? 'image\/jpeg' : 'image\/png'/)
+  assert.match(library, /format: 'png' \| 'jpeg'/)
+  assert.match(library, /extension: format === 'jpeg' \? 'jpg' : 'png'/)
+  assert.doesNotMatch(renderer, /canvas\.width = .*scale/)
+})
+
 test('placement edits and drags stay inside the template', () => {
   const moved = placementAfterDrag(samplePlacement, 'move', -100, 80)
   assert.equal(moved.x, 0)
@@ -223,6 +234,16 @@ test('banner logos use a custom light logo, then a readable generated logo, then
   assert.deepEqual(dealerLogoVariants({ ...dealer, logo_generated_light_usable: false }).map((item) => item.id), ['primary'])
   assert.equal(automaticBannerLogo({ ...dealer, logo_generated_light_usable: true }), 'https://cdn.example/generated.png')
   assert.equal(automaticBannerLogo({ ...dealer, logo_light_url: ' https://cdn.example/custom.png ', logo_generated_light_usable: true }), 'https://cdn.example/custom.png')
+  const withBlack = {
+    ...dealer,
+    logo_black_url: null as string | null,
+    logo_generated_black_url: 'https://cdn.example/generated-black.png',
+    logo_generated_black_usable: false as boolean | null,
+  }
+  assert.equal(automaticBannerLogo(withBlack), 'https://cdn.example/original.png')
+  assert.deepEqual(dealerLogoVariants(withBlack).map((item) => item.id), ['primary'])
+  assert.deepEqual(dealerLogoVariants({ ...withBlack, logo_generated_black_usable: null }).map((item) => item.id), ['primary'])
+  assert.deepEqual(dealerLogoVariants({ ...withBlack, logo_generated_black_usable: true, logo_black_url: 'https://cdn.example/custom-black.png' }).map((item) => item.id), ['primary', 'black-custom', 'black-generated'])
   const library = await readFile(new URL('../src/components/marketing-banners/MarketingBannerLibrary.tsx', import.meta.url), 'utf8')
   assert.match(library, /automaticBannerLogo\(dealer\)/)
   assert.doesNotMatch(library, /variants\[0\]/)

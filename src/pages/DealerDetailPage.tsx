@@ -71,6 +71,7 @@ export function DealerDetailPage({
   const [isReviewingSlug, setIsReviewingSlug] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState<'primary' | 'light' | 'black' | null>(null)
   const [removal, setRemoval] = useState<{ file: File; originalUrl: string; removedUrl: string; reason: string; png: Blob } | null>(null)
+  const [removalNotice, setRemovalNotice] = useState('')
   const [isGeneratingLightLogo, setIsGeneratingLightLogo] = useState(false)
   const dealer = dealers.find((item) => item.id === dealerId)
 
@@ -153,9 +154,11 @@ export function DealerDetailPage({
     if (!force && logoType === 'primary' && file.type !== 'image/svg+xml') {
       const inspected = await readLogoForRemoval(file)
       if (inspected.confident && inspected.png) {
+        setRemovalNotice('')
         setRemoval({ file, originalUrl: URL.createObjectURL(file), removedUrl: URL.createObjectURL(inspected.png), reason: inspected.reason, png: inspected.png })
         return
       }
+      setRemovalNotice(inspected.reason)
     }
 
     setUploadingLogo(logoType)
@@ -435,6 +438,7 @@ export function DealerDetailPage({
           {dealer.logo_source_url && (
             <button className="button button--outline" type="button" onClick={() => void restoreOriginalLogo()}>Restore Original</button>
           )}
+          {removalNotice && <p className="logo-helper-note" role="status">{removalNotice}</p>}
         </section>
 
         <section className="profile-logo-card">

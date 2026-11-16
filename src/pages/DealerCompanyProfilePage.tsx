@@ -53,6 +53,7 @@ export function DealerCompanyProfilePage({
   const [isSaving, setIsSaving] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState<'primary' | 'light' | 'black' | null>(null)
   const [removal, setRemoval] = useState<{ file: File; originalUrl: string; removedUrl: string; reason: string; png: Blob } | null>(null)
+  const [removalNotice, setRemovalNotice] = useState('')
   const [isGeneratingLightLogo, setIsGeneratingLightLogo] = useState(false)
   const [isRequestingSlug, setIsRequestingSlug] = useState(false)
   const normalizedRequestedSlug = normalizeDealerSlug(requestedSlug)
@@ -137,9 +138,11 @@ export function DealerCompanyProfilePage({
     if (!force && logoType === 'primary' && file.type !== 'image/svg+xml') {
       const inspected = await readLogoForRemoval(file)
       if (inspected.confident && inspected.png) {
+        setRemovalNotice('')
         setRemoval({ file, originalUrl: URL.createObjectURL(file), removedUrl: URL.createObjectURL(inspected.png), reason: inspected.reason, png: inspected.png })
         return
       }
+      setRemovalNotice(inspected.reason)
     }
 
     setUploadingLogo(logoType)
@@ -421,6 +424,7 @@ export function DealerCompanyProfilePage({
             <h2>Primary Logo</h2>
             <p>Upload your standard logo for use on light or white backgrounds.</p>
             <p>PNG, JPEG, WebP, or SVG. Maximum file size 5 MB.</p>
+            {removalNotice && <p className="logo-helper-note" role="status">{removalNotice}</p>}
           </div>
           <label className={`button button--outline upload-button ${uploadingLogo ? 'is-disabled' : ''}`}>
             {uploadingLogo === 'primary' ? 'Uploading...' : 'Upload Primary Logo'}
