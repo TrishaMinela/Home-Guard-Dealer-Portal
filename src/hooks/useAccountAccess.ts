@@ -141,7 +141,9 @@ export function useAccountAccess(user: User | null) {
   const updateDealer = useCallback((dealer: AccountAccess['dealer']) => {
     if (!dealer) return
     setAccess((current) =>
-      current?.type === 'dealer' ? { ...current, dealer } : current,
+      current?.type === 'dealer' && current.dealer
+        ? { ...current, dealer: { ...current.dealer, ...dealer } }
+        : current,
     )
   }, [])
 

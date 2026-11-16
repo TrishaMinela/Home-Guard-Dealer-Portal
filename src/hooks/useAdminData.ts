@@ -18,7 +18,7 @@ export function useAdminData(): AdminDataState {
     setDealers((current) =>
       current
         .map((dealer) =>
-          dealer.id === updatedDealer.id ? updatedDealer : dealer,
+          dealer.id === updatedDealer.id ? { ...dealer, ...updatedDealer } : dealer,
         )
         .sort((a, b) => a.company_name.localeCompare(b.company_name)),
     )

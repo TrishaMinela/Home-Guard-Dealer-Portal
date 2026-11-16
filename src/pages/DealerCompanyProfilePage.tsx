@@ -8,6 +8,8 @@ import { DealerTypographySettings } from '../components/DealerTypographySettings
 import { typographyPayload, type DealerTypographyValues } from '../utils/dealerTypography'
 import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
 import { DealerLogoPlacementSettings, type DealerLogoPlacement } from '../components/DealerLogoPlacementSettings'
+import { DealerLogoVariantSettings } from '../components/DealerLogoVariantSettings'
+import { generatedLightLogoMessage, lightLogoEyebrow, type DealerLogoVariant } from '../utils/dealerLogoVariants'
 
 type DealerCompanyProfilePageProps = {
   dealer: DealerAccount
@@ -160,6 +162,7 @@ export function DealerCompanyProfilePage({
     }
 
     let updatedDealer = data as DealerAccount
+    let generatedUsable: boolean | null = null
     if (logoType === 'primary') {
       setIsGeneratingLightLogo(true)
       const generated = await generateDefaultDealerLightLogo(dealer.id)
@@ -170,11 +173,18 @@ export function DealerCompanyProfilePage({
         setUploadingLogo(null)
         return
       }
-      updatedDealer = { ...updatedDealer, logo_generated_light_url: generated.generatedLightLogoUrl }
+      generatedUsable = generated.generatedLightUsable
+      updatedDealer = {
+        ...updatedDealer,
+        logo_generated_light_url: generated.generatedLightLogoUrl,
+        logo_generated_light_usable: generated.generatedLightUsable,
+      }
     }
 
     onDealerUpdated(updatedDealer)
-    setMessage(`${logoType === 'primary' ? 'Primary logo and default light logo' : 'Custom light logo'} updated successfully.`)
+    setMessage(logoType === 'primary'
+      ? generatedLightLogoMessage(generatedUsable, 'primary')
+      : 'Custom light logo updated successfully.')
     setUploadingLogo(null)
   }
 
@@ -188,8 +198,12 @@ export function DealerCompanyProfilePage({
       setError(result.error ?? 'We could not generate the default light logo.')
       return
     }
-    onDealerUpdated({ ...dealer, logo_generated_light_url: result.generatedLightLogoUrl })
-    setMessage('Default light logo generated successfully.')
+    onDealerUpdated({
+      ...dealer,
+      logo_generated_light_url: result.generatedLightLogoUrl,
+      logo_generated_light_usable: result.generatedLightUsable,
+    })
+    setMessage(generatedLightLogoMessage(result.generatedLightUsable, 'regenerate'))
   }
 
   async function handleRemoveCustomLightLogo() {
@@ -202,8 +216,10 @@ export function DealerCompanyProfilePage({
       setError('We could not remove the custom light logo. Please try again.')
       return
     }
-    onDealerUpdated(data as DealerAccount)
-    setMessage('Custom light logo removed. The generated default is now in use.')
+    onDealerUpdated({ ...dealer, ...(data as DealerAccount), logo_light_url: null })
+    setMessage(dealer.logo_generated_light_usable === true
+      ? 'Custom light logo removed. The generated default is now in use.'
+      : 'Custom light logo removed.')
   }
 
   async function handleSlugRequest(event: FormEvent<HTMLFormElement>) {
@@ -255,6 +271,18 @@ export function DealerCompanyProfilePage({
     }).single()
     if(saveError) throw saveError
     return data as DealerAccount
+  }
+
+  async function saveLogoVariants(variants: { header: DealerLogoVariant | null; pages: DealerLogoVariant | null }) {
+    const { data, error: saveError } = await supabase
+      .rpc('update_my_dealer_logo_variants', {
+        p_dealer_id: dealer.id,
+        p_logo_header_variant: variants.header,
+        p_logo_pages_variant: variants.pages,
+      })
+      .single()
+    if (saveError) throw saveError
+    return { ...dealer, ...(data as DealerAccount), logo_header_variant: variants.header, logo_pages_variant: variants.pages }
   }
 
   async function saveLogoPlacement(placement: DealerLogoPlacement) {
@@ -314,9 +342,14 @@ export function DealerCompanyProfilePage({
             )}
           </div>
           <div>
-            <p className="eyebrow">{dealer.logo_light_url ? 'Custom override' : 'Generated default'}</p>
+            <p className="eyebrow">{lightLogoEyebrow(dealer)}</p>
             <h2>Light Logo</h2>
             <p>A white logo is generated from the primary logo. Upload a custom version to override it on dark backgrounds.</p>
+            {!dealer.logo_light_url && dealer.logo_generated_light_url && dealer.logo_generated_light_usable !== true && (
+              <p className="logo-helper-note">{dealer.logo_generated_light_usable === false
+                ? 'This generated file is not readable enough to offer as the White/Light logo.'
+                : 'This generated file has not passed the readability check, so it is not offered as the White/Light logo.'}</p>
+            )}
           </div>
           <label className={`button button--outline upload-button ${uploadingLogo ? 'is-disabled' : ''}`}>
             {uploadingLogo === 'light' ? 'Uploading...' : 'Upload Light Logo'}
@@ -341,6 +374,13 @@ export function DealerCompanyProfilePage({
           </div>
         </section>
       </div>
+
+      <DealerLogoVariantSettings
+        dealer={dealer}
+        onSave={saveLogoVariants}
+        onUpdated={onDealerUpdated}
+        onHydrated={onDealerUpdated}
+      />
 
       <DealerLogoPlacementSettings dealer={dealer} onSave={saveLogoPlacement} onUpdated={onDealerUpdated} />
 

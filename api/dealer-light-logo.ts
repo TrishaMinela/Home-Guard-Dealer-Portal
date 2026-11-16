@@ -57,13 +57,16 @@ export default async function handler(request: IncomingMessage, response: JsonRe
     const source = Buffer.from(await sourceResponse.arrayBuffer())
     const generated = await generateWhiteLogo(source)
     const objectPath = `${body.dealerId}/logo-generated-light.png`
-    const { error: uploadError } = await admin.storage.from('dealer-logos').upload(objectPath, generated, { contentType: 'image/png', upsert: true })
+    const { error: uploadError } = await admin.storage.from('dealer-logos').upload(objectPath, generated.png, { contentType: 'image/png', upsert: true })
     if (uploadError) throw uploadError
     const { data: publicUrl } = admin.storage.from('dealer-logos').getPublicUrl(objectPath)
     const generatedLightLogoUrl = `${publicUrl.publicUrl}?v=${Date.now()}`
-    const { error: updateError } = await admin.from('dealers').update({ logo_generated_light_url: generatedLightLogoUrl }).eq('id', body.dealerId)
+    const { error: updateError } = await admin.from('dealers').update({
+      logo_generated_light_url: generatedLightLogoUrl,
+      logo_generated_light_usable: generated.usable,
+    }).eq('id', body.dealerId)
     if (updateError) throw updateError
-    return send(response, 200, { generatedLightLogoUrl })
+    return send(response, 200, { generatedLightLogoUrl, generatedLightUsable: generated.usable })
   } catch (error) {
     console.error('Dealer light-logo generation failed.', { message: error instanceof Error ? error.message : 'unknown' })
     return send(response, 500, { error: 'We could not generate the default light logo. Please try again.' })

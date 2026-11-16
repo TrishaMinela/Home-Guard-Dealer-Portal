@@ -6,6 +6,8 @@ import { getDealerVisualizerDisplayUrl } from '../config/visualizer'
 import { DealerUserAccess } from '../components/DealerUserAccess'
 import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
 import { DealerLogoPlacementSettings, type DealerLogoPlacement } from '../components/DealerLogoPlacementSettings'
+import { DealerLogoVariantSettings } from '../components/DealerLogoVariantSettings'
+import { generatedLightLogoMessage, lightLogoEyebrow, type DealerLogoVariant } from '../utils/dealerLogoVariants'
 import { AdminDealerMarketingTools } from '../components/AdminDealerMarketingTools'
 import { DealerSectionHeader } from '../components/DealerSectionHeader'
 import { DealerDetailSectionNav } from '../components/DealerDetailSectionNav'
@@ -179,6 +181,7 @@ export function DealerDetailPage({
     }
 
     let updatedDealer = data as AdminDealer
+    let generatedUsable: boolean | null = null
     if (logoType === 'primary') {
       setIsGeneratingLightLogo(true)
       const generated = await generateDefaultDealerLightLogo(dealer.id)
@@ -189,9 +192,16 @@ export function DealerDetailPage({
         setUploadingLogo(null)
         return
       }
-      updatedDealer = { ...updatedDealer, logo_generated_light_url: generated.generatedLightLogoUrl }
+      generatedUsable = generated.generatedLightUsable
+      updatedDealer = {
+        ...updatedDealer,
+        logo_generated_light_url: generated.generatedLightLogoUrl,
+        logo_generated_light_usable: generated.generatedLightUsable,
+      }
     }
-    onDealerUpdated(updatedDealer, `${logoType === 'primary' ? 'Primary logo and default light logo' : 'Custom light logo'} updated successfully.`)
+    onDealerUpdated(updatedDealer, logoType === 'primary'
+      ? generatedLightLogoMessage(generatedUsable, 'primary')
+      : 'Custom light logo updated successfully.')
     setUploadingLogo(null)
   }
 
@@ -205,7 +215,11 @@ export function DealerDetailPage({
       setActionError(result.error ?? 'We could not generate the default light logo.')
       return
     }
-    onDealerUpdated({ ...dealer, logo_generated_light_url: result.generatedLightLogoUrl }, 'Default light logo generated successfully.')
+    onDealerUpdated({
+      ...dealer,
+      logo_generated_light_url: result.generatedLightLogoUrl,
+      logo_generated_light_usable: result.generatedLightUsable,
+    }, generatedLightLogoMessage(result.generatedLightUsable, 'regenerate'))
   }
 
   async function removeCustomLightLogo() {
@@ -223,7 +237,26 @@ export function DealerDetailPage({
       setActionError('We could not remove the custom light logo. Please try again.')
       return
     }
-    onDealerUpdated(data as AdminDealer, 'Custom light logo removed. The generated default is now in use.')
+    onDealerUpdated({ ...dealer, ...(data as AdminDealer) }, dealer.logo_generated_light_usable === true
+      ? 'Custom light logo removed. The generated default is now in use.'
+      : 'Custom light logo removed.')
+  }
+
+  async function saveLogoVariants(variants: { header: DealerLogoVariant | null; pages: DealerLogoVariant | null }) {
+    if (!dealer) throw new Error('Dealer not found.')
+    const { error: updateError } = await supabase
+      .from('dealers')
+      .update({
+        logo_header_variant: variants.header,
+        logo_pages_variant: variants.pages,
+      })
+      .eq('id', dealer.id)
+    if (updateError) throw updateError
+    return {
+      ...dealer,
+      logo_header_variant: variants.header,
+      logo_pages_variant: variants.pages,
+    }
   }
 
   async function saveLogoPlacement(placement: DealerLogoPlacement) {
@@ -345,9 +378,14 @@ export function DealerDetailPage({
             )}
           </div>
           <div>
-            <p className="eyebrow">{dealer.logo_light_url ? 'Custom override' : 'Generated default'}</p>
+            <p className="eyebrow">{lightLogoEyebrow(dealer)}</p>
             <h2>Light Logo</h2>
             <p>A white logo is generated from the primary logo. Upload a custom version to override it on dark backgrounds.</p>
+            {!dealer.logo_light_url && dealer.logo_generated_light_url && dealer.logo_generated_light_usable !== true && (
+              <p className="logo-helper-note">{dealer.logo_generated_light_usable === false
+                ? 'This generated file is not readable enough to offer as the White/Light logo.'
+                : 'This generated file has not passed the readability check, so it is not offered as the White/Light logo.'}</p>
+            )}
           </div>
           <label className={`button button--outline upload-button ${uploadingLogo ? 'is-disabled' : ''}`}>
             {uploadingLogo === 'light' ? 'Uploading...' : 'Upload Light Logo'}
@@ -368,6 +406,13 @@ export function DealerDetailPage({
         </section>
         </div>
       </section>
+
+      <DealerLogoVariantSettings
+        dealer={dealer}
+        onSave={saveLogoVariants}
+        onUpdated={(updated) => onDealerUpdated(updated, 'Door Builder logo choices saved.')}
+        onHydrated={(updated) => onDealerUpdated(updated, successMessage)}
+      />
 
       <DealerLogoPlacementSettings
         dealer={dealer}
