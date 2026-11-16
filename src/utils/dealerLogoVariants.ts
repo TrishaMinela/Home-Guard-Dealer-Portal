@@ -4,15 +4,20 @@ export const DOOR_BUILDER_PRIMARY_FALLBACK = '#0d666c'
 
 const hexColorPattern = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i
 
-export type DealerLogoVariant = 'original' | 'light'
+export type DealerLogoVariant = 'original' | 'black' | 'white'
 
 export type DealerLogoVariantSource = {
   logo_url?: string | null
+  logo_source_url?: string | null
   logo_light_url?: string | null
   logo_generated_light_url?: string | null
   logo_generated_light_usable?: boolean | null
+  logo_black_url?: string | null
+  logo_generated_black_url?: string | null
+  logo_generated_black_usable?: boolean | null
   logo_header_variant?: string | null
   logo_pages_variant?: string | null
+  logo_placement?: string | null
   primary_color?: string | null
   secondary_color?: string | null
 }
@@ -53,20 +58,36 @@ export function coloredLogoNeedsNeutralPlate(background: string) {
 }
 
 export function normalizeLogoVariant(value: string | null | undefined): DealerLogoVariant | null {
-  return value === 'original' || value === 'light' ? value : null
+  return value === 'original' || value === 'black' || value === 'white' ? value : null
 }
 
-export function resolveLightLogoUrl(dealer: DealerLogoVariantSource) {
+export function resolveWhiteLogoUrl(dealer: DealerLogoVariantSource) {
   const custom = cleanUrl(dealer.logo_light_url)
   if (custom) return custom
   if (dealer.logo_generated_light_usable === true) return cleanUrl(dealer.logo_generated_light_url)
   return null
 }
 
+export function resolveBlackLogoUrl(dealer: DealerLogoVariantSource) {
+  const custom = cleanUrl(dealer.logo_black_url)
+  if (custom) return custom
+  if (dealer.logo_generated_black_usable === true) return cleanUrl(dealer.logo_generated_black_url)
+  return null
+}
+
+export function resolveLightLogoUrl(dealer: DealerLogoVariantSource) {
+  return resolveWhiteLogoUrl(dealer)
+}
+
 export function resolveVariantLogoUrl(dealer: DealerLogoVariantSource, variant: DealerLogoVariant | null) {
   if (variant === 'original') return cleanUrl(dealer.logo_url)
-  if (variant === 'light') return resolveLightLogoUrl(dealer)
+  if (variant === 'white') return resolveWhiteLogoUrl(dealer)
+  if (variant === 'black') return resolveBlackLogoUrl(dealer)
   return null
+}
+
+export function resolveDisplayedLogo(dealer: DealerLogoVariantSource, variant: DealerLogoVariant | null) {
+  return resolveVariantLogoUrl(dealer, variant) ?? (variant ? cleanUrl(dealer.logo_url) : null)
 }
 
 export type DoorBuilderLegacySurface = 'dark-header' | 'light-surface' | 'hero'

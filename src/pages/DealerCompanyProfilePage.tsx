@@ -9,6 +9,8 @@ import { typographyPayload, type DealerTypographyValues } from '../utils/dealerT
 import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
 import { DealerLogoPlacementSettings, type DealerLogoPlacement } from '../components/DealerLogoPlacementSettings'
 import { DealerLogoVariantSettings } from '../components/DealerLogoVariantSettings'
+import { LogoBackgroundDialog } from '../components/LogoBackgroundDialog'
+import { readLogoForRemoval } from '../utils/readLogoForRemoval'
 import { generatedLightLogoMessage, lightLogoEyebrow, logoVariantWrite, type DealerLogoVariant } from '../utils/dealerLogoVariants'
 
 type DealerCompanyProfilePageProps = {
@@ -49,7 +51,8 @@ export function DealerCompanyProfilePage({
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
-  const [uploadingLogo, setUploadingLogo] = useState<'primary' | 'light' | null>(null)
+  const [uploadingLogo, setUploadingLogo] = useState<'primary' | 'light' | 'black' | null>(null)
+  const [removal, setRemoval] = useState<{ file: File; originalUrl: string; removedUrl: string; reason: string; png: Blob } | null>(null)
   const [isGeneratingLightLogo, setIsGeneratingLightLogo] = useState(false)
   const [isRequestingSlug, setIsRequestingSlug] = useState(false)
   const normalizedRequestedSlug = normalizeDealerSlug(requestedSlug)
@@ -111,7 +114,8 @@ export function DealerCompanyProfilePage({
 
   async function handleLogoUpload(
     event: ChangeEvent<HTMLInputElement>,
-    logoType: 'primary' | 'light',
+    logoType: 'primary' | 'light' | 'black',
+    force = false,
   ) {
     const file = event.target.files?.[0]
     event.target.value = ''
@@ -130,8 +134,16 @@ export function DealerCompanyProfilePage({
       return
     }
 
+    if (!force && logoType === 'primary' && file.type !== 'image/svg+xml') {
+      const inspected = await readLogoForRemoval(file)
+      if (inspected.confident && inspected.png) {
+        setRemoval({ file, originalUrl: URL.createObjectURL(file), removedUrl: URL.createObjectURL(inspected.png), reason: inspected.reason, png: inspected.png })
+        return
+      }
+    }
+
     setUploadingLogo(logoType)
-    const filename = logoType === 'primary' ? 'logo' : 'logo-light'
+    const filename = logoType === 'primary' ? 'logo' : logoType === 'black' ? 'logo-black' : 'logo-light'
     const objectPath = `${dealer.id}/${filename}.${extension}`
     const { error: uploadError } = await supabase.storage
       .from('dealer-logos')
@@ -148,6 +160,23 @@ export function DealerCompanyProfilePage({
       .from('dealer-logos')
       .getPublicUrl(objectPath)
     const versionedPublicUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`
+    if (logoType === 'black') {
+      const { data: blackData, error: blackError } = await supabase.rpc('update_my_dealer_logo_assets', {
+        p_dealer_id: dealer.id,
+        p_logo_url: dealer.logo_url ?? '',
+        p_logo_source_url: dealer.logo_source_url ?? '',
+        p_logo_light_url: dealer.logo_light_url ?? '',
+        p_logo_black_url: versionedPublicUrl,
+      }).single()
+      setUploadingLogo(null)
+      if (blackError) {
+        setError('The black logo uploaded, but it could not be saved. Apply the logo migration, then try again.')
+        return
+      }
+      onDealerUpdated({ ...dealer, ...(blackData as DealerAccount), logo_black_url: versionedPublicUrl })
+      setMessage('Custom black logo updated successfully.')
+      return
+    }
     const { data, error: profileError } = await updateProfile(
       dealerToForm(dealer),
       logoType === 'primary' ? versionedPublicUrl : dealer.logo_url,
@@ -184,7 +213,7 @@ export function DealerCompanyProfilePage({
     onDealerUpdated(updatedDealer)
     setMessage(logoType === 'primary'
       ? generatedLightLogoMessage(generatedUsable, 'primary')
-      : 'Custom light logo updated successfully.')
+      : 'Custom white logo updated successfully.')
     setUploadingLogo(null)
   }
 
@@ -204,6 +233,76 @@ export function DealerCompanyProfilePage({
       logo_generated_light_usable: result.generatedLightUsable,
     })
     setMessage(generatedLightLogoMessage(result.generatedLightUsable, 'regenerate'))
+  }
+
+  async function handleGenerateBlackLogo() {
+    setMessage('')
+    setError('')
+    setIsGeneratingLightLogo(true)
+    const result = await generateDefaultDealerLightLogo(dealer.id, 'black')
+    setIsGeneratingLightLogo(false)
+    if (result.error || !result.generatedLogoUrl) {
+      setError(result.error ?? 'We could not generate the black logo.')
+      return
+    }
+    onDealerUpdated({ ...dealer, logo_generated_black_url: result.generatedLogoUrl, logo_generated_black_usable: result.generatedLogoUsable })
+    setMessage(result.generatedLogoUsable ? 'Black logo generated.' : 'A black logo was generated, but it is not readable enough to offer.')
+  }
+
+  function dismissRemoval() {
+    if (!removal) return
+    URL.revokeObjectURL(removal.originalUrl)
+    URL.revokeObjectURL(removal.removedUrl)
+    setRemoval(null)
+  }
+
+  async function acceptRemoval() {
+    if (!removal) return
+    setUploadingLogo('primary')
+    const sourceExtension = logoExtensions[removal.file.type] ?? 'png'
+    const sourcePath = `${dealer.id}/logo-source.${sourceExtension}`
+    const transparentPath = `${dealer.id}/logo.png`
+    const sourceUpload = await supabase.storage.from('dealer-logos').upload(sourcePath, removal.file, { contentType: removal.file.type, upsert: true })
+    const transparentUpload = await supabase.storage.from('dealer-logos').upload(transparentPath, removal.png, { contentType: 'image/png', upsert: true })
+    if (sourceUpload.error || transparentUpload.error) {
+      setError('We could not save the transparent logo. The original was not replaced.')
+      setUploadingLogo(null)
+      return
+    }
+    const sourceUrl = `${supabase.storage.from('dealer-logos').getPublicUrl(sourcePath).data.publicUrl}?v=${Date.now()}`
+    const transparentUrl = `${supabase.storage.from('dealer-logos').getPublicUrl(transparentPath).data.publicUrl}?v=${Date.now()}`
+    const { data, error: saveError } = await supabase.rpc('update_my_dealer_logo_assets', {
+      p_dealer_id: dealer.id,
+      p_logo_url: transparentUrl,
+      p_logo_source_url: sourceUrl,
+      p_logo_light_url: dealer.logo_light_url ?? '',
+      p_logo_black_url: dealer.logo_black_url ?? '',
+    }).single()
+    setUploadingLogo(null)
+    dismissRemoval()
+    if (saveError) {
+      setError('The files uploaded, but the logo record could not be saved.')
+      return
+    }
+    onDealerUpdated({ ...dealer, ...(data as DealerAccount), logo_url: transparentUrl, logo_source_url: sourceUrl })
+    setMessage('Transparent logo saved. The untouched upload can be restored.')
+  }
+
+  async function restoreOriginalLogo() {
+    if (!dealer.logo_source_url) return
+    const { data, error: saveError } = await supabase.rpc('update_my_dealer_logo_assets', {
+      p_dealer_id: dealer.id,
+      p_logo_url: dealer.logo_source_url,
+      p_logo_source_url: dealer.logo_source_url,
+      p_logo_light_url: dealer.logo_light_url ?? '',
+      p_logo_black_url: dealer.logo_black_url ?? '',
+    }).single()
+    if (saveError) {
+      setError('We could not restore the original logo.')
+      return
+    }
+    onDealerUpdated({ ...dealer, ...(data as DealerAccount), logo_url: dealer.logo_source_url })
+    setMessage('Original logo restored.')
   }
 
   async function handleRemoveCustomLightLogo() {
@@ -344,8 +443,8 @@ export function DealerCompanyProfilePage({
           </div>
           <div>
             <p className="eyebrow">{lightLogoEyebrow(dealer)}</p>
-            <h2>Light Logo</h2>
-            <p>A white logo is generated from the primary logo. Upload a custom version to override it on dark backgrounds.</p>
+            <h2>White Logo</h2>
+            <p>A white logo is generated from the original. Upload a custom version to replace it.</p>
             {!dealer.logo_light_url && dealer.logo_generated_light_url && dealer.logo_generated_light_usable !== true && (
               <p className="logo-helper-note">{dealer.logo_generated_light_usable === false
                 ? 'This generated file is not readable enough to offer as the White/Light logo.'
@@ -353,7 +452,7 @@ export function DealerCompanyProfilePage({
             )}
           </div>
           <label className={`button button--outline upload-button ${uploadingLogo ? 'is-disabled' : ''}`}>
-            {uploadingLogo === 'light' ? 'Uploading...' : 'Upload Light Logo'}
+            {uploadingLogo === 'light' ? 'Uploading...' : 'Upload White Logo'}
             <input
               type="file"
               accept="image/png,image/jpeg,image/webp,image/svg+xml"
@@ -364,7 +463,7 @@ export function DealerCompanyProfilePage({
           <div className="page-actions">
             {dealer.logo_url && (
               <button className="button button--outline" type="button" disabled={isGeneratingLightLogo || uploadingLogo !== null} onClick={() => void handleGenerateLightLogo()}>
-                {isGeneratingLightLogo ? 'Generating...' : 'Regenerate Default'}
+                {isGeneratingLightLogo ? 'Generating...' : 'Generate White'}
               </button>
             )}
             {dealer.logo_light_url && (
@@ -374,7 +473,38 @@ export function DealerCompanyProfilePage({
             )}
           </div>
         </section>
+        <section className="content-card profile-logo-card">
+          <div className="profile-logo-preview">
+            {dealer.logo_black_url || (dealer.logo_generated_black_usable && dealer.logo_generated_black_url) ? (
+              <img src={dealer.logo_black_url ?? dealer.logo_generated_black_url ?? ''} alt={`${dealer.company_name} black logo`} />
+            ) : <span>{dealer.company_name.charAt(0).toUpperCase()}</span>}
+          </div>
+          <div>
+            <p className="eyebrow">{dealer.logo_black_url ? 'Custom black' : dealer.logo_generated_black_usable ? 'Generated black' : 'Black logo'}</p>
+            <h2>Black Logo</h2>
+            <p>Generate a black version from the original, or upload your own. An unreadable result is not offered.</p>
+          </div>
+          <label className={`button button--outline upload-button ${uploadingLogo ? 'is-disabled' : ''}`}>
+            {uploadingLogo === 'black' ? 'Uploading...' : 'Upload Black Logo'}
+            <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" disabled={uploadingLogo !== null} onChange={(event) => void handleLogoUpload(event, 'black')} />
+          </label>
+          {dealer.logo_url && (
+            <button className="button button--outline" type="button" disabled={isGeneratingLightLogo || uploadingLogo !== null} onClick={() => void handleGenerateBlackLogo()}>Generate Black</button>
+          )}
+        </section>
       </div>
+      {dealer.logo_source_url && (
+        <button className="button button--outline" type="button" onClick={() => void restoreOriginalLogo()}>Restore Original</button>
+      )}
+      {removal && (
+        <LogoBackgroundDialog
+          originalUrl={removal.originalUrl}
+          removedUrl={removal.removedUrl}
+          reason={removal.reason}
+          onKeep={() => { const pending = removal.file; dismissRemoval(); void handleLogoUpload({ target: { files: [pending], value: '' } } as unknown as ChangeEvent<HTMLInputElement>, 'primary', true) }}
+          onAccept={() => void acceptRemoval()}
+        />
+      )}
 
       <DealerLogoVariantSettings
         dealer={dealer}

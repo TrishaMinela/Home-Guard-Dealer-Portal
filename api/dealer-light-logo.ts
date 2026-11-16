@@ -1,9 +1,10 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createClient } from '@supabase/supabase-js'
+import sharp from 'sharp'
 import { generateWhiteLogo, validatePrimaryLogoUrl } from './_lib/dealerLightLogo.js'
 
 type JsonResponse = ServerResponse<IncomingMessage> & { json?: (value: unknown) => void }
-type Body = { dealerId?: string }
+type Body = { dealerId?: string; tone?: string }
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 function send(response: JsonResponse, status: number, value: unknown) {
@@ -54,19 +55,31 @@ export default async function handler(request: IncomingMessage, response: JsonRe
     const primaryUrl = validatePrimaryLogoUrl(dealerResult.data.logo_url, body.dealerId, supabaseUrl)
     const sourceResponse = await fetch(primaryUrl, { signal: AbortSignal.timeout(15_000) })
     if (!sourceResponse.ok) throw new Error(`Primary logo download failed (${sourceResponse.status}).`)
+    const tone = body.tone === 'black' ? 'black' : 'white'
     const source = Buffer.from(await sourceResponse.arrayBuffer())
-    const generated = await generateWhiteLogo(source)
-    const objectPath = `${body.dealerId}/logo-generated-light.png`
-    const { error: uploadError } = await admin.storage.from('dealer-logos').upload(objectPath, generated.png, { contentType: 'image/png', upsert: true })
+    const generated = await generateWhiteLogo(source, tone)
+    let png = generated.png
+    try {
+      const trimmed = await sharp(png).trim({ threshold: 1 }).png({ compressionLevel: 9 }).toBuffer()
+      const meta = await sharp(trimmed).metadata()
+      if ((meta.width ?? 0) >= 8 && (meta.height ?? 0) >= 8) png = trimmed
+    } catch { /* Keep the untrimmed derivative. */ }
+    const objectPath = `${body.dealerId}/${tone === 'black' ? 'logo-generated-black.png' : 'logo-generated-light.png'}`
+    const { error: uploadError } = await admin.storage.from('dealer-logos').upload(objectPath, png, { contentType: 'image/png', upsert: true })
     if (uploadError) throw uploadError
     const { data: publicUrl } = admin.storage.from('dealer-logos').getPublicUrl(objectPath)
-    const generatedLightLogoUrl = `${publicUrl.publicUrl}?v=${Date.now()}`
-    const { error: updateError } = await admin.from('dealers').update({
-      logo_generated_light_url: generatedLightLogoUrl,
-      logo_generated_light_usable: generated.usable,
-    }).eq('id', body.dealerId)
+    const generatedLogoUrl = `${publicUrl.publicUrl}?v=${Date.now()}`
+    const update = tone === 'black'
+      ? { logo_generated_black_url: generatedLogoUrl, logo_generated_black_usable: generated.usable }
+      : { logo_generated_light_url: generatedLogoUrl, logo_generated_light_usable: generated.usable }
+    const { error: updateError } = await admin.from('dealers').update(update).eq('id', body.dealerId)
     if (updateError) throw updateError
-    return send(response, 200, { generatedLightLogoUrl, generatedLightUsable: generated.usable })
+    return send(response, 200, {
+      generatedLogoUrl,
+      generatedLogoUsable: generated.usable,
+      generatedLightLogoUrl: tone === 'white' ? generatedLogoUrl : undefined,
+      generatedLightUsable: tone === 'white' ? generated.usable : undefined,
+    })
   } catch (error) {
     console.error('Dealer light-logo generation failed.', { message: error instanceof Error ? error.message : 'unknown' })
     return send(response, 500, { error: 'We could not generate the default light logo. Please try again.' })

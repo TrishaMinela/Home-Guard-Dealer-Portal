@@ -4,6 +4,8 @@ const MAX_SOURCE_BYTES = 5 * 1024 * 1024
 const KNOCKOUT_DELTA = 0.12
 const INTERNAL_EDGE_DELTA = 0.18
 
+export type LogoTone = 'white' | 'black'
+
 export type GeneratedWhiteLogo = {
   png: Buffer
   usable: boolean
@@ -155,7 +157,7 @@ function isReadableLightLogo(
   return !nearSolidSilhouette && !lostInterior
 }
 
-export async function generateWhiteLogo(source: Buffer): Promise<GeneratedWhiteLogo> {
+export async function generateWhiteLogo(source: Buffer, tone: LogoTone = 'white'): Promise<GeneratedWhiteLogo> {
   if (!source.length || source.length > MAX_SOURCE_BYTES) throw new Error('Primary logo size is invalid.')
   const { data, info } = await sharp(source, { limitInputPixels: 24_000_000 })
     .rotate()
@@ -207,9 +209,10 @@ export async function generateWhiteLogo(source: Buffer): Promise<GeneratedWhiteL
     const lighterThanSurroundings = luminance[index] - localLuminance[index] > KNOCKOUT_DELTA
     if (lighterThanSurroundings) continue
     kept[index] = 1
-    output[offset] = 255
-    output[offset + 1] = 255
-    output[offset + 2] = 255
+    const ink = tone === 'black' ? 0 : 255
+    output[offset] = ink
+    output[offset + 1] = ink
+    output[offset + 2] = ink
     if (hasTransparency) {
       output[offset + 3] = data[offset + 3]
     } else {

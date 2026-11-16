@@ -5,11 +5,13 @@ import {
   DOOR_BUILDER_HEADER_FALLBACK,
   DOOR_BUILDER_PAGE_BACKGROUND,
   DOOR_BUILDER_PRIMARY_FALLBACK,
-  coloredLogoNeedsNeutralPlate,
   doorBuilderColor,
   isLightBrandColor,
   normalizeLogoVariant,
+  resolveBlackLogoUrl,
+  resolveDisplayedLogo,
   resolveVariantLogoUrl,
+  resolveWhiteLogoUrl,
   type DealerLogoVariant,
 } from '../utils/dealerLogoVariants'
 
@@ -27,8 +29,9 @@ type Props = {
 }
 
 const choices: Array<{ value: DealerLogoVariant; label: string; detail: string }> = [
-  { value: 'original', label: 'Original Colored Logo', detail: 'Use the primary colored logo.' },
-  { value: 'light', label: 'White/Light Logo', detail: 'Use the custom light logo, or the generated light logo when it is readable.' },
+  { value: 'original', label: 'Original', detail: 'Use the active colored logo.' },
+  { value: 'black', label: 'Black', detail: 'Use the custom black logo, or the generated black logo when it is readable.' },
+  { value: 'white', label: 'White', detail: 'Use the custom white logo, or the generated white logo when it is readable.' },
 ]
 
 function sameVariants(dealer: AdminDealer, header: DealerLogoVariant | null, pages: DealerLogoVariant | null) {
@@ -37,7 +40,8 @@ function sameVariants(dealer: AdminDealer, header: DealerLogoVariant | null, pag
 }
 
 export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrated }: Props) {
-  const lightLogoUrl = resolveVariantLogoUrl(dealer, 'light')
+  const whiteLogoUrl = resolveWhiteLogoUrl(dealer)
+  const blackLogoUrl = resolveBlackLogoUrl(dealer)
   const [header, setHeader] = useState<DealerLogoVariant | null>(normalizeLogoVariant(dealer.logo_header_variant))
   const [pages, setPages] = useState<DealerLogoVariant | null>(normalizeLogoVariant(dealer.logo_pages_variant))
   const [isSaving, setIsSaving] = useState(false)
@@ -107,48 +111,55 @@ export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrate
 
   const headerBackground = doorBuilderColor(dealer.secondary_color, DOOR_BUILDER_HEADER_FALLBACK)
   const headerBorder = doorBuilderColor(dealer.primary_color, DOOR_BUILDER_PRIMARY_FALLBACK)
+  const homepageInHero = dealer.logo_placement !== 'header'
+  const available = { original: Boolean(dealer.logo_url), black: Boolean(blackLogoUrl), white: Boolean(whiteLogoUrl) }
 
   return (
     <section className="content-card dealer-management-card logo-variant-settings" aria-labelledby="logo-variant-heading">
       <div className="dealer-form__section-heading">
         <p className="eyebrow">Door Builder logos</p>
         <h2 id="logo-variant-heading">Where each logo appears</h2>
-        <p>Choose independently for the homepage header and for the other customer-facing Door Builder pages. Leaving a choice unset keeps that area on its current logo.</p>
+        <p>Choose independently for the homepage and for the other customer-facing pages. Leaving a choice unset keeps that area on its current logo.</p>
       </div>
       <div className="logo-variant-settings__grid">
         <VariantChoice
-          title="Homepage/Header Logo"
+          title="Homepage Header Logo"
           name={`logo-header-${dealer.id}`}
           value={header}
-          lightAvailable={Boolean(lightLogoUrl)}
+          available={available}
           onChange={(value) => { dirtyRef.current = true; setHeader(value) }}
         />
         <VariantChoice
           title="Normal Pages Logo"
           name={`logo-pages-${dealer.id}`}
           value={pages}
-          lightAvailable={Boolean(lightLogoUrl)}
+          available={available}
           onChange={(value) => { dirtyRef.current = true; setPages(value) }}
         />
       </div>
       <div className="logo-variant-settings__previews">
         <LogoPreview
-          title="Homepage/Header preview"
-          caption="Header background is this dealer’s secondary color."
-          background={headerBackground}
-          borderColor={headerBorder}
+          title={homepageInHero ? 'Homepage preview' : 'Homepage header preview'}
+          caption={homepageInHero
+            ? 'This dealer’s homepage logo sits in the hero on the page background.'
+            : 'This dealer’s homepage logo sits in the header on the secondary color.'}
+          background={homepageInHero ? DOOR_BUILDER_PAGE_BACKGROUND : headerBackground}
+          borderColor={homepageInHero ? undefined : headerBorder}
           variant={header}
-          logoUrl={resolveVariantLogoUrl(dealer, header)}
-          contained={header === 'original' && coloredLogoNeedsNeutralPlate(headerBackground)}
+          logoUrl={resolveDisplayedLogo(dealer, header)}
+          fallback={Boolean(header && !resolveVariantLogoUrl(dealer, header))}
+          plate={previewPlate(header, !homepageInHero && !isLightBrandColor(headerBackground))}
           companyName={dealer.company_name}
         />
         <LogoPreview
           title="Normal pages preview"
-          caption="Other Door Builder pages use the page background."
-          background={DOOR_BUILDER_PAGE_BACKGROUND}
+          caption="Other pages show the logo in the header on the secondary color."
+          background={headerBackground}
+          borderColor={headerBorder}
           variant={pages}
-          logoUrl={resolveVariantLogoUrl(dealer, pages)}
-          contained={pages === 'original' && coloredLogoNeedsNeutralPlate(DOOR_BUILDER_PAGE_BACKGROUND)}
+          logoUrl={resolveDisplayedLogo(dealer, pages)}
+          fallback={Boolean(pages && !resolveVariantLogoUrl(dealer, pages))}
+          plate={previewPlate(pages, !isLightBrandColor(headerBackground))}
           companyName={dealer.company_name}
         />
       </div>
@@ -163,25 +174,32 @@ export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrate
   )
 }
 
+function previewPlate(variant: DealerLogoVariant | null, darkBackground: boolean): 'light' | 'dark' | null {
+  if (!variant) return null
+  if (!darkBackground) return variant === 'white' ? 'dark' : null
+  return variant === 'white' ? null : 'light'
+}
+
 function VariantChoice({
   title,
   name,
   value,
-  lightAvailable,
+  available,
   onChange,
 }: {
   title: string
   name: string
   value: DealerLogoVariant | null
-  lightAvailable: boolean
+  available: Record<DealerLogoVariant, boolean>
   onChange: (value: DealerLogoVariant) => void
 }) {
-  const hintId = `${name}-light-hint`
+  const hintId = `${name}-unavailable`
+  const unavailable = choices.filter((choice) => choice.value !== 'original' && !available[choice.value])
   return (
     <fieldset className="logo-variant-choice">
       <legend>{title}</legend>
       {choices.map((choice) => {
-        const disabled = choice.value === 'light' && !lightAvailable
+        const disabled = !available[choice.value]
         return (
           <label key={choice.value} className={`logo-placement-option ${value === choice.value ? 'is-selected' : ''} ${disabled ? 'is-disabled' : ''}`}>
             <input
@@ -197,8 +215,10 @@ function VariantChoice({
           </label>
         )
       })}
-      {!lightAvailable && (
-        <p id={hintId} className="logo-variant-choice__hint">White/Light Logo is unavailable until you upload a custom light logo or generate a readable one.</p>
+      {unavailable.length > 0 && (
+        <p id={hintId} className="logo-variant-choice__hint">
+          {unavailable.map((choice) => choice.label).join(' and ')} {unavailable.length === 1 ? 'is' : 'are'} unavailable until you upload a custom file or generate a readable one. An unavailable saved choice falls back to Original.
+        </p>
       )}
       {value === null && <p className="logo-variant-choice__hint">No explicit choice yet. The Door Builder keeps its current logo for this area.</p>}
     </fieldset>
@@ -212,7 +232,8 @@ function LogoPreview({
   borderColor,
   variant,
   logoUrl,
-  contained,
+  fallback,
+  plate,
   companyName,
 }: {
   title: string
@@ -221,11 +242,12 @@ function LogoPreview({
   borderColor?: string
   variant: DealerLogoVariant | null
   logoUrl: string | null
-  contained: boolean
+  fallback: boolean
+  plate: 'light' | 'dark' | null
   companyName: string
 }) {
   const logo = logoUrl ? (
-    <img src={logoUrl} alt={`${companyName} ${variant === 'light' ? 'white/light' : 'colored'} logo preview`} />
+    <img src={logoUrl} alt={`${companyName} ${variant ?? 'current'} logo preview`} />
   ) : (
     <span style={{ color: isLightBrandColor(background) ? '#182124' : '#f7faff' }}>{variant === null ? 'Choose a logo to preview.' : 'No usable logo for this choice.'}</span>
   )
@@ -233,10 +255,10 @@ function LogoPreview({
     <figure className="logo-variant-preview">
       <figcaption>
         <strong>{title}</strong>
-        <small>{caption}</small>
+        <small>{caption}{fallback ? ' This choice is unavailable, so the original logo is shown.' : ''}</small>
       </figcaption>
       <div className={`logo-variant-preview__stage ${borderColor ? 'logo-variant-preview__stage--header' : ''}`} style={{ background, borderBottomColor: borderColor }}>
-        {contained && logoUrl ? <div className="logo-variant-preview__plate">{logo}</div> : logo}
+        {plate && logoUrl ? <div className={`logo-variant-preview__plate logo-variant-preview__plate--${plate}`}>{logo}</div> : logo}
       </div>
     </figure>
   )

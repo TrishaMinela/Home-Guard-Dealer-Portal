@@ -59,7 +59,7 @@ test('Portal light-logo UI preserves custom override and generated fallback cont
   const detail = await readFile(new URL('../src/pages/DealerDetailPage.tsx', import.meta.url), 'utf8')
   for (const source of [profile, detail]) {
     assert.match(source, /logo_light_url \?\? dealer\.logo_generated_light_url/)
-    assert.match(source, /Regenerate Default/)
+    assert.match(source, /Generate White/)
     assert.match(source, /Remove Custom Logo/)
   }
 })
