@@ -90,6 +90,16 @@ export function resolveDisplayedLogo(dealer: DealerLogoVariantSource, variant: D
   return resolveVariantLogoUrl(dealer, variant) ?? (variant ? cleanUrl(dealer.logo_url) : null)
 }
 
+/** Door Builder page and homepage headers use the secondary color. A contrast plate is only for original or black ink on a dark header. */
+export function headerContrastPlate(dealer: DealerLogoVariantSource, variant: DealerLogoVariant | null) {
+  if (!variant) return null
+  const header = doorBuilderColor(dealer.secondary_color, DOOR_BUILDER_HEADER_FALLBACK)
+  if (isLightBrandColor(header)) return null
+  if (variant === 'white' && resolveVariantLogoUrl(dealer, 'white')) return null
+  if (!resolveDisplayedLogo(dealer, variant)) return null
+  return 'light' as const
+}
+
 export type DoorBuilderLegacySurface = 'dark-header' | 'light-surface' | 'hero'
 
 /**

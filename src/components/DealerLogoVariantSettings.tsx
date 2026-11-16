@@ -3,9 +3,9 @@ import { supabase } from '../lib/supabase'
 import type { AdminDealer } from '../types/admin'
 import {
   DOOR_BUILDER_HEADER_FALLBACK,
-  DOOR_BUILDER_PAGE_BACKGROUND,
   DOOR_BUILDER_PRIMARY_FALLBACK,
   doorBuilderColor,
+  headerContrastPlate,
   isLightBrandColor,
   normalizeLogoVariant,
   resolveBlackLogoUrl,
@@ -111,7 +111,6 @@ export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrate
 
   const headerBackground = doorBuilderColor(dealer.secondary_color, DOOR_BUILDER_HEADER_FALLBACK)
   const headerBorder = doorBuilderColor(dealer.primary_color, DOOR_BUILDER_PRIMARY_FALLBACK)
-  const homepageInHero = dealer.logo_placement !== 'header'
   const available = { original: Boolean(dealer.logo_url), black: Boolean(blackLogoUrl), white: Boolean(whiteLogoUrl) }
 
   return (
@@ -139,27 +138,25 @@ export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrate
       </div>
       <div className="logo-variant-settings__previews">
         <LogoPreview
-          title={homepageInHero ? 'Homepage preview' : 'Homepage header preview'}
-          caption={homepageInHero
-            ? 'This dealer’s homepage logo sits in the hero on the page background.'
-            : 'This dealer’s homepage logo sits in the header on the secondary color.'}
-          background={homepageInHero ? DOOR_BUILDER_PAGE_BACKGROUND : headerBackground}
-          borderColor={homepageInHero ? undefined : headerBorder}
+          title="Homepage header preview"
+          caption="The homepage header uses this dealer’s secondary color."
+          background={headerBackground}
+          borderColor={headerBorder}
           variant={header}
           logoUrl={resolveDisplayedLogo(dealer, header)}
           fallback={Boolean(header && !resolveVariantLogoUrl(dealer, header))}
-          plate={previewPlate(header, !homepageInHero && !isLightBrandColor(headerBackground))}
+          plate={headerContrastPlate(dealer, header)}
           companyName={dealer.company_name}
         />
         <LogoPreview
           title="Normal pages preview"
-          caption="Other pages show the logo in the header on the secondary color."
+          caption="Other pages show the logo in the page header, on the same secondary color."
           background={headerBackground}
           borderColor={headerBorder}
           variant={pages}
           logoUrl={resolveDisplayedLogo(dealer, pages)}
           fallback={Boolean(pages && !resolveVariantLogoUrl(dealer, pages))}
-          plate={previewPlate(pages, !isLightBrandColor(headerBackground))}
+          plate={headerContrastPlate(dealer, pages)}
           companyName={dealer.company_name}
         />
       </div>
@@ -172,12 +169,6 @@ export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrate
       </div>
     </section>
   )
-}
-
-function previewPlate(variant: DealerLogoVariant | null, darkBackground: boolean): 'light' | 'dark' | null {
-  if (!variant) return null
-  if (!darkBackground) return variant === 'white' ? 'dark' : null
-  return variant === 'white' ? null : 'light'
 }
 
 function VariantChoice({

@@ -7,6 +7,7 @@ import {
   doorBuilderColor,
   doorBuilderLegacyLightLogo,
   doorBuilderLogoWhenVariantUnset,
+  headerContrastPlate,
   logoVariantWrite,
   normalizeLogoVariant,
   resolveLightLogoUrl,
@@ -29,6 +30,21 @@ test('white/light logo prefers a custom upload, then a readable generated logo',
   assert.equal(resolveVariantLogoUrl({ ...generated, logo_black_url: 'https://cdn.example/black.png', logo_generated_black_usable: false }, 'black'), 'https://cdn.example/black.png')
   assert.equal(resolveVariantLogoUrl({ ...generated, logo_black_url: null, logo_generated_black_url: 'https://cdn.example/gen-black.png', logo_generated_black_usable: null }, 'black'), null)
   assert.equal(resolveVariantLogoUrl(generated, null), null)
+})
+
+test('header previews plate original and black on a dark header and never plate white', () => {
+  const dealer = {
+    logo_url: 'https://cdn.example/original.png',
+    logo_light_url: 'https://cdn.example/white.png',
+    logo_black_url: 'https://cdn.example/black.png',
+    secondary_color: '#40454c',
+  }
+  assert.equal(headerContrastPlate(dealer, 'original'), 'light')
+  assert.equal(headerContrastPlate(dealer, 'black'), 'light')
+  assert.equal(headerContrastPlate(dealer, 'white'), null)
+  assert.equal(headerContrastPlate(dealer, null), null)
+  assert.equal(headerContrastPlate({ ...dealer, secondary_color: '#f8d30e' }, 'original'), null)
+  assert.equal(headerContrastPlate({ ...dealer, logo_light_url: null, logo_generated_light_usable: false }, 'white'), 'light')
 })
 
 test('colored logos on a dark header use a neutral plate, and page background stays light', () => {
@@ -77,6 +93,7 @@ test('null logo variants keep the Door Builder legacy choice and the Portal does
   assert.equal(normalizeLogoVariant(null), null)
   assert.equal(normalizeLogoVariant(undefined), null)
   assert.equal(normalizeLogoVariant('automatic'), null)
+  assert.equal(normalizeLogoVariant('light'), null)
   assert.deepEqual(logoVariantWrite(null, null), { logo_header_variant: null, logo_pages_variant: null })
   assert.equal(resolveVariantLogoUrl(dealer, null), null)
   assert.equal(resolveLightLogoUrl(dealer), null)
@@ -116,7 +133,10 @@ test('branding settings expose independent homepage and pages logo choices', asy
   assert.match(component, /label: 'Original'/)
   assert.match(component, /label: 'Black'/)
   assert.match(component, /label: 'White'/)
-  assert.match(component, /DOOR_BUILDER_PAGE_BACKGROUND/)
+  assert.match(component, /headerContrastPlate\(dealer, header\)/)
+  assert.match(component, /headerContrastPlate\(dealer, pages\)/)
+  assert.match(component, /secondary color/)
+  assert.doesNotMatch(component, /DOOR_BUILDER_PAGE_BACKGROUND/)
   assert.match(detail, /logoVariantWrite\(variants\.header, variants\.pages\)/)
   assert.match(profile, /update_my_dealer_logo_variants/)
 })
