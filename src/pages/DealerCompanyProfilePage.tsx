@@ -113,10 +113,57 @@ export function DealerCompanyProfilePage({
     setIsSaving(false)
   }
 
+  async function saveRemovedBackground(file: File, png: Blob, reason: string) {
+    setUploadingLogo('primary')
+    const sourceExtension = logoExtensions[file.type] ?? 'png'
+    const sourcePath = `${dealer.id}/logo-source.${sourceExtension}`
+    const transparentPath = `${dealer.id}/logo.png`
+    const [sourceUpload, transparentUpload] = await Promise.all([
+      supabase.storage.from('dealer-logos').upload(sourcePath, file, { contentType: file.type, upsert: true }),
+      supabase.storage.from('dealer-logos').upload(transparentPath, png, { contentType: 'image/png', upsert: true }),
+    ])
+    if (sourceUpload.error || transparentUpload.error) {
+      setError('We could not save the transparent logo. The original was not replaced.')
+      setUploadingLogo(null)
+      return false
+    }
+    const sourceUrl = `${supabase.storage.from('dealer-logos').getPublicUrl(sourcePath).data.publicUrl}?v=${Date.now()}`
+    const transparentUrl = `${supabase.storage.from('dealer-logos').getPublicUrl(transparentPath).data.publicUrl}?v=${Date.now()}`
+    const { data, error: saveError } = await supabase.rpc('update_my_dealer_logo_assets', {
+      p_dealer_id: dealer.id,
+      p_logo_url: transparentUrl,
+      p_logo_source_url: sourceUrl,
+      p_logo_light_url: dealer.logo_light_url ?? '',
+      p_logo_black_url: dealer.logo_black_url ?? '',
+    }).single()
+    if (saveError) {
+      setError('The files uploaded, but the logo record could not be saved.')
+      setUploadingLogo(null)
+      return false
+    }
+    let updatedDealer: DealerAccount = { ...dealer, ...(data as DealerAccount), logo_url: transparentUrl, logo_source_url: sourceUrl }
+    setIsGeneratingLightLogo(true)
+    const generated = await generateDefaultDealerLightLogo(dealer.id)
+    setIsGeneratingLightLogo(false)
+    setUploadingLogo(null)
+    if (generated.error || !generated.generatedLightLogoUrl) {
+      onDealerUpdated(updatedDealer)
+      setError('The transparent logo was saved, but its default light version could not be generated. You can retry below.')
+      return true
+    }
+    updatedDealer = {
+      ...updatedDealer,
+      logo_generated_light_url: generated.generatedLightLogoUrl,
+      logo_generated_light_usable: generated.generatedLightUsable,
+    }
+    onDealerUpdated(updatedDealer)
+    setMessage(`${reason.replace(/\.$/, '')} removed. ${generatedLightLogoMessage(generated.generatedLightUsable, 'primary')}`)
+    return true
+  }
+
   async function handleLogoUpload(
     event: ChangeEvent<HTMLInputElement>,
     logoType: 'primary' | 'light' | 'black',
-    force = false,
   ) {
     const file = event.target.files?.[0]
     event.target.value = ''
@@ -135,16 +182,30 @@ export function DealerCompanyProfilePage({
       return
     }
 
-    if (!force && logoType === 'primary' && file.type !== 'image/svg+xml') {
+    if (logoType === 'primary' && file.type !== 'image/svg+xml') {
       const inspected = await readLogoForRemoval(file)
       if (inspected.confident && inspected.png) {
         setRemovalNotice('')
-        setRemoval({ file, originalUrl: URL.createObjectURL(file), removedUrl: URL.createObjectURL(inspected.png), reason: inspected.reason, png: inspected.png })
+        setRemoval({
+          file,
+          originalUrl: URL.createObjectURL(file),
+          removedUrl: URL.createObjectURL(inspected.png),
+          reason: inspected.reason,
+          png: inspected.png,
+        })
         return
       }
-      setRemovalNotice(inspected.reason)
+      setRemovalNotice(inspected.confident
+        ? 'The background could be removed, but this browser could not save a PNG. The original file was kept.'
+        : inspected.reason)
     }
 
+    await storeUploadedLogo(file, logoType)
+  }
+
+  async function storeUploadedLogo(file: File, logoType: 'primary' | 'light' | 'black') {
+    const extension = logoExtensions[file.type]
+    if (!extension) return
     setUploadingLogo(logoType)
     const filename = logoType === 'primary' ? 'logo' : logoType === 'black' ? 'logo-black' : 'logo-light'
     const objectPath = `${dealer.id}/${filename}.${extension}`
@@ -259,36 +320,17 @@ export function DealerCompanyProfilePage({
     setRemoval(null)
   }
 
-  async function acceptRemoval() {
+  async function acceptTransparentLogo() {
     if (!removal) return
-    setUploadingLogo('primary')
-    const sourceExtension = logoExtensions[removal.file.type] ?? 'png'
-    const sourcePath = `${dealer.id}/logo-source.${sourceExtension}`
-    const transparentPath = `${dealer.id}/logo.png`
-    const sourceUpload = await supabase.storage.from('dealer-logos').upload(sourcePath, removal.file, { contentType: removal.file.type, upsert: true })
-    const transparentUpload = await supabase.storage.from('dealer-logos').upload(transparentPath, removal.png, { contentType: 'image/png', upsert: true })
-    if (sourceUpload.error || transparentUpload.error) {
-      setError('We could not save the transparent logo. The original was not replaced.')
-      setUploadingLogo(null)
-      return
-    }
-    const sourceUrl = `${supabase.storage.from('dealer-logos').getPublicUrl(sourcePath).data.publicUrl}?v=${Date.now()}`
-    const transparentUrl = `${supabase.storage.from('dealer-logos').getPublicUrl(transparentPath).data.publicUrl}?v=${Date.now()}`
-    const { data, error: saveError } = await supabase.rpc('update_my_dealer_logo_assets', {
-      p_dealer_id: dealer.id,
-      p_logo_url: transparentUrl,
-      p_logo_source_url: sourceUrl,
-      p_logo_light_url: dealer.logo_light_url ?? '',
-      p_logo_black_url: dealer.logo_black_url ?? '',
-    }).single()
-    setUploadingLogo(null)
+    const saved = await saveRemovedBackground(removal.file, removal.png, removal.reason)
+    if (saved) dismissRemoval()
+  }
+
+  async function keepOriginalLogo() {
+    if (!removal) return
+    const file = removal.file
     dismissRemoval()
-    if (saveError) {
-      setError('The files uploaded, but the logo record could not be saved.')
-      return
-    }
-    onDealerUpdated({ ...dealer, ...(data as DealerAccount), logo_url: transparentUrl, logo_source_url: sourceUrl })
-    setMessage('Transparent logo saved. The untouched upload can be restored.')
+    await storeUploadedLogo(file, 'primary')
   }
 
   async function restoreOriginalLogo() {
@@ -422,7 +464,7 @@ export function DealerCompanyProfilePage({
           <div>
             <p className="eyebrow">Primary Logo</p>
             <h2>Primary Logo</h2>
-            <p>Upload your standard logo for use on light or white backgrounds.</p>
+            <p>Upload your standard logo. A flat outer background is detected automatically. Nothing is saved until you accept the transparent PNG or keep the upload.</p>
             <p>PNG, JPEG, WebP, or SVG. Maximum file size 5 MB.</p>
             {removalNotice && <p className="logo-helper-note" role="status">{removalNotice}</p>}
           </div>
@@ -505,8 +547,10 @@ export function DealerCompanyProfilePage({
           originalUrl={removal.originalUrl}
           removedUrl={removal.removedUrl}
           reason={removal.reason}
-          onKeep={() => { const pending = removal.file; dismissRemoval(); void handleLogoUpload({ target: { files: [pending], value: '' } } as unknown as ChangeEvent<HTMLInputElement>, 'primary', true) }}
-          onAccept={() => void acceptRemoval()}
+          busy={uploadingLogo !== null}
+          onAccept={() => void acceptTransparentLogo()}
+          onKeep={() => void keepOriginalLogo()}
+          onCancel={dismissRemoval}
         />
       )}
 
