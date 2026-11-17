@@ -53,10 +53,6 @@ export function isLightBrandColor(value: string) {
   return contrastWithBlack >= contrastWithWhite
 }
 
-export function coloredLogoNeedsNeutralPlate(background: string) {
-  return !isLightBrandColor(background)
-}
-
 export function normalizeLogoVariant(value: string | null | undefined): DealerLogoVariant | null {
   return value === 'original' || value === 'black' || value === 'white' ? value : null
 }
@@ -90,14 +86,60 @@ export function resolveDisplayedLogo(dealer: DealerLogoVariantSource, variant: D
   return resolveVariantLogoUrl(dealer, variant) ?? (variant ? cleanUrl(dealer.logo_url) : null)
 }
 
-/** Door Builder page and homepage headers use the secondary color. A contrast plate is only for original or black ink on a dark header. */
-export function headerContrastPlate(dealer: DealerLogoVariantSource, variant: DealerLogoVariant | null) {
-  if (!variant) return null
-  const header = doorBuilderColor(dealer.secondary_color, DOOR_BUILDER_HEADER_FALLBACK)
-  if (isLightBrandColor(header)) return null
-  if (variant === 'white' && resolveVariantLogoUrl(dealer, 'white')) return null
-  if (!resolveDisplayedLogo(dealer, variant)) return null
-  return 'light' as const
+/** Homepage header background. Door Builder paints `.dealer-cobranded > header` with the secondary color. */
+export function doorBuilderHeaderSurface(dealer: DealerLogoVariantSource) {
+  return doorBuilderColor(dealer.secondary_color, DOOR_BUILDER_HEADER_FALLBACK)
+}
+
+/**
+ * Normal pages draw the logo in that same header, including when the homepage
+ * logo is placed in the hero. The hero itself is a separate light surface and
+ * is not this selector.
+ */
+export function doorBuilderPagesSurface(dealer: DealerLogoVariantSource) {
+  return doorBuilderHeaderSurface(dealer)
+}
+
+export type LogoInkStatus = { transparent: boolean; contrasts: boolean; contrastingShare: number } | 'missing' | 'pending' | 'unreadable'
+
+export type LogoVariantOffer = { enabled: boolean; reason: string | null }
+
+const darkOriginalContrast = 'Original does not have enough contrast on this dark header. At least 30% of its opaque ink needs a 3:1 ratio against the header color.'
+const solidBackground = 'This file still has a solid background, so it is not offered. Upload it again to save a transparent PNG.'
+const unreadableGenerated = 'A generated file is offered only when it is marked readable. An unreadable or unchecked file is never selected.'
+
+function offerFromInk(
+  status: LogoInkStatus,
+  options: { allowWithoutContrast: boolean; blockedReason: string | null; missingReason: string; contrastReason: string },
+): LogoVariantOffer {
+  if (options.blockedReason) return { enabled: false, reason: options.blockedReason }
+  if (status === 'missing') return { enabled: false, reason: options.missingReason }
+  if (status === 'pending') return { enabled: false, reason: 'Checking this logo against the header color.' }
+  if (status === 'unreadable') return { enabled: false, reason: 'This logo could not be checked, so it is not offered.' }
+  if (!status.transparent) return { enabled: false, reason: solidBackground }
+  if (!options.allowWithoutContrast && !status.contrasts) return { enabled: false, reason: options.contrastReason }
+  return { enabled: true, reason: null }
+}
+
+/**
+ * Dark header: Original when its ink already contrasts, plus a readable transparent White.
+ * Light header: Original and Black by default. White and Black that fail the surface are disabled.
+ */
+export function logoVariantOffers(surfaceIsLight: boolean, ink: { original: LogoInkStatus; white: LogoInkStatus; black: LogoInkStatus }): Record<DealerLogoVariant, LogoVariantOffer> {
+  const lightBlocked = 'White is turned off on this light header because white ink does not contrast with it.'
+  const darkBlocked = 'Black is turned off on this dark header because black ink does not contrast with it.'
+  if (surfaceIsLight) {
+    return {
+      original: offerFromInk(ink.original, { allowWithoutContrast: true, blockedReason: null, missingReason: 'Upload a primary logo before choosing Original.', contrastReason: darkOriginalContrast }),
+      black: offerFromInk(ink.black, { allowWithoutContrast: true, blockedReason: null, missingReason: `Black is not offered. ${unreadableGenerated}`, contrastReason: darkOriginalContrast }),
+      white: offerFromInk(ink.white, { allowWithoutContrast: false, blockedReason: lightBlocked, missingReason: lightBlocked, contrastReason: lightBlocked }),
+    }
+  }
+  return {
+    original: offerFromInk(ink.original, { allowWithoutContrast: false, blockedReason: null, missingReason: 'Upload a primary logo before choosing Original.', contrastReason: darkOriginalContrast }),
+    white: offerFromInk(ink.white, { allowWithoutContrast: false, blockedReason: null, missingReason: `White is not offered. ${unreadableGenerated}`, contrastReason: 'White does not have enough contrast on this header.' }),
+    black: offerFromInk(ink.black, { allowWithoutContrast: false, blockedReason: darkBlocked, missingReason: darkBlocked, contrastReason: darkBlocked }),
+  }
 }
 
 export type DoorBuilderLegacySurface = 'dark-header' | 'light-surface' | 'hero'

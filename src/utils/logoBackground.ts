@@ -2,7 +2,85 @@ export type BackgroundRemoval =
   | { confident: false; reason: string }
   | { confident: true; reason: string; pixels: Uint8ClampedArray; width: number; height: number }
 
+export const INK_CONTRAST_RATIO = 3
+export const MIN_CONTRASTING_INK_SHARE = 0.3
+
+export type LogoInkSample = {
+  transparent: boolean
+  contrasts: boolean
+  contrastingShare: number
+}
+
 const MAX_PIXELS = 4_000_000
+
+function borderStats(data: Uint8ClampedArray, width: number, height: number) {
+  const border: number[] = []
+  let transparentBorder = 0
+  let borderCount = 0
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (x > 1 && x < width - 2 && y > 1 && y < height - 2) continue
+      borderCount += 1
+      const offset = (y * width + x) * 4
+      if (data[offset + 3] < 20) transparentBorder += 1
+      else if (data[offset + 3] > 220) border.push(offset)
+    }
+  }
+  return { border, borderCount, transparentBorder }
+}
+
+/** True when the outer edge is already transparent, matching the removal refusal. */
+export function hasTransparentEdge(data: Uint8ClampedArray, width: number, height: number) {
+  if (width < 2 || height < 2 || data.length < width * height * 4) return false
+  const { borderCount, transparentBorder } = borderStats(data, width, height)
+  return borderCount > 0 && transparentBorder / borderCount > 0.3
+}
+
+function channelLuminance(red: number, green: number, blue: number) {
+  const linearize = (channel: number) => {
+    const value = channel / 255
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+  }
+  return 0.2126 * linearize(red) + 0.7152 * linearize(green) + 0.0722 * linearize(blue)
+}
+
+function contrastRatio(first: number, second: number) {
+  const lighter = Math.max(first, second)
+  const darker = Math.min(first, second)
+  return (lighter + 0.05) / (darker + 0.05)
+}
+
+/**
+ * Contrast of opaque ink against a surface. A logo passes when at least 30% of
+ * pixels with alpha >= 128 reach a 3:1 ratio. Edge transparency is required
+ * before a file is treated as a transparent variant.
+ */
+export function sampleLogoInk(data: Uint8ClampedArray, width: number, height: number, background: string): LogoInkSample {
+  const empty = { transparent: false, contrasts: false, contrastingShare: 0 }
+  const match = /^#([0-9a-f]{6})$/i.exec(background.trim())
+  if (!match || width < 2 || height < 2 || data.length < width * height * 4) return empty
+  const hex = match[1]
+  const backgroundLuminance = channelLuminance(
+    Number.parseInt(hex.slice(0, 2), 16),
+    Number.parseInt(hex.slice(2, 4), 16),
+    Number.parseInt(hex.slice(4, 6), 16),
+  )
+  let opaque = 0
+  let contrasting = 0
+  for (let index = 0; index < width * height; index += 1) {
+    const offset = index * 4
+    if (data[offset + 3] < 128) continue
+    opaque += 1
+    const luminance = channelLuminance(data[offset], data[offset + 1], data[offset + 2])
+    if (contrastRatio(luminance, backgroundLuminance) >= INK_CONTRAST_RATIO) contrasting += 1
+  }
+  const contrastingShare = opaque === 0 ? 0 : contrasting / opaque
+  return {
+    transparent: hasTransparentEdge(data, width, height),
+    contrasts: opaque > 0 && contrastingShare >= MIN_CONTRASTING_INK_SHARE,
+    contrastingShare,
+  }
+}
 
 function distance(data: Uint8ClampedArray, offset: number, color: [number, number, number]) {
   return Math.max(
@@ -27,18 +105,7 @@ export function assessBackgroundRemoval(data: Uint8ClampedArray, width: number, 
     return { confident: false, reason: 'This image is not a supported logo size.' }
   }
 
-  const border: number[] = []
-  let transparentBorder = 0
-  let borderCount = 0
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      if (x > 1 && x < width - 2 && y > 1 && y < height - 2) continue
-      borderCount += 1
-      const offset = (y * width + x) * 4
-      if (data[offset + 3] < 20) transparentBorder += 1
-      else if (data[offset + 3] > 220) border.push(offset)
-    }
-  }
+  const { border, borderCount, transparentBorder } = borderStats(data, width, height)
   if (borderCount === 0 || transparentBorder / borderCount > 0.3) {
     return { confident: false, reason: 'This logo already has a transparent background.' }
   }

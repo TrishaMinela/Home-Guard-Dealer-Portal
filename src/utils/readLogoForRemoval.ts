@@ -1,4 +1,4 @@
-import { assessBackgroundRemoval } from './logoBackground'
+import { assessBackgroundRemoval, sampleLogoInk, type LogoInkSample } from './logoBackground'
 
 export async function readLogoForRemoval(file: File): Promise<{ confident: boolean; reason: string; png: Blob | null }> {
   if (file.type === 'image/svg+xml') {
@@ -19,4 +19,28 @@ export async function readLogoForRemoval(file: File): Promise<{ confident: boole
   context.putImageData(new ImageData(copy, result.width, result.height), 0, 0)
   const png = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
   return { confident: true, reason: result.reason, png }
+}
+
+export async function inspectLogoAgainstSurface(url: string, background: string): Promise<LogoInkSample | null> {
+  try {
+    const response = await fetch(url)
+    if (!response.ok) return null
+    const blob = await response.blob()
+    if (blob.type === 'image/svg+xml') return { transparent: true, contrasts: true, contrastingShare: 1 }
+    const bitmap = await createImageBitmap(blob)
+    const canvas = document.createElement('canvas')
+    canvas.width = bitmap.width
+    canvas.height = bitmap.height
+    const context = canvas.getContext('2d', { willReadFrequently: true })
+    if (!context) {
+      bitmap.close()
+      return null
+    }
+    context.drawImage(bitmap, 0, 0)
+    bitmap.close()
+    const image = context.getImageData(0, 0, canvas.width, canvas.height)
+    return sampleLogoInk(image.data, canvas.width, canvas.height, background)
+  } catch {
+    return null
+  }
 }

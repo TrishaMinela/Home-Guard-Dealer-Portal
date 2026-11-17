@@ -2,12 +2,15 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import {
+  DOOR_BUILDER_HEADER_FALLBACK,
   DOOR_BUILDER_PAGE_BACKGROUND,
-  coloredLogoNeedsNeutralPlate,
   doorBuilderColor,
+  doorBuilderHeaderSurface,
   doorBuilderLegacyLightLogo,
   doorBuilderLogoWhenVariantUnset,
-  headerContrastPlate,
+  doorBuilderPagesSurface,
+  isLightBrandColor,
+  logoVariantOffers,
   logoVariantWrite,
   normalizeLogoVariant,
   resolveLightLogoUrl,
@@ -32,27 +35,46 @@ test('white/light logo prefers a custom upload, then a readable generated logo',
   assert.equal(resolveVariantLogoUrl(generated, null), null)
 })
 
-test('header previews plate original and black on a dark header and never plate white', () => {
-  const dealer = {
-    logo_url: 'https://cdn.example/original.png',
-    logo_light_url: 'https://cdn.example/white.png',
-    logo_black_url: 'https://cdn.example/black.png',
-    secondary_color: '#40454c',
-  }
-  assert.equal(headerContrastPlate(dealer, 'original'), 'light')
-  assert.equal(headerContrastPlate(dealer, 'black'), 'light')
-  assert.equal(headerContrastPlate(dealer, 'white'), null)
-  assert.equal(headerContrastPlate(dealer, null), null)
-  assert.equal(headerContrastPlate({ ...dealer, secondary_color: '#f8d30e' }, 'original'), null)
-  assert.equal(headerContrastPlate({ ...dealer, logo_light_url: null, logo_generated_light_usable: false }, 'white'), 'light')
+const transparentInk = { transparent: true, contrasts: true, contrastingShare: 1 }
+const transparentLowContrast = { transparent: true, contrasts: false, contrastingShare: 0.04 }
+const solidInk = { transparent: false, contrasts: true, contrastingShare: 1 }
+
+test('dark headers offer contrasting original and white, and light headers offer original and black', () => {
+  const dark = logoVariantOffers(false, { original: transparentInk, white: transparentInk, black: transparentInk })
+  assert.equal(dark.original.enabled, true)
+  assert.equal(dark.white.enabled, true)
+  assert.equal(dark.black.enabled, false)
+  assert.match(dark.black.reason ?? '', /dark header/)
+
+  const darkLowOriginal = logoVariantOffers(false, { original: transparentLowContrast, white: 'missing', black: transparentInk })
+  assert.equal(darkLowOriginal.original.enabled, false)
+  assert.match(darkLowOriginal.original.reason ?? '', /3:1/)
+  assert.equal(darkLowOriginal.white.enabled, false)
+  assert.match(darkLowOriginal.white.reason ?? '', /marked readable/)
+  assert.equal(darkLowOriginal.black.enabled, false)
+
+  const light = logoVariantOffers(true, { original: transparentLowContrast, white: transparentInk, black: transparentInk })
+  assert.equal(light.original.enabled, true)
+  assert.equal(light.black.enabled, true)
+  assert.equal(light.white.enabled, false)
+  assert.match(light.white.reason ?? '', /light header/)
+
+  const solid = logoVariantOffers(false, { original: solidInk, white: 'missing', black: 'missing' })
+  assert.equal(solid.original.enabled, false)
+  assert.match(solid.original.reason ?? '', /solid background/)
+  assert.equal(logoVariantOffers(false, { original: 'pending', white: 'missing', black: 'missing' }).original.enabled, false)
 })
 
-test('colored logos on a dark header use a neutral plate, and page background stays light', () => {
+test('homepage header and normal pages both use the dealer secondary color', () => {
+  const dealer = { secondary_color: '#40454C' }
   assert.equal(doorBuilderColor('#40454C', '#05040b'), '#40454c')
   assert.equal(doorBuilderColor('blue', '#05040b'), '#05040b')
-  assert.equal(coloredLogoNeedsNeutralPlate('#40454c'), true)
-  assert.equal(coloredLogoNeedsNeutralPlate('#002661'), true)
-  assert.equal(coloredLogoNeedsNeutralPlate(DOOR_BUILDER_PAGE_BACKGROUND), false)
+  assert.equal(doorBuilderHeaderSurface(dealer), '#40454c')
+  assert.equal(doorBuilderPagesSurface(dealer), doorBuilderHeaderSurface(dealer))
+  assert.equal(doorBuilderPagesSurface({ secondary_color: null }), DOOR_BUILDER_HEADER_FALLBACK)
+  assert.equal(isLightBrandColor('#40454c'), false)
+  assert.equal(isLightBrandColor('#002661'), false)
+  assert.equal(isLightBrandColor('#f0b429'), true)
   assert.equal(DOOR_BUILDER_PAGE_BACKGROUND, '#f5f7f7')
 })
 
@@ -130,7 +152,7 @@ test('admin and dealer branding settings share the same choices and saved fields
     assert.match(page, /logoVariantWrite\(variants\.header, variants\.pages\)/)
     assert.doesNotMatch(page, /Homepage\/Header Logo|Normal Pages Logo|Original Colored Logo|White\/Light Logo/)
   }
-  assert.match(component, /!available\[choice\.value\]/)
+  assert.match(component, /!offer\.enabled/)
   assert.match(detail, /\.update\(written\)/)
   assert.match(profile, /p_logo_header_variant: written\.logo_header_variant/)
   assert.match(profile, /p_logo_pages_variant: written\.logo_pages_variant/)
@@ -147,10 +169,12 @@ test('branding settings expose independent homepage and pages logo choices', asy
   assert.match(component, /label: 'Original'/)
   assert.match(component, /label: 'Black'/)
   assert.match(component, /label: 'White'/)
-  assert.match(component, /headerContrastPlate\(dealer, header\)/)
-  assert.match(component, /headerContrastPlate\(dealer, pages\)/)
+  assert.match(component, /doorBuilderHeaderSurface\(dealer\)/)
+  assert.match(component, /doorBuilderPagesSurface\(dealer\)/)
+  assert.match(component, /logoVariantOffers\(/)
   assert.match(component, /secondary color/)
   assert.doesNotMatch(component, /DOOR_BUILDER_PAGE_BACKGROUND/)
+  assert.doesNotMatch(component, /headerContrastPlate|logo-variant-preview__plate/)
   assert.match(detail, /logoVariantWrite\(variants\.header, variants\.pages\)/)
   assert.match(profile, /update_my_dealer_logo_variants/)
   const styles = await readFile(new URL('../src/App.css', import.meta.url), 'utf8')

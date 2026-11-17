@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import sharp from 'sharp'
 import { generateWhiteLogo } from '../api/_lib/dealerLightLogo.ts'
-import { assessBackgroundRemoval } from '../src/utils/logoBackground.ts'
+import { assessBackgroundRemoval, sampleLogoInk } from '../src/utils/logoBackground.ts'
 
 async function raw(input: Buffer) {
   const { data, info } = await sharp(input).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
@@ -91,9 +91,56 @@ test('an already transparent logo is left unchanged and the reason is shown', as
   const detail = await readFile(new URL('../src/pages/DealerDetailPage.tsx', import.meta.url), 'utf8')
   const profile = await readFile(new URL('../src/pages/DealerCompanyProfilePage.tsx', import.meta.url), 'utf8')
   for (const page of [detail, profile]) {
-    assert.match(page, /setRemovalNotice\(inspected\.reason\)/)
+    assert.match(page, /setRemovalNotice\(inspected\.confident/)
+    assert.match(page, /: inspected\.reason\)/)
     assert.match(page, /role="status">\{removalNotice\}/)
+    assert.match(page, /saveRemovedBackground\(file, inspected\.png, inspected\.reason\)/)
+    assert.match(page, /Restore Original/)
+    assert.doesNotMatch(page, /onAccept|Accept transparent PNG/)
   }
+  const dialog = await readFile(new URL('../src/components/LogoBackgroundDialog.tsx', import.meta.url), 'utf8')
+  assert.match(dialog, /transparent PNG is already saved/)
+  assert.match(dialog, /Restore original/)
+  assert.doesNotMatch(dialog, /Nothing is saved until you choose|Accept transparent PNG|Keep Original/)
+})
+
+test('removed flat backgrounds stay transparent when white and black versions are derived', async () => {
+  const source = await sharp({
+    create: { width: 48, height: 32, channels: 3, background: '#ffffff' },
+  }).composite([{
+    input: Buffer.from('<svg width="48" height="32"><rect x="8" y="6" width="32" height="20" fill="#f0b429"/><rect x="18" y="13" width="12" height="4" fill="#c41230"/></svg>'),
+  }]).png().toBuffer()
+  const image = await raw(source)
+  const removed = assessBackgroundRemoval(image.data, image.width, image.height)
+  assert.equal(removed.confident, true)
+  if (!removed.confident) return
+  assert.equal(removed.width, image.width)
+  assert.equal(removed.height, image.height)
+  const sample = sampleLogoInk(removed.pixels, removed.width, removed.height, '#40454c')
+  assert.equal(sample.transparent, true)
+  assert.equal(sample.contrasts, true)
+  const png = await sharp(Buffer.from(removed.pixels.buffer), { raw: { width: removed.width, height: removed.height, channels: 4 } }).png().toBuffer()
+  for (const tone of ['white', 'black'] as const) {
+    const generated = await generateWhiteLogo(png, tone)
+    const meta = await sharp(generated.png).metadata()
+    const pixels = await raw(generated.png)
+    assert.equal(meta.hasAlpha, true)
+    assert.equal(pixels.width, removed.width)
+    assert.equal(pixels.height, removed.height)
+    assert.equal(pixels.data[3], 0)
+  }
+})
+
+test('navy ink on a navy header does not pass the contrast share', async () => {
+  const source = await sharp({
+    create: { width: 24, height: 16, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+  }).composite([{
+    input: Buffer.from('<svg width="24" height="16"><rect x="4" y="4" width="16" height="8" fill="#002661"/></svg>'),
+  }]).png().toBuffer()
+  const image = await raw(source)
+  const sample = sampleLogoInk(image.data, image.width, image.height, '#002661')
+  assert.equal(sample.transparent, true)
+  assert.equal(sample.contrasts, false)
 })
 
 test('black generation keeps transparency and paints kept ink black', async () => {
