@@ -18,7 +18,7 @@ export function useAdminData(): AdminDataState {
     setDealers((current) =>
       current
         .map((dealer) =>
-          dealer.id === updatedDealer.id ? updatedDealer : dealer,
+          dealer.id === updatedDealer.id ? { ...dealer, ...updatedDealer } : dealer,
         )
         .sort((a, b) => a.company_name.localeCompare(b.company_name)),
     )
@@ -53,7 +53,17 @@ export function useAdminData(): AdminDataState {
         setError('')
       }
 
-      setDealers(dealerResult.data ?? [])
+      const loadedDealers = dealerResult.data ?? []
+      const usableFlags = dealerResult.error
+        ? null
+        : await supabase.from('dealers').select('id, logo_generated_light_usable')
+      const usableById = !usableFlags || usableFlags.error
+        ? null
+        : new Map(usableFlags.data?.map((row) => [row.id, row.logo_generated_light_usable]) ?? [])
+      if (!isCurrent) return
+      setDealers(usableById
+        ? loadedDealers.map((dealer) => ({ ...dealer, logo_generated_light_usable: usableById.get(dealer.id) ?? null }))
+        : loadedDealers)
       setLeads(leadResult.data ?? [])
       setIsLoading(false)
     }

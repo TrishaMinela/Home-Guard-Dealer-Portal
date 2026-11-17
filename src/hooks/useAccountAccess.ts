@@ -123,10 +123,18 @@ export function useAccountAccess(user: User | null) {
         return
       }
 
+      const usableFlag = await supabase
+        .from('dealers')
+        .select('logo_generated_light_usable')
+        .eq('id', dealerRecord.id)
+        .maybeSingle()
+      if (!isCurrent) return
       setAccess({
         userId: authenticatedUser.id,
         type: 'dealer',
-        dealer: dealerRecord,
+        dealer: usableFlag.error
+          ? dealerRecord
+          : { ...dealerRecord, logo_generated_light_usable: usableFlag.data?.logo_generated_light_usable ?? null },
         message: '',
       })
     }
@@ -141,7 +149,9 @@ export function useAccountAccess(user: User | null) {
   const updateDealer = useCallback((dealer: AccountAccess['dealer']) => {
     if (!dealer) return
     setAccess((current) =>
-      current?.type === 'dealer' ? { ...current, dealer } : current,
+      current?.type === 'dealer' && current.dealer
+        ? { ...current, dealer: { ...current.dealer, ...dealer } }
+        : current,
     )
   }, [])
 
