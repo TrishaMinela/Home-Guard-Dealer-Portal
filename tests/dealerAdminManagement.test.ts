@@ -45,7 +45,8 @@ test('admin Marketing Tools uses the shared implementation and a protected selec
   assert.match(dealerDetail, /<AdminDealerMarketingTools dealerId=\{dealer\.id\}/)
   assert.match(marketingTools, /embedded = false/)
   assert.match(dealerLayout, /<MarketingToolsPage dealer=\{dealer\}/)
-  assert.match(marketingTools, /getDealerVisualizerUrl\(dealer\.slug\)/)
+  assert.match(marketingTools, /<MarketingBannerLibrary/)
+  assert.match(marketingTools, /adminHref=\{bannerAdminHref\}/)
 })
 
 test('access-manager capability is explicit and does not recolor the Portal shell', () => {

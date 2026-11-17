@@ -107,7 +107,7 @@ export function BannerCustomizeDialog({
               </div>
             ) : (
               <fieldset className="mbl-logo-list">
-                <legend>Logo</legend>
+                <legend>Select Dealer Logo</legend>
                 {variants.map((variant) => (
                   <label className={`mbl-logo-option${selected?.id === variant.id ? ' is-selected' : ''}`} key={variant.id}>
                     <input type="radio" name={`banner-logo-${banner.slot}`} value={variant.id} checked={selected?.id === variant.id} onChange={() => onLogoId(variant.id)} />
@@ -117,12 +117,15 @@ export function BannerCustomizeDialog({
                 ))}
               </fieldset>
             )}
-            <BannerPreviewCanvas
-              templateUrl={banner.imageUrl}
-              logoUrl={selected?.url ?? null}
-              placement={banner.placement}
-              label={`${banner.headline} with the selected logo`}
-            />
+            <div className="mbl-live-preview">
+              <p className="eyebrow">Live Preview</p>
+              <BannerPreviewCanvas
+                templateUrl={banner.imageUrl}
+                logoUrl={selected?.url ?? null}
+                placement={banner.placement}
+                label={`${banner.headline} with the selected logo`}
+              />
+            </div>
             <p className="mbl-help">{banner.placementLabel}. {banner.width} × {banner.height} template.</p>
             <div className="mbl-dialog__actions">
               <button className="button button--primary" type="button" disabled={!selected || downloading !== null} onClick={() => onDownload('png')}>{downloading === 'png' ? 'Preparing PNG…' : 'Download PNG'}</button>

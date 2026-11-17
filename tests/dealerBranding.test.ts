@@ -17,7 +17,6 @@ const css = readFileSync('src/App.css', 'utf8')
 const app = readFileSync('src/App.tsx', 'utf8')
 const profile = readFileSync('src/pages/DealerCompanyProfilePage.tsx', 'utf8')
 const marketingTools = readFileSync('src/pages/MarketingToolsPage.tsx', 'utf8')
-const bannerRenderer = readFileSync('src/features/banner-generator/bannerRenderer.ts', 'utf8')
 
 type DealerBrandFixture = {
   id: string
@@ -79,9 +78,9 @@ test('Portal shell remains Home Guard branded for every account type', () => {
 test('dealer branding remains available only in dealer content and marketing previews', () => {
   assert.match(profile, /primaryColor/)
   assert.match(profile, /secondaryColor/)
-  assert.match(marketingTools, /renderBanner\(\{ canvas: renderedCanvas, dealer/)
-  assert.match(bannerRenderer, /dealer\.primary_color/)
-  assert.match(bannerRenderer, /dealer\.secondary_color/)
+  assert.match(marketingTools, /<MarketingBannerLibrary/)
+  assert.match(marketingTools, /dealer=\{dealer\}/)
+  assert.doesNotMatch(marketingTools, /primary_color|secondary_color/)
 })
 
 test('profile updates refresh the authenticated dealer shell without another lookup', () => {
