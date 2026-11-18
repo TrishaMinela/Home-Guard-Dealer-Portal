@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { AdminLeadDetail } from '../components/AdminLeadDetail'
 import type { Lead, LeadDataState } from '../types/lead'
 import { dateStamp, exportCsv, type CsvColumn } from '../utils/csvExport'
@@ -41,9 +42,20 @@ const dealerExportColumns: CsvColumn<Lead>[] = [
 type LeadsPageProps = LeadDataState & { dealerSlug: string; dealerName: string }
 
 export function LeadsPage({ leads, isLoading, error, dealerSlug, dealerName }: LeadsPageProps) {
+  const navigate = useNavigate()
+  const { leadId } = useParams()
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('All')
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
+  const selectedLead = leadId ? leads.find((lead) => lead.id === leadId) ?? null : null
+  const leadUnavailable = Boolean(leadId) && !isLoading && !selectedLead
+
+  function openLead(lead: Lead) {
+    navigate(`/leads/${lead.id}`)
+  }
+
+  function closeLead() {
+    navigate('/leads')
+  }
 
   const filteredLeads = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
@@ -65,7 +77,7 @@ export function LeadsPage({ leads, isLoading, error, dealerSlug, dealerName }: L
   return (
     <div className="page-content">
       <header className="page-header">
-        <p className="eyebrow">Customers</p>
+        <p className="eyebrow">Leads</p>
         <h1>Leads</h1>
         <p>View customer inquiries connected to your dealership.</p>
       </header>
@@ -112,6 +124,13 @@ export function LeadsPage({ leads, isLoading, error, dealerSlug, dealerName }: L
             {error}
           </div>
         )}
+        {leadUnavailable && (
+          <div className="portal-alert" role="alert">
+            {error
+              ? 'This lead could not be opened because the lead list failed to load.'
+              : 'This lead could not be found, or you do not have access to it.'}
+          </div>
+        )}
         {!isLoading && !error && filteredLeads.length === 0 && (
           <div className="data-state">
             {leads.length === 0 ? 'No leads yet.' : 'No leads match your filters.'}
@@ -133,10 +152,10 @@ export function LeadsPage({ leads, isLoading, error, dealerSlug, dealerName }: L
               </thead>
               <tbody>
                 {filteredLeads.map((lead) => (
-                  <tr className="lead-row" key={lead.id} tabIndex={0} onClick={() => setSelectedLead(lead)} onKeyDown={(event) => {
+                  <tr className="lead-row" key={lead.id} tabIndex={0} onClick={() => openLead(lead)} onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault()
-                      setSelectedLead(lead)
+                      openLead(lead)
                     }
                   }}>
                     <td data-label="Name">
@@ -153,7 +172,7 @@ export function LeadsPage({ leads, isLoading, error, dealerSlug, dealerName }: L
                     </td>
                     <td data-label="Action"><button className="lead-view-button" type="button" onClick={(event) => {
                       event.stopPropagation()
-                      setSelectedLead(lead)
+                      openLead(lead)
                     }}>View</button></td>
                   </tr>
                 ))}
@@ -162,7 +181,7 @@ export function LeadsPage({ leads, isLoading, error, dealerSlug, dealerName }: L
           </div>
         )}
       </section>
-      {selectedLead && <AdminLeadDetail lead={selectedLead} dealerName={dealerName} onClose={() => setSelectedLead(null)} />}
+      {selectedLead && <AdminLeadDetail lead={selectedLead} dealerName={dealerName} onClose={closeLead} />}
     </div>
   )
 }

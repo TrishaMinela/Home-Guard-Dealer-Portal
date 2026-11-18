@@ -14,7 +14,7 @@ const dealerPage = readFileSync('src/pages/DealerDetailPage.tsx', 'utf8')
 
 test('only the existing super-admin capability can access CRM integration management', () => {
   assert.match(endpoint, /authorizeBillingAccessManager\(authorization\)/)
-  assert.match(dealerPage, /canManageDealerCredentials && <DealerCrmIntegrations/)
+  assert.match(dealerPage, /canManageDealerCredentials \? \([\s\S]*<DealerCrmIntegrations/)
   assert.match(endpoint, /if \(!access\.authorized\) return send\(response, access\.status/)
   assert.doesNotMatch(endpoint, /authorizeHgiAdmin|authorizeBillingAccessOperator/)
 })

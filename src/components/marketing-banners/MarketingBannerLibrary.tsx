@@ -122,7 +122,7 @@ export function MarketingBannerLibrary({
       <div className="content-card__header">
         <p className="eyebrow">Dealer branding</p>
         <h2 id={`${baseId}-title`}>Banner Library</h2>
-        <p className="mbl-intro">Choose a Home Guard template and place {dealer.company_name}’s existing logo on it. Logo positions are unverified defaults until an admin sets them.</p>
+        <p className="mbl-intro">Choose a Home Guard design and place {dealer.company_name}’s logo on it. The logo position is a suggested starting point.</p>
       </div>
       <div className="mbl-body">
         {message ? <div className="portal-alert portal-alert--success" role="status">{message}</div> : null}

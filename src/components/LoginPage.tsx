@@ -35,9 +35,9 @@ export function LoginPage({
         </div>
 
         <div className="login-card__intro">
-          <p className="eyebrow">Dealer access</p>
+          <p className="eyebrow">Portal access</p>
           <h1>Welcome back</h1>
-          <p>Sign in to continue to your Home Guard dealer portal.</p>
+          <p>Sign in to the Home Guard portal. Dealers and Home Guard staff use this page.</p>
         </div>
 
         <form className="login-form" onSubmit={onSubmit}>

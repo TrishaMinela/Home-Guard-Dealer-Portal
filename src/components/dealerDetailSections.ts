@@ -17,6 +17,28 @@ export const dealerDetailSections: readonly DealerDetailSection[] = [
   { id: 'dealer-users', label: 'Dealer Users / Access', access: 'users' },
 ]
 
+export function restrictedDealerSectionNotes(access: {
+  canManageDealerCredentials: boolean
+  canManageDealerUsers: boolean
+}): Array<{ id: string; title: string; requiredRole: string }> {
+  const notes: Array<{ id: string; title: string; requiredRole: string }> = []
+  if (!access.canManageDealerCredentials) {
+    notes.push({
+      id: 'marketing-and-crm',
+      title: 'Marketing Tools and CRM Integrations',
+      requiredRole: 'an access manager',
+    })
+  }
+  if (!access.canManageDealerUsers) {
+    notes.push({
+      id: 'dealer-users',
+      title: 'Dealer Users',
+      requiredRole: 'an access manager or a billing admin',
+    })
+  }
+  return notes
+}
+
 export function visibleDealerDetailSections(access: {
   canManageDealerCredentials: boolean
   canManageDealerUsers: boolean

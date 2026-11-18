@@ -367,7 +367,7 @@ test('Marketing Tools renders the banner library instead of the version 1 genera
 
   assert.match(portal, /path="\/marketing"[\s\S]*<MarketingToolsPage dealer=\{dealer\} \/>/)
   assert.doesNotMatch(portal, /bannerAdminHref/)
-  assert.match(dealerDetail, /canManageDealerCredentials && <AdminDealerMarketingTools/)
+  assert.match(dealerDetail, /canManageDealerCredentials \? \([\s\S]*<AdminDealerMarketingTools/)
   assert.match(adminTools, /<MarketingToolsPage/)
   assert.match(adminTools, /bannerAdminHref=\{`\/admin\/marketing-banners\?dealer=\$\{encodeURIComponent\(dealerId\)\}`\}/)
   assert.match(adminTools, /embedded/)
