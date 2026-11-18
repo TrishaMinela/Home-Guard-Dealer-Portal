@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { MARKETING_BANNERS, resolveMarketingBanners } from '../src/features/marketing-banners/catalog.ts'
@@ -329,5 +330,52 @@ test('template writes are authorized on the server before any update and never r
   assert.match(library, /Download/)
   assert.doesNotMatch(library, /type="file"|saveMarketingBanner/)
   assert.match(tools, /MarketingBannerLibrary/)
-  assert.match(tools, /Website Banner Generator/)
+  assert.doesNotMatch(tools, /Website Banner Generator/)
+})
+
+test('Marketing Tools renders the banner library instead of the version 1 generator', async () => {
+  const tools = await readFile(new URL('../src/pages/MarketingToolsPage.tsx', import.meta.url), 'utf8')
+  const library = await readFile(new URL('../src/components/marketing-banners/MarketingBannerLibrary.tsx', import.meta.url), 'utf8')
+  const adminTools = await readFile(new URL('../src/components/AdminDealerMarketingTools.tsx', import.meta.url), 'utf8')
+  const portal = await readFile(new URL('../src/components/PortalLayout.tsx', import.meta.url), 'utf8')
+  const adminLayout = await readFile(new URL('../src/components/AdminLayout.tsx', import.meta.url), 'utf8')
+  const adminPage = await readFile(new URL('../src/pages/AdminMarketingBannersPage.tsx', import.meta.url), 'utf8')
+  const dealerDetail = await readFile(new URL('../src/pages/DealerDetailPage.tsx', import.meta.url), 'utf8')
+  const css = await readFile(new URL('../src/App.css', import.meta.url), 'utf8')
+
+  assert.doesNotMatch(tools, /Website Banner Generator|Version 1|banner-generator|bannerSizes|bannerTemplates|Download PNG|Banner Size|Banner Layout/)
+  assert.doesNotMatch(tools, /features\/banner-generator/)
+  assert.equal(existsSync(new URL('../src/features/banner-generator/bannerRenderer.ts', import.meta.url)), false)
+  assert.equal(existsSync(new URL('../src/features/banner-generator/bannerTemplates.ts', import.meta.url)), false)
+  assert.doesNotMatch(css, /\.banner-generator|\.banner-size-grid|\.banner-template-grid|\.banner-preview-frame/)
+
+  const libraryAt = tools.indexOf('<MarketingBannerLibrary')
+  const visualizerAt = tools.indexOf('>Visualizer Link<')
+  const embedAt = tools.indexOf('>Embed Code<')
+  assert.ok(libraryAt > -1 && visualizerAt > libraryAt && embedAt > visualizerAt)
+  assert.match(tools, /getDealerVisualizerUrl\(dealer\.slug\)/)
+  assert.match(tools, /Copy Embed Code/)
+
+  assert.equal(MARKETING_BANNERS.length, 8)
+  assert.deepEqual(MARKETING_BANNERS.map((item) => item.slot), [1, 2, 3, 4, 5, 6, 7, 8])
+  assert.match(library, /bannersInCategory\(library\.templates, category\)/)
+  assert.match(library, /Customize Banner/)
+  assert.match(library, /Download/)
+  assert.match(library, /automaticBannerLogo\(dealer\)/)
+  assert.match(library, /dealerLogoVariants\(dealer\)/)
+  assert.match(library, /adminHref \? <Link className="mbl-admin-link" to=\{adminHref\}>Edit template placements<\/Link>/)
+
+  assert.match(portal, /path="\/marketing"[\s\S]*<MarketingToolsPage dealer=\{dealer\} \/>/)
+  assert.doesNotMatch(portal, /bannerAdminHref/)
+  assert.match(dealerDetail, /canManageDealerCredentials && <AdminDealerMarketingTools/)
+  assert.match(adminTools, /<MarketingToolsPage/)
+  assert.match(adminTools, /bannerAdminHref=\{`\/admin\/marketing-banners\?dealer=\$\{encodeURIComponent\(dealerId\)\}`\}/)
+  assert.match(adminTools, /embedded/)
+  assert.doesNotMatch(adminLayout, /label: 'Marketing Banners'/)
+  assert.match(adminLayout, /<Route path="\/admin\/marketing-banners" element={<AdminMarketingBannersPage/)
+  assert.match(adminPage, /Back to dealer/)
+  assert.match(adminPage, /Back to Dealers/)
+  assert.match(adminPage, /\/admin\/dealers\/\$\{dealerId\}#marketing-tools/)
+  assert.match(portal, /\{ label: 'Marketing Tools', path: '\/marketing'/)
+  assert.doesNotMatch(portal, /Marketing Banners|\/admin\/marketing-banners/)
 })

@@ -25,6 +25,16 @@ test('admin role label follows the authenticated billing flags', () => {
   assert.equal(adminRoleLabel(true, true), 'Access manager · Billing admin')
 })
 
+test('admin navigation omits Marketing Banners while the template route stays registered', () => {
+  assert.doesNotMatch(layout, /label: 'Marketing Banners'/)
+  assert.doesNotMatch(layout, />Marketing Banners</)
+  assert.match(layout, /path="\/admin\/marketing-banners"/)
+  assert.match(layout, /<AdminMarketingBannersPage /)
+  assert.match(portal, /label: 'Marketing Tools'/)
+  assert.match(portal, /path: '\/marketing'/)
+  assert.doesNotMatch(portal, /Marketing Banners/)
+})
+
 test('admin navigation keeps the existing destinations and permission gates', () => {
   for (const item of ['Dashboard', 'Dealers', 'All Leads', 'Inventory', 'Settings', 'AI Usage', 'Billing Access']) {
     assert.match(layout, new RegExp(item))
