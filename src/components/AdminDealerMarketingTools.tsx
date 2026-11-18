@@ -39,7 +39,7 @@ export function AdminDealerMarketingTools({ dealerId }: { dealerId: string }) {
         embedded
         logoManagementHref="#branding"
         logoManagementLabel="Open branding logos"
-        bannerAdminHref="/admin/marketing-banners"
+        bannerAdminHref={`/admin/marketing-banners?dealer=${encodeURIComponent(dealerId)}`}
       />
     </section>
   )
