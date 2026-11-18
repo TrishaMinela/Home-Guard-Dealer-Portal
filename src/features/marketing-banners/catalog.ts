@@ -124,7 +124,7 @@ export type BannerLibraryData = {
   notice: string | null
 }
 
-const FIXTURE_NOTICE = 'Logo positions are unverified defaults until an admin sets them.'
+const FIXTURE_NOTICE = 'These logo positions are suggested starting points. A Home Guard admin can adjust them.'
 
 function fixtureBanner(definition: MarketingBannerDefinition): ResolvedMarketingBanner {
   return {
@@ -136,7 +136,7 @@ function fixtureBanner(definition: MarketingBannerDefinition): ResolvedMarketing
     region: definition.region,
     placement: definition.placement,
     placementVerified: false,
-    placementLabel: `Unverified default · ${definition.region}`,
+    placementLabel: 'Suggested logo position',
     imageUrl: fixtureImageUrl(definition.slot),
     imageSource: 'fixture',
   }
@@ -159,7 +159,7 @@ function mergeBanner(definition: MarketingBannerDefinition, remote: RemoteBanner
     height,
     placement,
     placementVerified,
-    placementLabel: placementVerified ? 'Verified placement' : `Unverified placement · ${definition.region}`,
+    placementLabel: placementVerified ? 'Approved logo position' : 'Suggested logo position',
     imageUrl,
     imageSource,
   }
@@ -178,7 +178,7 @@ export function resolveMarketingBanners(remote: RemoteBannerInput[] | null): Ban
   return {
     source: 'remote',
     notice: usingDemoArt
-      ? 'Saved template records are in use. Slots without a stored image still use the bundled artwork. Placements stay unverified until an admin marks them.'
+      ? 'Some designs still use the standard Home Guard artwork. Logo positions stay as suggestions until a Home Guard admin approves them.'
       : null,
     templates,
   }

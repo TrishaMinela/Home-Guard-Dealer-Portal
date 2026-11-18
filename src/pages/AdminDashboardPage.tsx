@@ -70,7 +70,7 @@ export function AdminDashboardPage({
         {metrics.map((metric) => (
           <article className="metric-card metric-card--admin" key={metric.label}>
             <p>{metric.label}</p>
-            <strong>{isLoading ? '—' : metric.value}</strong>
+            <strong>{isLoading ? '—' : error ? 'Unavailable' : metric.value}</strong>
           </article>
         ))}
       </section>

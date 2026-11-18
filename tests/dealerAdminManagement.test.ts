@@ -50,6 +50,6 @@ test('admin Marketing Tools uses the shared implementation and a protected selec
 
 test('access-manager capability is explicit and does not recolor the Portal shell', () => {
   assert.match(adminLayout, /canManageDealerCredentials=\{isBillingAccessManager\}/)
-  assert.match(dealerDetail, /canManageDealerCredentials && <AdminDealerMarketingTools/)
+  assert.match(dealerDetail, /canManageDealerCredentials \? \([\s\S]*<AdminDealerMarketingTools/)
   assert.doesNotMatch(dealerDetail, /--dealer-primary|portal-shell--dealer/)
 })

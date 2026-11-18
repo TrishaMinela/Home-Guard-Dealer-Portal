@@ -5,7 +5,7 @@ import { DashboardPage } from '../pages/DashboardPage'
 import { LeadsPage } from '../pages/LeadsPage'
 import { MarketingToolsPage } from '../pages/MarketingToolsPage'
 import { DealerCompanyProfilePage } from '../pages/DealerCompanyProfilePage'
-import { PlaceholderPage } from '../pages/PlaceholderPage'
+import { DealerSettingsPage } from '../pages/DealerSettingsPage'
 import type { DealerAccount } from '../types/account'
 import { NavIcon } from './NavIcon'
 import { NotificationLauncher, type PortalNotification } from './NotificationLauncher'
@@ -45,7 +45,7 @@ export function PortalLayout({
       title: 'New Lead',
       message: `${lead.first_name} ${lead.last_name} submitted a request`,
       actionLabel: 'View Lead',
-      path: '/leads',
+      path: `/leads/${lead.id}`,
     }))
 
   return (
@@ -138,7 +138,7 @@ export function PortalLayout({
             path="/dashboard"
             element={<DashboardPage dealerName={dealer.company_name} {...leadData} />}
           />
-          <Route path="/leads" element={<LeadsPage {...leadData} dealerSlug={dealer.slug} dealerName={dealer.company_name} />} />
+          <Route path="/leads/:leadId?" element={<LeadsPage {...leadData} dealerSlug={dealer.slug} dealerName={dealer.company_name} />} />
           <Route
             path="/marketing"
             element={<MarketingToolsPage dealer={dealer} />}
@@ -152,7 +152,7 @@ export function PortalLayout({
               />
             }
           />
-          <Route path="/settings" element={<PlaceholderPage title="Settings" />} />
+          <Route path="/settings" element={<DealerSettingsPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>

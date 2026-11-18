@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import type { AccountAccess } from '../types/account'
+import { dealerWithSavedLogos } from '../utils/dealerSavedLogos'
 
 export function useAccountAccess(user: User | null) {
   const [access, setAccess] = useState<AccountAccess | null>(null)
@@ -123,18 +124,15 @@ export function useAccountAccess(user: User | null) {
         return
       }
 
-      const usableFlag = await supabase
-        .from('dealers')
-        .select('logo_generated_light_usable')
-        .eq('id', dealerRecord.id)
-        .maybeSingle()
+      const [lightLogos, blackLogos] = await Promise.all([
+        supabase.from('dealers').select('logo_generated_light_usable').eq('id', dealerRecord.id).maybeSingle(),
+        supabase.from('dealers').select('logo_black_url, logo_generated_black_url, logo_generated_black_usable').eq('id', dealerRecord.id).maybeSingle(),
+      ])
       if (!isCurrent) return
       setAccess({
         userId: authenticatedUser.id,
         type: 'dealer',
-        dealer: usableFlag.error
-          ? dealerRecord
-          : { ...dealerRecord, logo_generated_light_usable: usableFlag.data?.logo_generated_light_usable ?? null },
+        dealer: dealerWithSavedLogos(dealerRecord, lightLogos, blackLogos),
         message: '',
       })
     }

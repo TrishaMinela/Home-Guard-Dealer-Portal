@@ -162,8 +162,8 @@ export function DealerCrmIntegrations({ dealerId }: { dealerId: string }) {
   return (
     <section id="crm-integrations" className="content-card dealer-management-card crm-integrations" aria-labelledby="crm-integrations-title">
       <div className="content-card__header crm-integrations__header">
-        <div><p className="eyebrow">Lead delivery</p><h2 id="crm-integrations-title">CRM Integrations</h2><p>Configure dealer-specific CRM credentials and field mappings. Delivery remains disabled during setup.</p></div>
-        <span className="status-badge status-badge--inactive">Delivery disabled</span>
+        <div><p className="eyebrow">Lead delivery</p><h2 id="crm-integrations-title">CRM Integrations</h2><p>Save credentials and field mappings here. Lead delivery stays off on purpose in this phase. That is not an error.</p></div>
+        <span className="status-badge status-badge--inactive">Delivery off</span>
       </div>
       {!encryptionConfigured && !isLoading && <div className="portal-alert" role="alert">Secure credential storage is not configured. Metadata can be reviewed, but credentials cannot be saved.</div>}
       {error && <div className="portal-alert" role="alert">{error}</div>}
@@ -173,7 +173,7 @@ export function DealerCrmIntegrations({ dealerId }: { dealerId: string }) {
           {providers.map((provider) => {
             const integration = integrations.find((candidate) => candidate.provider === provider.value)
             return <article className="crm-provider-card" key={provider.value}>
-              <div className="crm-provider-card__heading"><div><h3>{provider.label}</h3><p>{provider.description}</p></div><span className={`status-badge ${integration?.state === 'live' ? 'status-badge--active' : 'status-badge--inactive'}`}>{integration ? `${integration.state.charAt(0).toUpperCase()}${integration.state.slice(1)}` : 'Not configured'}</span></div>
+              <div className="crm-provider-card__heading"><div><h3>{provider.label}</h3><p>{provider.description}</p></div><span className={`status-badge ${integration?.state === 'live' ? 'status-badge--active' : 'status-badge--inactive'}`}>{integration?.state === 'disabled' ? 'Off' : integration ? `${integration.state.charAt(0).toUpperCase()}${integration.state.slice(1)}` : 'Not configured'}</span></div>
               <dl className="crm-provider-card__meta"><div><dt>Credentials</dt><dd>{integration?.hasCredentials ? 'Saved securely' : 'Not saved'}</dd></div><div><dt>Last updated</dt><dd>{integration ? new Date(integration.updatedAt).toLocaleString() : '—'}</dd></div></dl>
               <button className="button button--outline" type="button" onClick={() => beginEdit(provider.value)}>{integration ? 'Edit Integration' : 'Add Integration'}</button>
             </article>
@@ -183,7 +183,7 @@ export function DealerCrmIntegrations({ dealerId }: { dealerId: string }) {
 
       {editingProvider && <form className="crm-integration-editor" onSubmit={(event) => void save(event)}>
         <div className="crm-integration-editor__heading"><div><p className="eyebrow">{editingIntegration ? 'Edit integration' : 'New integration'}</p><h3>{providerLabel(editingProvider)}</h3></div><button className="button button--ghost" type="button" onClick={cancelEdit}>Cancel</button></div>
-        <div className="form-grid crm-integration-editor__settings"><label>Provider<input value={providerLabel(editingProvider)} disabled /></label><label>Status<select value="disabled" disabled><option value="disabled">Disabled</option><option disabled>Test — available in a future phase</option><option disabled>Live — unavailable</option></select></label></div>
+        <div className="form-grid crm-integration-editor__settings"><label>Provider<input value={providerLabel(editingProvider)} disabled /></label><label>Status<select value="disabled" disabled><option value="disabled">Off — delivery is intentionally paused</option><option disabled>Test — available in a future phase</option><option disabled>Live — unavailable</option></select></label></div>
         <fieldset><legend>Secure credentials</legend><p>{editingIntegration?.hasCredentials ? 'Credentials are saved. Leave every field blank to keep them, or complete all fields to rotate them.' : 'Complete all fields to save credentials securely.'}</p><div className="form-grid">
           {credentialFields[editingProvider].map((field) => <label key={field.key}>{field.label}<input type={field.type ?? 'text'} autoComplete="off" value={credentials[field.key] ?? ''} onChange={(event) => setCredentials((current) => ({ ...current, [field.key]: event.target.value }))} placeholder={editingIntegration?.hasCredentials ? 'Leave blank to keep saved value' : ''} /></label>)}
         </div></fieldset>
@@ -191,7 +191,7 @@ export function DealerCrmIntegrations({ dealerId }: { dealerId: string }) {
           {mappingRows.map((row, index) => <div className="crm-mapping-row" key={`${index}-${row.destination}`}><label>CRM destination field<input value={row.destination} maxLength={120} placeholder="Example: contact.email" onChange={(event) => setMappingRows((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, destination: event.target.value } : item))} /></label><label>HGI lead field<select value={row.source} onChange={(event) => setMappingRows((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, source: event.target.value } : item))}>{sources.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><button className="button button--ghost" type="button" disabled={mappingRows.length === 1} onClick={() => setMappingRows((current) => current.filter((_, itemIndex) => itemIndex !== index))}>Remove</button></div>)}
         </div><button className="button button--outline" type="button" disabled={mappingRows.length >= 40} onClick={() => setMappingRows((current) => [...current, { destination: '', source: 'customer.full_name' }])}>Add Field Mapping</button></fieldset>
         <div className="crm-integration-editor__notice"><strong>No delivery will occur.</strong><span>Test and Live activation, outbound requests, and background delivery are not included in this phase.</span></div>
-        <div className="page-actions"><button className="button button--outline" type="button" onClick={cancelEdit}>Cancel</button><button className="button button--primary" type="submit" disabled={isSaving || (!encryptionConfigured && Object.values(credentials).some(Boolean))}>{isSaving ? 'Saving securely…' : 'Save Disabled Integration'}</button></div>
+        <div className="page-actions"><button className="button button--outline" type="button" onClick={cancelEdit}>Cancel</button><button className="button button--primary" type="submit" disabled={isSaving || (!encryptionConfigured && Object.values(credentials).some(Boolean))}>{isSaving ? 'Saving securely…' : 'Save settings'}</button></div>
       </form>}
 
       {auditHistory.length > 0 && <div className="crm-audit-history"><h3>Recent configuration history</h3><ul>{auditHistory.slice(0, 8).map((entry) => <li key={entry.id}><span><strong>{providerLabel(entry.provider)}</strong> · {entry.action.replaceAll('_', ' ')}</span><time dateTime={entry.createdAt}>{new Date(entry.createdAt).toLocaleString()}</time></li>)}</ul></div>}

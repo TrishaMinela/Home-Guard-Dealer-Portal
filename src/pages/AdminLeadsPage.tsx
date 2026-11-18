@@ -209,6 +209,13 @@ export function AdminLeadsPage({ dealers, leads, isLoading, error }: AdminDataSt
           </div>
         )}
       </section>
+      {leadId && !isLoading && !selectedLead && (
+        <div className="portal-alert" role="alert">
+          {error
+            ? 'This lead could not be opened because the lead list failed to load.'
+            : 'This lead could not be found, or you do not have access to it.'}
+        </div>
+      )}
       {selectedLead && (
         <AdminLeadDetail
           lead={selectedLead}

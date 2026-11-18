@@ -140,7 +140,7 @@ export function AdminDealersPage({
                     <td data-label="Phone">{dealer.phone || '—'}</td>
                     <td data-label="Status">
                       <span className={`status-badge ${dealer.is_active ? 'status-badge--active' : 'status-badge--inactive'}`}>
-                        {dealer.is_active ? 'Active' : 'Inactive'}
+                        {dealer.is_active ? 'Active' : 'Disabled'}
                       </span>
                     </td>
                   </tr>

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import type { LeadDataState } from '../types/lead'
 import { dealerInitials } from '../utils/dealerBrand'
 
@@ -67,7 +68,7 @@ export function DashboardPage({
         {metrics.map((metric) => (
           <article className="metric-card" key={metric.label}>
             <p>{metric.label}</p>
-            <strong>{isLoading ? '—' : metric.value}</strong>
+            <strong>{isLoading ? '—' : error ? 'Unavailable' : metric.value}</strong>
           </article>
         ))}
       </section>
@@ -81,6 +82,11 @@ export function DashboardPage({
         </div>
 
         {isLoading && <div className="data-state">Loading recent leads...</div>}
+        {!isLoading && error && (
+          <div className="data-state data-state--error" role="alert">
+            Lead counts could not be loaded. This is not the same as having no leads.
+          </div>
+        )}
         {!isLoading && !error && recentLeads.length === 0 && (
           <div className="empty-state">
             <span className="empty-state__icon" aria-hidden="true">{dealerInitials(dealerName)}</span>
@@ -90,7 +96,7 @@ export function DashboardPage({
         {!isLoading && !error && recentLeads.length > 0 && (
           <div className="recent-lead-list">
             {recentLeads.map((lead) => (
-              <article className="recent-lead" key={lead.id}>
+              <Link className="recent-lead" key={lead.id} to={`/leads/${lead.id}`} aria-label={`View lead for ${lead.first_name} ${lead.last_name}`}>
                 <div className="lead-avatar" aria-hidden="true">
                   {lead.first_name.charAt(0)}{lead.last_name.charAt(0)}
                 </div>
@@ -101,7 +107,7 @@ export function DashboardPage({
                 <span className="recent-lead__zip">{lead.zip || 'No ZIP'}</span>
                 <span className="status-badge">{formatStatus(lead.status)}</span>
                 <time dateTime={lead.created_at}>{formatDate(lead.created_at)}</time>
-              </article>
+              </Link>
             ))}
           </div>
         )}

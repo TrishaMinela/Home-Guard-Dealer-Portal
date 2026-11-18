@@ -12,7 +12,7 @@ const passwordAuditMigration = readFileSync('supabase/migrations/20261105000000_
 test('dealer-user management allows access managers and internal billing admins on server and UI', () => {
   assert.match(endpoint, /authorizeBillingAccessOperator\(authorization\)/)
   assert.match(layout, /canManageDealerUsers=\{isBillingAccessManager \|\| isInternalBillingAdmin\}/)
-  assert.match(page, /canManageDealerUsers && <DealerUserAccess/)
+  assert.match(page, /canManageDealerUsers \? \([\s\S]*<DealerUserAccess/)
 })
 
 test('existing, new, and pending Auth users follow distinct invitation outcomes', () => {

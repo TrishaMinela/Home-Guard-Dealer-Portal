@@ -404,6 +404,7 @@ export function DealerDetailPage({
 
   return (
     <div className="page-content dealer-detail-page">
+      <Link className="button button--outline dealer-back-link" to="/admin/dealers">Back to Dealers</Link>
       <header className="page-header admin-page-header dealer-page-header page-header--with-action">
         <div className="dealer-page-header__copy">
           <p className="eyebrow">Dealer company</p>
@@ -575,9 +576,17 @@ export function DealerDetailPage({
         <div className="dealer-design-preview" aria-hidden="true"><span>Aa</span><div><strong>Build a Door Made for Your Home.</strong><small>Heading and interface typography preview</small></div></div>
       </section>
 
-      {canManageDealerCredentials && <AdminDealerMarketingTools dealerId={dealer.id} />}
-
-      {canManageDealerCredentials && <DealerCrmIntegrations dealerId={dealer.id} />}
+      {canManageDealerCredentials ? (
+        <>
+          <AdminDealerMarketingTools dealerId={dealer.id} />
+          <DealerCrmIntegrations dealerId={dealer.id} />
+        </>
+      ) : (
+        <section className="content-card dealer-management-card" id="marketing-and-crm" aria-labelledby="marketing-and-crm-heading">
+          <h2 id="marketing-and-crm-heading">Marketing Tools and CRM Integrations</h2>
+          <p>This section needs additional access. It is available to an access manager.</p>
+        </section>
+      )}
 
       <section className="content-card slug-review-card">
         <div className="content-card__header">
@@ -619,7 +628,14 @@ export function DealerDetailPage({
           </div>
         )}
       </section>
-      {canManageDealerUsers && <DealerUserAccess dealerId={dealer.id} sectionId="dealer-users" canSetPassword={canManageDealerCredentials} />}
+      {canManageDealerUsers ? (
+        <DealerUserAccess dealerId={dealer.id} sectionId="dealer-users" canSetPassword={canManageDealerCredentials} />
+      ) : (
+        <section className="content-card dealer-management-card" id="dealer-users" aria-labelledby="dealer-users-locked-heading">
+          <h2 id="dealer-users-locked-heading">Dealer Users</h2>
+          <p>This section needs additional access. It is available to an access manager or a billing admin.</p>
+        </section>
+      )}
       </div>
     </div>
   )

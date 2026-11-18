@@ -213,6 +213,13 @@ input:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,102
 .sidebar-account .message, .sidebar-account .button { grid-column: 1 / -1; }
 .mobile-header, .sidebar-overlay { display: none; }
 .portal-main { min-height: 100vh; margin-left: 276px; }
+:root { --notification-clearance: 96px; }
+.portal-shell:not(.portal-shell--billing-client) {
+  height: 100dvh; overflow: hidden; display: flex; flex-direction: column;
+}
+.portal-shell:not(.portal-shell--billing-client) .portal-main {
+  flex: 1 1 auto; min-height: 0; height: auto; margin-bottom: var(--notification-clearance); overflow-y: auto;
+}
 .page-content { width: min(100%, 1280px); margin: 0 auto; padding: 56px clamp(28px,5vw,72px) 72px; }
 .page-header { margin-bottom: 32px; }
 .page-header--with-action { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
@@ -343,8 +350,9 @@ input:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,102
 .issue-severity--critical { color: #8f251f; background: #fee8e6; }
 .issue-severity--warning { color: #77510b; background: #fff2cd; }
 .notification-launcher {
-  position: fixed; right: 24px; bottom: 24px; z-index: 100;
+  position: fixed; right: 24px; bottom: 16px; z-index: 100;
 }
+.dealer-back-link { margin-bottom: 18px; }
 .notification-bell {
   position: relative; width: 56px; height: 56px; display: grid; place-items: center;
   padding: 0; border: 1px solid rgba(255,255,255,.28); border-radius: 50%;
@@ -425,7 +433,9 @@ input:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,102
 .recent-lead {
   min-width: 0; display: grid; grid-template-columns: 42px minmax(170px,1fr) minmax(70px,.4fr) auto auto;
   align-items: center; gap: 15px; padding: 17px 26px; border-bottom: 1px solid var(--color-border);
+  color: inherit; text-decoration: none;
 }
+a.recent-lead:focus-visible { outline: 3px solid rgba(248,211,14,.85); outline-offset: -3px; }
 .recent-lead:last-child { border-bottom: 0; }
 .lead-avatar {
   width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%;

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { authorizedDestination } from '../utils/authorizedDestination'
+import { portalEntryCopy } from '../utils/portalEntryCopy'
 
 type InviteStep = 'loading' | 'welcome' | 'password' | 'ready' | 'existing' | 'invalid'
 
@@ -137,8 +138,8 @@ export function InviteSetupPage() {
       {step === 'welcome' && <div className="invite-state">
         <p className="eyebrow">You've been invited</p>
         <h1>Set up your Portal access</h1>
-        <p>You've been invited to access secure Home Guard Industries billing information.</p>
-        <div className="invite-benefits"><span>Your account will give you access to:</span><ul><li>Billing Overview</li><li>AI Usage Charges</li><li>Billing History</li></ul></div>
+        <p>{portalEntryCopy(destination).summary}</p>
+        <div className="invite-benefits"><span>Your account will give you access to:</span><ul>{portalEntryCopy(destination).benefits.map((item) => <li key={item}>{item}</li>)}</ul></div>
         <button className="button button--primary invite-action" type="button" onClick={() => setStep('password')}>Continue</button>
       </div>}
 
@@ -159,7 +160,7 @@ export function InviteSetupPage() {
 
       {step === 'ready' && <div className="invite-state">
         <p className="eyebrow">Setup complete</p><h1>Your account is ready</h1><p>Your secure Portal access has been set up successfully.</p>
-        <button className="button button--primary invite-action" type="button" onClick={goToPortal}>Go to Billing Portal</button>
+        <button className="button button--primary invite-action" type="button" onClick={goToPortal}>{portalEntryCopy(destination).button}</button>
       </div>}
 
       {step === 'existing' && <div className="invite-state">
