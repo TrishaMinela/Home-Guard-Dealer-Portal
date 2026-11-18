@@ -236,6 +236,7 @@ export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrate
       {message && <div className="portal-alert portal-alert--success" role="status">{message}</div>}
       {error && <div className="portal-alert" role="alert">{error}</div>}
       <div className="dealer-form__actions">
+        <button className="button button--outline" type="button" disabled={isSaving || sameVariants(dealer, header, pages)} onClick={() => { dirtyRef.current = false; setHeader(normalizeLogoVariant(dealer.logo_header_variant)); setPages(normalizeLogoVariant(dealer.logo_pages_variant)) }}>Cancel</button>
         <button className="button button--primary" type="button" disabled={isSaving || sameVariants(dealer, header, pages)} onClick={() => void save()}>
           {isSaving ? 'Saving...' : 'Save Logo Choices'}
         </button>

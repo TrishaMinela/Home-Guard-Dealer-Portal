@@ -74,7 +74,8 @@ export function AddDealerPage({ onCreated }: AddDealerPageProps) {
     }
 
     onCreated(values.companyName.trim())
-    navigate('/admin/dealers')
+    const { data: created } = await supabase.from('dealers').select('id').eq('slug', normalizedSlug).maybeSingle()
+    navigate(created?.id ? `/admin/dealers/${created.id}#setup` : '/admin/dealers')
   }
 
   return (

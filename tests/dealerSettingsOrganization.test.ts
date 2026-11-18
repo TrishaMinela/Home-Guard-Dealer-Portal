@@ -46,5 +46,5 @@ test('dealer detail actions are accessible and logo placement preview has breath
   assert.match(styles, /dealer-section-action:focus-visible/)
   assert.match(styles, /logo-placement-preview\{[^}]*min-height:112px/)
   assert.match(logoPlacement, /logo-placement-preview--\$\{placement\}/)
-  assert.match(detailPage, /Portal colors remain HGI branded/)
+  assert.match(detailPage, /Marketing banners use the logo and do not recolor the template/)
 })

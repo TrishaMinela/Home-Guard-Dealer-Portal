@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useState, type ChangeEvent, type FormEvent, type MouseEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import type { DealerAccount } from '../types/account'
 import type { DealerFormValues } from '../types/admin'
@@ -47,6 +47,20 @@ export function DealerCompanyProfilePage({
   onDealerUpdated,
 }: DealerCompanyProfilePageProps) {
   const [form, setForm] = useState(() => dealerToForm(dealer))
+  const profileDirty = JSON.stringify(form) !== JSON.stringify(dealerToForm(dealer))
+  useEffect(() => {
+    if (!profileDirty) return
+    const onLeave = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onLeave)
+    return () => window.removeEventListener('beforeunload', onLeave)
+  }, [profileDirty])
+  function onProfileSectionClick(event: MouseEvent<HTMLElement>) {
+    if (!profileDirty || !(event.target as HTMLElement).closest('a')) return
+    if (!window.confirm('You have unsaved company or color changes. Leave this section without saving?')) event.preventDefault()
+  }
   const [requestedSlug, setRequestedSlug] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -451,7 +465,42 @@ export function DealerCompanyProfilePage({
 
       {message && <div className="portal-alert portal-alert--success" role="status">{message}</div>}
       {error && <div className="portal-alert" role="alert">{error}</div>}
+      {profileDirty && <div className="portal-alert" role="status">Company details or colors have unsaved changes.</div>}
 
+      <nav className="dealer-settings-nav" aria-label="Company profile sections" onClick={onProfileSectionClick}>
+        <a href="#company-details">Company Details</a>
+        <a href="#logos">Logos</a>
+        <a href="#door-builder-branding">Door Builder Branding</a>
+        <a href="#colors-and-typography">Colors and Typography</a>
+        <a href="#website-address">Website Address</a>
+      </nav>
+
+      <form onSubmit={handleSave}>
+      <section className="content-card dealer-form" id="company-details">
+        <div className="dealer-form__section">
+          <div className="dealer-form__section-heading">
+            <h2>Company Details</h2>
+            <p>Name, contact, and address for this dealership. Colors are saved with these details from the Colors section.</p>
+          </div>
+          <div className="form-grid">
+            <div className="filter-field form-field--wide">
+              <label htmlFor="profile-company-name">Company Name *</label>
+              <input id="profile-company-name" value={form.companyName} onChange={(event) => updateField('companyName', event.target.value)} required />
+            </div>
+            <div className="filter-field"><label htmlFor="profile-contact">Primary Contact Name</label><input id="profile-contact" value={form.primaryContactName} onChange={(event) => updateField('primaryContactName', event.target.value)} /></div>
+            <div className="filter-field"><label htmlFor="profile-email">Email</label><input id="profile-email" type="email" value={form.email} onChange={(event) => updateField('email', event.target.value)} /></div>
+            <div className="filter-field"><label htmlFor="profile-phone">Phone</label><input id="profile-phone" type="tel" value={form.phone} onChange={(event) => updateField('phone', event.target.value)} /></div>
+            <div className="filter-field"><label htmlFor="profile-website">Website</label><input id="profile-website" value={form.website} onChange={(event) => updateField('website', event.target.value)} /></div>
+            <div className="filter-field form-field--wide"><label htmlFor="profile-address">Address</label><input id="profile-address" value={form.address} onChange={(event) => updateField('address', event.target.value)} /></div>
+            <div className="filter-field"><label htmlFor="profile-city">City</label><input id="profile-city" value={form.city} onChange={(event) => updateField('city', event.target.value)} /></div>
+            <div className="filter-field"><label htmlFor="profile-state">State</label><input id="profile-state" value={form.state} onChange={(event) => updateField('state', event.target.value)} /></div>
+            <div className="filter-field"><label htmlFor="profile-zip">ZIP</label><input id="profile-zip" value={form.zip} onChange={(event) => updateField('zip', event.target.value)} /></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="logos">
+      <p className="profile-section-note">The original logo is the source file. The white logo is for dark backgrounds. The black logo is for light backgrounds. Marketing banners use whichever of these logos you pick in Marketing Tools. Door Builder homepage and other pages use the choices in the next section.</p>
       <div className="profile-logo-grid" id="dealer-logos">
         <section className="content-card profile-logo-card">
           <div className="profile-logo-preview">
@@ -553,49 +602,43 @@ export function DealerCompanyProfilePage({
           onCancel={dismissRemoval}
         />
       )}
+      </section>
 
-      <DealerLogoVariantSettings
-        dealer={dealer}
-        onSave={saveLogoVariants}
-        onUpdated={onDealerUpdated}
-        onHydrated={onDealerUpdated}
-      />
+      <section id="door-builder-branding">
+        <p className="profile-section-note">The homepage logo and the logo on other Door Builder pages are chosen here. Marketing banners do not use these choices; they use the logo you select in Marketing Tools.</p>
+        <DealerLogoVariantSettings
+          dealer={dealer}
+          onSave={saveLogoVariants}
+          onUpdated={onDealerUpdated}
+          onHydrated={onDealerUpdated}
+        />
+        <DealerLogoPlacementSettings dealer={dealer} onSave={saveLogoPlacement} onUpdated={onDealerUpdated} />
+      </section>
 
-      <DealerLogoPlacementSettings dealer={dealer} onSave={saveLogoPlacement} onUpdated={onDealerUpdated} />
-
-      <form className="content-card dealer-form" onSubmit={handleSave}>
-        <div className="dealer-form__section">
-          <div className="dealer-form__section-heading">
-            <h2>Company details</h2>
-            <p>Changes apply only to your own dealer company profile.</p>
-          </div>
-          <div className="form-grid">
-            <div className="filter-field form-field--wide">
-              <label htmlFor="profile-company-name">Company Name *</label>
-              <input id="profile-company-name" value={form.companyName} onChange={(event) => updateField('companyName', event.target.value)} required />
+      <section id="colors-and-typography">
+        <div className="content-card dealer-form">
+          <div className="dealer-form__section">
+            <div className="dealer-form__section-heading">
+              <h2>Colors</h2>
+              <p>These colors are used in Door Builder. Marketing banner templates keep their own colors and only add your logo.</p>
             </div>
-            <div className="filter-field"><label htmlFor="profile-contact">Primary Contact Name</label><input id="profile-contact" value={form.primaryContactName} onChange={(event) => updateField('primaryContactName', event.target.value)} /></div>
-            <div className="filter-field"><label htmlFor="profile-email">Email</label><input id="profile-email" type="email" value={form.email} onChange={(event) => updateField('email', event.target.value)} /></div>
-            <div className="filter-field"><label htmlFor="profile-phone">Phone</label><input id="profile-phone" type="tel" value={form.phone} onChange={(event) => updateField('phone', event.target.value)} /></div>
-            <div className="filter-field"><label htmlFor="profile-website">Website</label><input id="profile-website" value={form.website} onChange={(event) => updateField('website', event.target.value)} /></div>
-            <div className="filter-field form-field--wide"><label htmlFor="profile-address">Address</label><input id="profile-address" value={form.address} onChange={(event) => updateField('address', event.target.value)} /></div>
-            <div className="filter-field"><label htmlFor="profile-city">City</label><input id="profile-city" value={form.city} onChange={(event) => updateField('city', event.target.value)} /></div>
-            <div className="filter-field"><label htmlFor="profile-state">State</label><input id="profile-state" value={form.state} onChange={(event) => updateField('state', event.target.value)} /></div>
-            <div className="filter-field"><label htmlFor="profile-zip">ZIP</label><input id="profile-zip" value={form.zip} onChange={(event) => updateField('zip', event.target.value)} /></div>
-            <div className="filter-field"><label htmlFor="profile-primary-color">Primary Brand Color</label><input id="profile-primary-color" value={form.primaryColor} onChange={(event) => updateField('primaryColor', event.target.value)} placeholder="#0d666c" /></div>
-            <div className="filter-field"><label htmlFor="profile-secondary-color">Secondary Brand Color</label><input id="profile-secondary-color" value={form.secondaryColor} onChange={(event) => updateField('secondaryColor', event.target.value)} placeholder="#f8d30e" /></div>
+            <div className="form-grid">
+              <div className="filter-field"><label htmlFor="profile-primary-color">Primary Brand Color</label><input id="profile-primary-color" value={form.primaryColor} onChange={(event) => updateField('primaryColor', event.target.value)} placeholder="#0d666c" /></div>
+              <div className="filter-field"><label htmlFor="profile-secondary-color">Secondary Brand Color</label><input id="profile-secondary-color" value={form.secondaryColor} onChange={(event) => updateField('secondaryColor', event.target.value)} placeholder="#f8d30e" /></div>
+            </div>
+          </div>
+          <div className="dealer-form__actions">
+            <button className="button button--outline" type="button" disabled={isSaving || !profileDirty} onClick={() => setForm(dealerToForm(dealer))}>Cancel</button>
+            <button className="button button--primary" type="submit" disabled={isSaving || !profileDirty}>
+              {isSaving ? 'Saving...' : 'Save details and colors'}
+            </button>
           </div>
         </div>
-        <div className="dealer-form__actions">
-          <button className="button button--primary" type="submit" disabled={isSaving}>
-            {isSaving ? 'Saving...' : 'Save Changes'}
-          </button>
-        </div>
+        <DealerTypographySettings dealer={dealer} onSave={saveTypography} onUpdated={onDealerUpdated}/>
+      </section>
       </form>
 
-      <DealerTypographySettings dealer={dealer} onSave={saveTypography} onUpdated={onDealerUpdated}/>
-
-      <section className="content-card visualizer-request-card">
+      <section className="content-card visualizer-request-card" id="website-address">
         <div className="dealer-form__section-heading">
           <p className="eyebrow">Visualizer URL</p>
           <h2>Request New Visualizer URL</h2>

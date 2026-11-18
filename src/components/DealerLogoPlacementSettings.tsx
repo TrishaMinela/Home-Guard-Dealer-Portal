@@ -56,6 +56,7 @@ export function DealerLogoPlacementSettings({ dealer, onSave, onUpdated }: Props
       {message && <div className="portal-alert portal-alert--success" role="status">{message}</div>}
       {error && <div className="portal-alert" role="alert">{error}</div>}
       <div className="dealer-form__actions">
+        <button className="button button--outline" type="button" disabled={isSaving || placement === current} onClick={() => setPlacement(current)}>Cancel</button>
         <button className="button button--primary" type="button" disabled={isSaving || placement === current} onClick={() => void save()}>
           {isSaving ? 'Saving...' : 'Save Logo Placement'}
         </button>
