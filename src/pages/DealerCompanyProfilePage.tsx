@@ -1,8 +1,14 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent, type MouseEvent } from 'react'
+import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import type { DealerAccount } from '../types/account'
 import type { DealerFormValues } from '../types/admin'
 import { isReservedDealerSlug, normalizeDealerSlug } from '../utils/dealerSlug'
+import {
+  UNSAVED_PROFILE_LEAVE_MESSAGE,
+  UNSAVED_PROFILE_SECTION_MESSAGE,
+  unsavedProfileClickFromEvent,
+  unsavedProfileNavigationKind,
+} from '../utils/unsavedProfileNavigation'
 import { getDealerVisualizerDisplayUrl } from '../config/visualizer'
 import { DealerTypographySettings } from '../components/DealerTypographySettings'
 import { typographyPayload, type DealerTypographyValues } from '../utils/dealerTypography'
@@ -54,13 +60,22 @@ export function DealerCompanyProfilePage({
       event.preventDefault()
       event.returnValue = ''
     }
+    // BrowserRouter has no useBlocker. Capture same-tab link clicks, including the sidebar, while this form is dirty.
+    const onClick = (event: MouseEvent) => {
+      const kind = unsavedProfileNavigationKind(unsavedProfileClickFromEvent(event, true), window.location.href)
+      if (kind === 'allow') return
+      const message = kind === 'section' ? UNSAVED_PROFILE_SECTION_MESSAGE : UNSAVED_PROFILE_LEAVE_MESSAGE
+      if (window.confirm(message)) return
+      event.preventDefault()
+      event.stopPropagation()
+    }
     window.addEventListener('beforeunload', onLeave)
-    return () => window.removeEventListener('beforeunload', onLeave)
+    document.addEventListener('click', onClick, true)
+    return () => {
+      window.removeEventListener('beforeunload', onLeave)
+      document.removeEventListener('click', onClick, true)
+    }
   }, [profileDirty])
-  function onProfileSectionClick(event: MouseEvent<HTMLElement>) {
-    if (!profileDirty || !(event.target as HTMLElement).closest('a')) return
-    if (!window.confirm('You have unsaved company or color changes. Leave this section without saving?')) event.preventDefault()
-  }
   const [requestedSlug, setRequestedSlug] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -467,7 +482,7 @@ export function DealerCompanyProfilePage({
       {error && <div className="portal-alert" role="alert">{error}</div>}
       {profileDirty && <div className="portal-alert" role="status">Company details or colors have unsaved changes.</div>}
 
-      <nav className="dealer-settings-nav" aria-label="Company profile sections" onClick={onProfileSectionClick}>
+      <nav className="dealer-settings-nav" aria-label="Company profile sections">
         <a href="#company-details">Company Details</a>
         <a href="#logos">Logos</a>
         <a href="#door-builder-branding">Door Builder Branding</a>

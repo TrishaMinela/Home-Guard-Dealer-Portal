@@ -65,7 +65,8 @@ test('new dealers open their setup page and marketing explains the website steps
     assert.match(profile, new RegExp(`id="${id}"`))
   }
   assert.match(profile, /Cancel/)
-  assert.match(profile, /unsaved company or color changes/)
+  assert.match(profile, /document\.addEventListener\('click', onClick, true\)/)
+  assert.match(readFileSync('src/utils/unsavedProfileNavigation.ts', 'utf8'), /unsaved company or color changes/)
   assert.match(detail, /DealerSetupChecklist/)
   assert.match(detail, /id="website-address"/)
   assert.match(detail, /Review the request/)
