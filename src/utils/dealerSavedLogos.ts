@@ -14,6 +14,8 @@ type SavedLogoFields = {
   logo_secondary_black_url?: string | null
   logo_secondary_generated_black_url?: string | null
   logo_secondary_generated_black_usable?: boolean | null
+  logo_secondary_header_variant?: 'original' | 'black' | 'white' | null
+  logo_secondary_pages_variant?: 'original' | 'black' | 'white' | null
 }
 
 type SecondaryLogoRow = {
@@ -26,6 +28,12 @@ type SecondaryLogoRow = {
   logo_secondary_black_url?: string | null
   logo_secondary_generated_black_url?: string | null
   logo_secondary_generated_black_usable?: boolean | null
+  logo_secondary_header_variant?: string | null
+  logo_secondary_pages_variant?: string | null
+}
+
+function storedVariant(value: string | null | undefined) {
+  return value === 'original' || value === 'white' || value === 'black' ? value : null
 }
 
 export function dealerWithSavedLogos<T extends object>(
@@ -56,6 +64,8 @@ export function dealerWithSavedLogos<T extends object>(
       logo_secondary_black_url: secondary.data?.logo_secondary_black_url ?? null,
       logo_secondary_generated_black_url: secondary.data?.logo_secondary_generated_black_url ?? null,
       logo_secondary_generated_black_usable: secondary.data?.logo_secondary_generated_black_usable ?? null,
+      logo_secondary_header_variant: storedVariant(secondary.data?.logo_secondary_header_variant),
+      logo_secondary_pages_variant: storedVariant(secondary.data?.logo_secondary_pages_variant),
     } : {}),
   } as T & SavedLogoFields
 }

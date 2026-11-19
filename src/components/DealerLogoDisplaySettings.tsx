@@ -230,7 +230,7 @@ export function DealerLogoDisplaySettings({ dealer, onSaveDisplay, onSaveSeconda
       </div>
       {showPair && (
         <div className="logo-display-uploads">
-          <p>The second logo uses the same Original, White, or Black choice as the first. If that file is missing, Door Builder shows only the first logo.</p>
+          <p>Logo 2 can use its own Original, White, or Black choice. Leave that choice unset to follow Logo 1. If the selected file is missing, Door Builder shows only the first logo.</p>
           <div className="page-actions">
             <label className={`button button--outline upload-button ${uploading ? 'is-disabled' : ''}`}>
               {uploading === 'primary' ? 'Uploading...' : 'Upload second logo'}

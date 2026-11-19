@@ -1378,6 +1378,9 @@ select:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,10
 .logo-variant-settings{display:grid;gap:18px;padding:26px 28px 28px}
 .logo-variant-settings .dealer-form__section-heading p:last-child{max-width:760px;color:var(--color-muted);font-size:12px;line-height:1.55}
 .logo-variant-settings__grid,.logo-variant-settings__previews{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.logo-variant-settings__pair{display:grid;gap:12px;align-content:start}
+.logo-variant-preview__logos{display:flex;align-items:center;gap:12px;min-width:0}
+.logo-variant-preview__divider{width:1px;align-self:stretch;background:currentColor;opacity:.45}
 .logo-variant-choice{display:grid;gap:10px;margin:0;border:0;padding:0;min-width:0}
 .logo-variant-choice legend{margin-bottom:2px;color:var(--color-ink);font-size:13px;font-weight:800}
 .logo-variant-choice .logo-placement-option{min-width:0}

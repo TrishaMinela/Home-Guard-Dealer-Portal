@@ -10,11 +10,21 @@ alter table public.dealers
   add column if not exists logo_secondary_generated_light_usable boolean null,
   add column if not exists logo_secondary_black_url text null,
   add column if not exists logo_secondary_generated_black_url text null,
-  add column if not exists logo_secondary_generated_black_usable boolean null;
+  add column if not exists logo_secondary_generated_black_usable boolean null,
+  add column if not exists logo_secondary_header_variant text null,
+  add column if not exists logo_secondary_pages_variant text null;
 
 alter table public.dealers drop constraint if exists dealers_logo_display_check;
 alter table public.dealers add constraint dealers_logo_display_check
   check (logo_display in ('single', 'dual'));
+
+alter table public.dealers drop constraint if exists dealers_logo_secondary_header_variant_check;
+alter table public.dealers add constraint dealers_logo_secondary_header_variant_check
+  check (logo_secondary_header_variant is null or logo_secondary_header_variant in ('original', 'white', 'black'));
+
+alter table public.dealers drop constraint if exists dealers_logo_secondary_pages_variant_check;
+alter table public.dealers add constraint dealers_logo_secondary_pages_variant_check
+  check (logo_secondary_pages_variant is null or logo_secondary_pages_variant in ('original', 'white', 'black'));
 
 comment on column public.dealers.logo_display is
   'Door Builder logo count: single (default) or dual. Dual shows the secondary logo to the right of the primary logo.';
@@ -34,6 +44,10 @@ comment on column public.dealers.logo_secondary_generated_black_url is
   'Generated black version of the second logo.';
 comment on column public.dealers.logo_secondary_generated_black_usable is
   'Readability result for the generated second black logo. Used only when true.';
+comment on column public.dealers.logo_secondary_header_variant is
+  'Second logo on the homepage header or hero: original, white, or black. NULL follows Logo 1 for that placement and uses the second logo files.';
+comment on column public.dealers.logo_secondary_pages_variant is
+  'Second logo on builder pages and Find My Door: original, white, or black. NULL follows Logo 1 for that placement and uses the second logo files.';
 
 create or replace function public.update_my_dealer_logo_display(
   p_dealer_id uuid,
@@ -151,6 +165,57 @@ $$;
 revoke all on function public.update_my_dealer_secondary_logo_assets(uuid, text, text, text, text) from public, anon;
 grant execute on function public.update_my_dealer_secondary_logo_assets(uuid, text, text, text, text) to authenticated;
 
+create or replace function public.update_my_dealer_secondary_logo_variants(
+  p_dealer_id uuid,
+  p_logo_secondary_header_variant text,
+  p_logo_secondary_pages_variant text
+)
+returns public.dealers
+language plpgsql
+security definer
+set search_path = pg_catalog
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_header text := nullif(btrim(p_logo_secondary_header_variant), '');
+  v_pages text := nullif(btrim(p_logo_secondary_pages_variant), '');
+  v_dealer public.dealers;
+begin
+  if v_user_id is null then
+    raise exception 'Authentication is required.' using errcode = '42501';
+  end if;
+  if v_header is not null and v_header not in ('original', 'white', 'black') then
+    raise exception 'Second homepage logo must be original, white, or black.' using errcode = '22023';
+  end if;
+  if v_pages is not null and v_pages not in ('original', 'white', 'black') then
+    raise exception 'Second pages logo must be original, white, or black.' using errcode = '22023';
+  end if;
+  if not exists (
+    select 1 from public.dealer_users
+    where dealer_users.user_id = v_user_id
+      and dealer_users.dealer_id = p_dealer_id
+      and dealer_users.role = 'dealer_admin'
+  ) then
+    raise exception 'Dealer Admin access is required.' using errcode = '42501';
+  end if;
+
+  update public.dealers
+  set logo_secondary_header_variant = v_header,
+      logo_secondary_pages_variant = v_pages,
+      updated_at = now()
+  where id = p_dealer_id
+  returning * into v_dealer;
+
+  if v_dealer.id is null then
+    raise exception 'Dealer record was not found.' using errcode = 'P0002';
+  end if;
+  return v_dealer;
+end;
+$$;
+
+revoke all on function public.update_my_dealer_secondary_logo_variants(uuid, text, text) from public, anon;
+grant execute on function public.update_my_dealer_secondary_logo_variants(uuid, text, text) to authenticated;
+
 drop policy if exists "Dealer admins can upload their own dealer logo" on storage.objects;
 create policy "Dealer admins can upload their own dealer logo"
 on storage.objects for insert to authenticated
@@ -199,6 +264,8 @@ revoke all on function public.update_my_dealer_logo_display(uuid, text) from pub
 drop function if exists public.update_my_dealer_logo_display(uuid, text);
 revoke all on function public.update_my_dealer_secondary_logo_assets(uuid, text, text, text, text) from public, anon, authenticated;
 drop function if exists public.update_my_dealer_secondary_logo_assets(uuid, text, text, text, text);
+revoke all on function public.update_my_dealer_secondary_logo_variants(uuid, text, text) from public, anon, authenticated;
+drop function if exists public.update_my_dealer_secondary_logo_variants(uuid, text, text);
 
 drop policy if exists "Dealer admins can upload their own dealer logo" on storage.objects;
 create policy "Dealer admins can upload their own dealer logo"
@@ -242,7 +309,11 @@ with check (
 );
 
 alter table public.dealers drop constraint if exists dealers_logo_display_check;
+alter table public.dealers drop constraint if exists dealers_logo_secondary_header_variant_check;
+alter table public.dealers drop constraint if exists dealers_logo_secondary_pages_variant_check;
 alter table public.dealers
+  drop column if exists logo_secondary_pages_variant,
+  drop column if exists logo_secondary_header_variant,
   drop column if exists logo_secondary_generated_black_usable,
   drop column if exists logo_secondary_generated_black_url,
   drop column if exists logo_secondary_black_url,

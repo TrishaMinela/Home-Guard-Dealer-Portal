@@ -10,7 +10,7 @@ import { DealerLogoVariantSettings } from '../components/DealerLogoVariantSettin
 import { DealerLogoDisplaySettings } from '../components/DealerLogoDisplaySettings'
 import { LogoBackgroundDialog } from '../components/LogoBackgroundDialog'
 import { readLogoForRemoval } from '../utils/readLogoForRemoval'
-import { generatedLightLogoMessage, lightLogoEyebrow, logoVariantWrite, type DealerLogoDisplay, type DealerLogoVariant } from '../utils/dealerLogoVariants'
+import { generatedLightLogoMessage, lightLogoEyebrow, logoVariantWrite, normalizeLogoDisplay, secondaryLogoVariantWrite, type DealerLogoDisplay, type DealerLogoVariant } from '../utils/dealerLogoVariants'
 import { AdminDealerMarketingTools } from '../components/AdminDealerMarketingTools'
 import { DealerSectionHeader } from '../components/DealerSectionHeader'
 import { DealerDetailSectionNav } from '../components/DealerDetailSectionNav'
@@ -362,7 +362,12 @@ export function DealerDetailPage({
       : 'Custom light logo removed.')
   }
 
-  async function saveLogoVariants(variants: { header: DealerLogoVariant | null; pages: DealerLogoVariant | null }) {
+  async function saveLogoVariants(variants: {
+    header: DealerLogoVariant | null
+    pages: DealerLogoVariant | null
+    secondaryHeader: DealerLogoVariant | null
+    secondaryPages: DealerLogoVariant | null
+  }) {
     if (!dealer) throw new Error('Dealer not found.')
     const written = logoVariantWrite(variants.header, variants.pages)
     const { error: updateError } = await supabase
@@ -370,7 +375,14 @@ export function DealerDetailPage({
       .update(written)
       .eq('id', dealer.id)
     if (updateError) throw updateError
-    return { ...dealer, ...written }
+    if (normalizeLogoDisplay(dealer.logo_display) !== 'dual') return { ...dealer, ...written }
+    const secondary = secondaryLogoVariantWrite(variants.secondaryHeader, variants.secondaryPages)
+    const { error: secondaryError } = await supabase
+      .from('dealers')
+      .update(secondary)
+      .eq('id', dealer.id)
+    if (secondaryError) throw secondaryError
+    return { ...dealer, ...written, ...secondary }
   }
 
   async function saveLogoDisplay(display: DealerLogoDisplay) {

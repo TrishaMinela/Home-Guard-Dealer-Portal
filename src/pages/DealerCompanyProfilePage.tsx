@@ -19,7 +19,7 @@ import type { DealerLogoDisplay } from '../utils/dealerLogoVariants'
 import { DealerLogoVariantSettings } from '../components/DealerLogoVariantSettings'
 import { LogoBackgroundDialog } from '../components/LogoBackgroundDialog'
 import { readLogoForRemoval } from '../utils/readLogoForRemoval'
-import { generatedLightLogoMessage, lightLogoEyebrow, logoVariantWrite, type DealerLogoVariant } from '../utils/dealerLogoVariants'
+import { generatedLightLogoMessage, lightLogoEyebrow, logoVariantWrite, normalizeLogoDisplay, secondaryLogoVariantWrite, type DealerLogoVariant } from '../utils/dealerLogoVariants'
 
 type DealerCompanyProfilePageProps = {
   dealer: DealerAccount
@@ -448,7 +448,12 @@ export function DealerCompanyProfilePage({
     return data as DealerAccount
   }
 
-  async function saveLogoVariants(variants: { header: DealerLogoVariant | null; pages: DealerLogoVariant | null }) {
+  async function saveLogoVariants(variants: {
+    header: DealerLogoVariant | null
+    pages: DealerLogoVariant | null
+    secondaryHeader: DealerLogoVariant | null
+    secondaryPages: DealerLogoVariant | null
+  }) {
     const written = logoVariantWrite(variants.header, variants.pages)
     const { data, error: saveError } = await supabase
       .rpc('update_my_dealer_logo_variants', {
@@ -458,7 +463,15 @@ export function DealerCompanyProfilePage({
       })
       .single()
     if (saveError) throw saveError
-    return { ...dealer, ...(data as DealerAccount), ...written }
+    if (normalizeLogoDisplay(dealer.logo_display) !== 'dual') return { ...dealer, ...(data as DealerAccount), ...written }
+    const secondary = secondaryLogoVariantWrite(variants.secondaryHeader, variants.secondaryPages)
+    const { error: secondaryError } = await supabase.rpc('update_my_dealer_secondary_logo_variants', {
+      p_dealer_id: dealer.id,
+      p_logo_secondary_header_variant: secondary.logo_secondary_header_variant,
+      p_logo_secondary_pages_variant: secondary.logo_secondary_pages_variant,
+    })
+    if (secondaryError) throw secondaryError
+    return { ...dealer, ...(data as DealerAccount), ...written, ...secondary }
   }
 
   async function saveLogoDisplay(display: DealerLogoDisplay) {

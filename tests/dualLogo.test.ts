@@ -62,6 +62,48 @@ test('the second logo matches Door Builder and stays on the selected file', () =
   const findMyDoor = doorBuilderLogoPreview({ ...dealer, logo_display: 'dual', logo_placement: 'header', secondary_color: '#f7f8f9' }, 'find-my-door')
   assert.equal(findMyDoor?.background, '#05040b')
   assert.equal(findMyDoor?.primaryUrl, 'https://cdn.example/original.png')
+  const mixedHeader = doorBuilderLogoPreview({
+    ...dealer,
+    logo_display: 'dual',
+    logo_placement: 'header',
+    logo_header_variant: 'original',
+    logo_secondary_header_variant: 'white',
+  }, 'home-header')
+  assert.equal(mixedHeader?.primaryUrl, 'https://cdn.example/original.png')
+  assert.equal(mixedHeader?.secondaryUrl, 'https://cdn.example/second-white.png')
+  assert.equal(mixedHeader?.background, '#05040b')
+  const followedPages = doorBuilderLogoPreview({
+    ...dealer,
+    logo_display: 'dual',
+    logo_placement: 'hero',
+    logo_pages_variant: 'black',
+    logo_secondary_pages_variant: null,
+    logo_secondary_black_url: 'https://cdn.example/second-black.png',
+  }, 'find-my-door')
+  assert.equal(followedPages?.background, '#05040b')
+  assert.equal(followedPages?.primaryUrl, 'https://cdn.example/black.png')
+  assert.equal(followedPages?.secondaryUrl, 'https://cdn.example/second-black.png')
+  const whiteHero = doorBuilderLogoPreview({
+    ...dealer,
+    logo_display: 'dual',
+    logo_placement: 'hero',
+    logo_header_variant: 'original',
+    logo_secondary_header_variant: 'white',
+  }, 'home-hero')
+  assert.equal(whiteHero?.background, '#ffffff')
+  assert.equal(whiteHero?.primaryUrl, 'https://cdn.example/original.png')
+  assert.equal(whiteHero?.secondaryUrl, 'https://cdn.example/second-white.png')
+  const missingSecondWhite = doorBuilderLogoPreview({
+    ...dealer,
+    logo_display: 'dual',
+    logo_placement: 'header',
+    logo_header_variant: 'original',
+    logo_secondary_header_variant: 'white',
+    logo_secondary_light_url: null,
+    logo_secondary_generated_light_usable: false,
+  }, 'home-header')
+  assert.equal(missingSecondWhite?.showPair, false)
+  assert.equal(missingSecondWhite?.primaryUrl, 'https://cdn.example/original.png')
 })
 
 test('dual logo migration is additive and marketing banners stay on the first logo', () => {
@@ -73,6 +115,18 @@ test('dual logo migration is additive and marketing banners stay on the first lo
   assert.match(migration, /logo_display in \('single', 'dual'\)/)
   assert.match(migration, /update_my_dealer_logo_display/)
   assert.match(migration, /update_my_dealer_secondary_logo_assets/)
+  assert.match(migration, /add column if not exists logo_secondary_header_variant text null/)
+  assert.match(migration, /add column if not exists logo_secondary_pages_variant text null/)
+  assert.match(migration, /logo_secondary_header_variant is null or logo_secondary_header_variant in \('original', 'white', 'black'\)/)
+  assert.match(migration, /logo_secondary_pages_variant is null or logo_secondary_pages_variant in \('original', 'white', 'black'\)/)
+  assert.match(migration, /drop constraint if exists dealers_logo_secondary_header_variant_check/)
+  assert.match(migration, /drop constraint if exists dealers_logo_secondary_pages_variant_check/)
+  assert.match(migration, /update_my_dealer_secondary_logo_variants/)
+  assert.match(migration, /revoke all on function public\.update_my_dealer_secondary_logo_variants\(uuid, text, text\) from public, anon/)
+  assert.match(migration, /grant execute on function public\.update_my_dealer_secondary_logo_variants\(uuid, text, text\) to authenticated/)
+  assert.match(migration, /drop column if exists logo_secondary_header_variant/)
+  assert.match(migration, /drop column if exists logo_secondary_pages_variant/)
+  assert.doesNotMatch(migration, /function public\.update_my_dealer_logo_variants/)
   assert.match(migration, /logo-secondary\(-light\|-black\|-source\)\?/)
   assert.match(migration, /Rollback:/)
   assert.doesNotMatch(banners, /logo_secondary_/)

@@ -118,6 +118,8 @@ export function doorBuilderLogoPreview(
     logo_secondary_black_url?: string | null
     logo_secondary_generated_black_url?: string | null
     logo_secondary_generated_black_usable?: boolean | null
+    logo_secondary_header_variant?: string | null
+    logo_secondary_pages_variant?: string | null
   },
   surface: DoorBuilderPreviewSurface,
 ) {
@@ -126,11 +128,12 @@ export function doorBuilderLogoPreview(
   if (surface === 'home-hero' && placement !== 'hero') return null
   const pageVariant = surface === 'home-header' || surface === 'home-hero'
   const variant = normalizeLogoVariant(pageVariant ? dealer.logo_header_variant : dealer.logo_pages_variant)
+  const secondaryChoice = normalizeLogoVariant(pageVariant ? dealer.logo_secondary_header_variant : dealer.logo_secondary_pages_variant)
   const primaryUrl = surface === 'home-hero'
     ? (variant ? resolveDisplayedLogo(dealer, variant) : doorBuilderLogoWhenVariantUnset(dealer, 'light-surface'))
     : previewLogoUrl(dealer, variant, 'header')
   const secondaryUrl = normalizeLogoDisplay(dealer.logo_display) === 'dual' && primaryUrl
-    ? selectedSecondaryLogoUrl(dealer, variant, surface === 'home-hero' ? 'hero' : 'header')
+    ? selectedSecondaryLogoUrl(dealer, secondaryChoice ?? variant, surface === 'home-hero' ? 'hero' : 'header')
     : null
   const background = surface === 'home-hero'
     ? '#ffffff'
@@ -255,6 +258,14 @@ export function logoVariantWrite(header: DealerLogoVariant | null, pages: Dealer
   return {
     logo_header_variant: normalizeLogoVariant(header),
     logo_pages_variant: normalizeLogoVariant(pages),
+  }
+}
+
+/** NULL means Logo 2 follows Logo 1 for that placement and uses Logo 2's own files. */
+export function secondaryLogoVariantWrite(header: DealerLogoVariant | null, pages: DealerLogoVariant | null) {
+  return {
+    logo_secondary_header_variant: normalizeLogoVariant(header),
+    logo_secondary_pages_variant: normalizeLogoVariant(pages),
   }
 }
 

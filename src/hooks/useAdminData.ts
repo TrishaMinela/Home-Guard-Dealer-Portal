@@ -62,7 +62,7 @@ export function useAdminData(): AdminDataState {
         : new Map(usableFlags.data?.map((row) => [row.id, row.logo_generated_light_usable]) ?? [])
       const secondaryFlags = dealerResult.error
         ? null
-        : await supabase.from('dealers').select('id, logo_display, logo_secondary_url, logo_secondary_source_url, logo_secondary_light_url, logo_secondary_generated_light_url, logo_secondary_generated_light_usable, logo_secondary_black_url, logo_secondary_generated_black_url, logo_secondary_generated_black_usable')
+        : await supabase.from('dealers').select('id, logo_display, logo_secondary_url, logo_secondary_source_url, logo_secondary_light_url, logo_secondary_generated_light_url, logo_secondary_generated_light_usable, logo_secondary_black_url, logo_secondary_generated_black_url, logo_secondary_generated_black_usable, logo_secondary_header_variant, logo_secondary_pages_variant')
       const secondaryById = !secondaryFlags || secondaryFlags.error
         ? null
         : new Map(secondaryFlags.data?.map((row) => [row.id, row]) ?? [])
