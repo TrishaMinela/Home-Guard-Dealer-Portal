@@ -4,12 +4,8 @@ import { LogoBackgroundDialog } from './LogoBackgroundDialog'
 import { readLogoForRemoval } from '../utils/readLogoForRemoval'
 import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
 import {
-  doorBuilderHeaderSurface,
-  isLightBrandColor,
+  doorBuilderLogoPreview,
   normalizeLogoDisplay,
-  normalizeLogoVariant,
-  previewLogoUrl,
-  secondaryLogoSource,
   type DealerLogoDisplay,
 } from '../utils/dealerLogoVariants'
 
@@ -75,16 +71,13 @@ export function DealerLogoDisplaySettings({ dealer, onSaveDisplay, onSaveSeconda
   const [error, setError] = useState('')
   const [removal, setRemoval] = useState<{ file: File; originalUrl: string; removedUrl: string; reason: string; png: Blob } | null>(null)
 
-  const headerVariant = normalizeLogoVariant(dealer.logo_header_variant)
-  const primaryHeader = previewLogoUrl(dealer, headerVariant, 'header')
-  const secondary = secondaryLogoSource(dealer)
-  const secondaryHeader = previewLogoUrl(secondary, headerVariant, 'header')
-  const primaryHero = previewLogoUrl(dealer, headerVariant, 'hero')
-  const secondaryHero = previewLogoUrl(secondary, headerVariant, 'hero')
-  const headerSurface = doorBuilderHeaderSurface(dealer)
-  const headerIsLight = isLightBrandColor(headerSurface)
+  const previewDealer = { ...dealer, logo_display: display }
+  const headerPreview = doorBuilderLogoPreview(previewDealer, 'home-header')
+  const heroPreview = doorBuilderLogoPreview(previewDealer, 'home-hero')
+  const pagesPreview = doorBuilderLogoPreview(previewDealer, 'page-header')
   const showPair = display === 'dual'
-  const secondaryMissing = showPair && !secondaryHeader
+  const hiddenSurfaces = [headerPreview, heroPreview, pagesPreview].filter((item) => item && item.primaryUrl && !item.showPair)
+  const secondaryMissing = showPair && hiddenSurfaces.length > 0
 
   async function saveDisplay() {
     setMessage('')
@@ -217,8 +210,6 @@ export function DealerLogoDisplaySettings({ dealer, onSaveDisplay, onSaveSeconda
     setMessage(result.generatedLogoUsable ? 'Second logo variant generated.' : 'A second logo variant was generated, but it is not readable enough to offer.')
   }
 
-  const previewColor = headerIsLight ? '#101417' : '#fff'
-
   return (
     <section className="content-card dealer-management-card logo-display-settings" aria-labelledby="logo-display-heading">
       <div className="dealer-form__section-heading">
@@ -238,7 +229,7 @@ export function DealerLogoDisplaySettings({ dealer, onSaveDisplay, onSaveSeconda
       </div>
       {showPair && (
         <div className="logo-display-uploads">
-          <p>The second logo uses the same Original, White, and Black choices as the first logo. If its selected file is missing, Door Builder shows the second original, then one logo.</p>
+          <p>The second logo uses the same Original, White, and Black choice as the first. If that file is missing or does not suit the background, Door Builder shows only the first logo.</p>
           <div className="page-actions">
             <label className={`button button--outline upload-button ${uploading ? 'is-disabled' : ''}`}>
               {uploading === 'primary' ? 'Uploading...' : 'Upload second logo'}
@@ -258,18 +249,26 @@ export function DealerLogoDisplaySettings({ dealer, onSaveDisplay, onSaveSeconda
         </div>
       )}
       <div className="logo-display-previews">
-        <div>
-          <p>Header preview</p>
-          <LogoPair primary={primaryHeader} secondaryUrl={secondaryHeader} showPair={showPair} dark background={headerSurface} color={previewColor} />
-        </div>
-        {dealer.logo_placement !== 'header' && (
+        {headerPreview && (
           <div>
-            <p>Hero preview</p>
-            <LogoPair primary={primaryHero} secondaryUrl={secondaryHero} showPair={showPair} dark={false} background="#f7f8f9" color="#101417" />
+            <p>Homepage header</p>
+            <LogoPair primary={headerPreview.primaryUrl} secondaryUrl={headerPreview.secondaryUrl} showPair={headerPreview.showPair} dark={headerPreview.color === '#ffffff'} background={headerPreview.background} color={headerPreview.color} />
+          </div>
+        )}
+        {heroPreview && (
+          <div>
+            <p>Homepage hero</p>
+            <LogoPair primary={heroPreview.primaryUrl} secondaryUrl={heroPreview.secondaryUrl} showPair={heroPreview.showPair} dark={heroPreview.background === '#111827'} background={heroPreview.background} color={heroPreview.color} />
+          </div>
+        )}
+        {pagesPreview && (
+          <div>
+            <p>Builder pages and Find My Door</p>
+            <LogoPair primary={pagesPreview.primaryUrl} secondaryUrl={pagesPreview.secondaryUrl} showPair={pagesPreview.showPair} dark={pagesPreview.color === '#ffffff'} background={pagesPreview.background} color={pagesPreview.color} />
           </div>
         )}
       </div>
-      {secondaryMissing && <p className="logo-helper-note" role="status">The second logo is missing for this header. Door Builder will show one logo until it is added.</p>}
+      {secondaryMissing && <p className="logo-helper-note" role="status">The second logo is hidden on a surface where its file is missing or does not suit the background. That surface shows the first logo only.</p>}
       {message && <div className="portal-alert portal-alert--success" role="status">{message}</div>}
       {error && <div className="portal-alert" role="alert">{error}</div>}
       <div className="dealer-form__actions">

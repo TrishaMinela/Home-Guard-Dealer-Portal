@@ -84,6 +84,64 @@ export function secondaryLogoSource(dealer: DealerLogoVariantSource & {
   }
 }
 
+/** Same decision as Door Builder secondaryLogoUrlForSurface. A missing file does not fall back to another color. */
+export function secondaryLogoUrlForSurface(input: {
+  variant: DealerLogoVariant | null
+  surfaceIsDark: boolean
+  originalUrl: string | null
+  whiteUrl: string | null
+  blackUrl: string | null
+}): string | null {
+  if (input.variant === 'white') return input.surfaceIsDark ? input.whiteUrl : null
+  if (input.variant === 'black') return input.surfaceIsDark ? null : input.blackUrl
+  if (input.variant === 'original') return input.originalUrl
+  return input.surfaceIsDark ? input.whiteUrl : input.originalUrl
+}
+
+export type DoorBuilderPreviewSurface = 'home-header' | 'home-hero' | 'page-header'
+
+export function doorBuilderLogoPreview(
+  dealer: DealerLogoVariantSource & {
+    logo_display?: string | null
+    logo_placement?: string | null
+    logo_secondary_url?: string | null
+    logo_secondary_light_url?: string | null
+    logo_secondary_generated_light_url?: string | null
+    logo_secondary_generated_light_usable?: boolean | null
+    logo_secondary_black_url?: string | null
+    logo_secondary_generated_black_url?: string | null
+    logo_secondary_generated_black_usable?: boolean | null
+  },
+  surface: DoorBuilderPreviewSurface,
+) {
+  const placement = dealer.logo_placement === 'header' ? 'header' : 'hero'
+  if (surface === 'home-header' && placement !== 'header') return null
+  if (surface === 'home-hero' && placement !== 'hero') return null
+  const variant = normalizeLogoVariant(surface === 'page-header' ? dealer.logo_pages_variant : dealer.logo_header_variant)
+  const headerDark = !isLightBrandColor(doorBuilderHeaderSurface(dealer))
+  const primaryUrl = surface === 'home-hero'
+    ? (variant ? resolveDisplayedLogo(dealer, variant) : doorBuilderLogoWhenVariantUnset(dealer, 'light-surface'))
+    : previewLogoUrl(dealer, variant, 'header')
+  const heroDark = surface === 'home-hero' && (
+    (variant === 'white' && Boolean(resolveWhiteLogoUrl(dealer)))
+    || (!variant && !cleanUrl(dealer.logo_url) && Boolean(doorBuilderLegacyLightLogo(dealer)))
+  )
+  const surfaceIsDark = surface === 'home-hero' ? heroDark : headerDark
+  const second = secondaryLogoSource(dealer)
+  const secondaryUrl = normalizeLogoDisplay(dealer.logo_display) === 'dual' && primaryUrl
+    ? secondaryLogoUrlForSurface({
+      variant,
+      surfaceIsDark,
+      originalUrl: cleanUrl(second.logo_url),
+      whiteUrl: resolveWhiteLogoUrl(second),
+      blackUrl: resolveBlackLogoUrl(second),
+    })
+    : null
+  const background = surface === 'home-hero' ? (heroDark ? '#111827' : '#ffffff') : doorBuilderHeaderSurface(dealer)
+  const color = surfaceIsDark ? '#ffffff' : '#101417'
+  return { primaryUrl, secondaryUrl, showPair: Boolean(secondaryUrl), background, color }
+}
+
 export function previewLogoUrl(dealer: DealerLogoVariantSource, variant: DealerLogoVariant | null, surface: 'header' | 'hero') {
   if (variant) return resolveDisplayedLogo(dealer, variant)
   const headerIsLight = isLightBrandColor(doorBuilderHeaderSurface(dealer))
