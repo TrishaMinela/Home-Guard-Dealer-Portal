@@ -48,7 +48,7 @@ export function MarketingBannerAdminEditor({
 }: MarketingBannerAdminEditorProps) {
   const [library, setLibrary] = useState<BannerLibraryData | null>(null)
   const [loadError, setLoadError] = useState(false)
-  const [selectedSlot, setSelectedSlot] = useState(1)
+  const [selectedSlot, setSelectedSlot] = useState(2)
   const [drafts, setDrafts] = useState<Record<number, BannerPlacement>>({})
   const [verifiedDrafts, setVerifiedDrafts] = useState<Record<number, boolean>>({})
   const [logoId, setLogoId] = useState<string>(SAMPLE_BANNER_LOGOS[0].id)

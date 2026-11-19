@@ -13,6 +13,13 @@ export type MarketingBannerDefinition = {
   region: string
 }
 
+/** Slot numbers stay fixed. These two designs are omitted from selection lists. */
+export const HIDDEN_BANNER_SLOTS = new Set([1, 5])
+
+export function availableMarketingBanners() {
+  return MARKETING_BANNERS.filter((item) => !HIDDEN_BANNER_SLOTS.has(item.slot))
+}
+
 export const MARKETING_BANNERS: readonly MarketingBannerDefinition[] = [
   {
     slot: 1,
@@ -166,14 +173,15 @@ function mergeBanner(definition: MarketingBannerDefinition, remote: RemoteBanner
 }
 
 export function resolveMarketingBanners(remote: RemoteBannerInput[] | null): BannerLibraryData {
+  const listed = availableMarketingBanners()
   if (!remote) {
     return {
       source: 'fixtures',
       notice: FIXTURE_NOTICE,
-      templates: MARKETING_BANNERS.map(fixtureBanner),
+      templates: listed.map(fixtureBanner),
     }
   }
-  const templates = MARKETING_BANNERS.map((definition) => mergeBanner(definition, remote.find((item) => item.slot === definition.slot)))
+  const templates = listed.map((definition) => mergeBanner(definition, remote.find((item) => item.slot === definition.slot)))
   const usingDemoArt = templates.some((item) => item.imageSource === 'fixture')
   return {
     source: 'remote',
