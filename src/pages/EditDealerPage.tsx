@@ -167,14 +167,14 @@ export function EditDealerPage({ dealers, isLoading, error, onSaved }: EditDeale
       />}
 
       {activeSection === 'branding' && <form className="content-card dealer-form" onSubmit={saveBranding}>
-        <div className="dealer-form__section-heading"><p className="eyebrow">Branding</p><h2>Customer-facing Door Builder</h2><p>These settings control the appearance of this dealer’s branded Door Builder. Logo uploads are managed on the dealer overview.</p></div>
+        <div className="dealer-form__section-heading"><p className="eyebrow">Branding</p><h2>Customer-facing Door Builder</h2><p>Brand colors are saved here. They change this dealer’s Door Builder. Marketing banners use the dealer logo and do not recolor the template. Logo uploads stay on the dealer overview.</p></div>
         {brandingMessage && <div className="portal-alert portal-alert--success" role="status">{brandingMessage}</div>}
         {brandingError && <div className="portal-alert" role="alert">{brandingError}</div>}
         <div className="form-grid dealer-brand-color-grid">
           <div className="filter-field"><label htmlFor="primary-color">Primary Brand Color</label><div className="color-field"><input aria-label="Choose primary brand color" type="color" value={selectedBrandColors.primary || '#0d666c'} onChange={(event) => setBrandColors({ ...selectedBrandColors, primary: event.target.value })} /><input id="primary-color" value={selectedBrandColors.primary} onChange={(event) => setBrandColors({ ...selectedBrandColors, primary: event.target.value })} placeholder="#0d666c" /></div></div>
           <div className="filter-field"><label htmlFor="secondary-color">Secondary Brand Color</label><div className="color-field"><input aria-label="Choose secondary brand color" type="color" value={selectedBrandColors.secondary || '#f8d30e'} onChange={(event) => setBrandColors({ ...selectedBrandColors, secondary: event.target.value })} /><input id="secondary-color" value={selectedBrandColors.secondary} onChange={(event) => setBrandColors({ ...selectedBrandColors, secondary: event.target.value })} placeholder="#f8d30e" /></div></div>
         </div>
-        <div className="dealer-form__actions"><Link className="button button--outline" to={`/admin/dealers/${dealer.id}#branding`}>Manage Logos</Link><button className="button button--primary" type="submit" disabled={isSavingBranding}>{isSavingBranding ? 'Saving...' : 'Save Branding'}</button></div>
+        <div className="dealer-form__actions"><button className="button button--outline" type="button" disabled={isSavingBranding} onClick={() => setBrandColors({ primary: dealer.primary_color ?? '', secondary: dealer.secondary_color ?? '' })}>Cancel</button><Link className="button button--outline" to={`/admin/dealers/${dealer.id}#branding`}>Manage Logos</Link><button className="button button--primary" type="submit" disabled={isSavingBranding}>{isSavingBranding ? 'Saving...' : 'Save Branding'}</button></div>
       </form>}
 
       {activeSection === 'design' && <DealerTypographySettings dealer={dealer} onSave={saveTypography} onUpdated={onSaved}/>}

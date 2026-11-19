@@ -14,6 +14,7 @@ import { AdminDealerMarketingTools } from '../components/AdminDealerMarketingToo
 import { DealerSectionHeader } from '../components/DealerSectionHeader'
 import { DealerDetailSectionNav } from '../components/DealerDetailSectionNav'
 import { DealerCrmIntegrations } from '../components/DealerCrmIntegrations'
+import { DealerSetupChecklist } from '../components/DealerSetupChecklist'
 
 const logoExtensions: Record<string, string> = {
   'image/png': 'png',
@@ -442,6 +443,14 @@ export function DealerDetailPage({
         canManageDealerUsers={canManageDealerUsers}
       />
 
+      {dealer.slug_request_status === 'pending' && dealer.requested_slug && (
+        <div className="portal-alert" role="status">
+          A Door Builder URL change is waiting for review. <a href="#website-address">Review the request</a>
+        </div>
+      )}
+
+      <DealerSetupChecklist dealer={dealer} />
+
       {isConfirmingDisable && (
         <section className="disable-confirmation" role="alertdialog" aria-labelledby="disable-title">
           <div><h2 id="disable-title">Disable {dealer.company_name}?</h2><p>This dealer will remain in Home Guard records, but will be marked inactive.</p></div>
@@ -461,7 +470,7 @@ export function DealerDetailPage({
       </section>
 
       <section id="branding" className="content-card dealer-management-card dealer-settings-section dealer-branding-panel" aria-labelledby="branding-heading">
-        <DealerSectionHeader eyebrow="Branding" title="Customer-facing Door Builder" headingId="branding-heading" description="Manage the logo assets and placement used by this dealer’s public Door Builder. Portal colors remain HGI branded." actionLabel="Edit colors" actionTo={`/admin/dealers/${dealer.id}/edit#branding`} onActionClick={onClearSuccess} />
+        <DealerSectionHeader eyebrow="Branding" title="Customer-facing Door Builder" headingId="branding-heading" description="Logos are managed here. Brand colors and typography are saved with Edit colors. Marketing banners use the logo and do not recolor the template." actionLabel="Edit colors" actionTo={`/admin/dealers/${dealer.id}/edit#branding`} onActionClick={onClearSuccess} />
         <div className="profile-logo-grid">
         <section className="profile-logo-card">
           <div className="profile-logo-preview">
@@ -588,7 +597,7 @@ export function DealerDetailPage({
         </section>
       )}
 
-      <section className="content-card slug-review-card">
+      <section className="content-card slug-review-card" id="website-address">
         <div className="content-card__header">
           <p className="eyebrow">Dealer request</p>
           <h2>Visualizer URL Request</h2>

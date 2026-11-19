@@ -188,7 +188,10 @@ export function MarketingBannerLibrary({
                     <div className="mbl-card__actions">
                       <button className="button button--primary" type="button" onClick={() => setCustomizeSlot(banner.slot)}>Customize Banner</button>
                       <button className="button button--outline" type="button" disabled={busy === `${banner.slot}-png`} onClick={() => void download(banner, 'png')}>
-                        {busy === `${banner.slot}-png` ? 'Preparing PNG…' : 'Download'}
+                        {busy === `${banner.slot}-png` ? 'Preparing PNG…' : 'Download PNG'}
+                      </button>
+                      <button className="button button--outline" type="button" disabled={busy === `${banner.slot}-jpeg`} onClick={() => void download(banner, 'jpeg')}>
+                        {busy === `${banner.slot}-jpeg` ? 'Preparing JPG…' : 'Download JPG'}
                       </button>
                     </div>
                   </div>

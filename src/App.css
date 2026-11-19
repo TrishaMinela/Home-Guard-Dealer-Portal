@@ -563,8 +563,12 @@ select:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,10
 .dealer-settings-nav button:hover, .dealer-settings-nav a:hover { background: rgba(13,102,108,.07); color: var(--color-teal-dark); }
 .dealer-settings-nav button.is-active { background: var(--color-teal); color: var(--color-white); }
 .dealer-settings-nav button:focus-visible, .dealer-settings-nav a:focus-visible { outline: 3px solid rgba(248,211,14,.65); outline-offset: 1px; }
+.dealer-setup__list { display: grid; gap: 14px; margin: 0; padding: 8px 26px 26px; list-style: none; }
+.dealer-setup__list li { display: grid; gap: 4px; }
+.dealer-setup__list p { margin: 0; color: var(--color-muted); font-size: 13px; line-height: 1.5; }
+.profile-section-note { margin: 8px 0 0; color: var(--color-muted); font-size: 13px; line-height: 1.5; }
 .dealer-detail-page { --dealer-section-scroll-offset: 76px; }
-.dealer-detail-page :is(#company-details, #branding, #design, #marketing-tools, #crm-integrations, #dealer-users, #add-dealer-user) {
+.dealer-detail-page :is(#company-details, #branding, #design, #marketing-tools, #crm-integrations, #dealer-users, #add-dealer-user, #setup, #website-address) {
   scroll-margin-top: var(--dealer-section-scroll-offset);
 }
 .dealer-detail-nav-sentinel { height: 1px; pointer-events: none; }
