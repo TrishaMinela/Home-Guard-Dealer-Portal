@@ -57,6 +57,40 @@ export function normalizeLogoVariant(value: string | null | undefined): DealerLo
   return value === 'original' || value === 'black' || value === 'white' ? value : null
 }
 
+export type DealerLogoDisplay = 'single' | 'dual'
+
+export function normalizeLogoDisplay(value: string | null | undefined): DealerLogoDisplay {
+  return value === 'dual' ? 'dual' : 'single'
+}
+
+export function secondaryLogoSource(dealer: DealerLogoVariantSource & {
+  logo_secondary_url?: string | null
+  logo_secondary_light_url?: string | null
+  logo_secondary_generated_light_url?: string | null
+  logo_secondary_generated_light_usable?: boolean | null
+  logo_secondary_black_url?: string | null
+  logo_secondary_generated_black_url?: string | null
+  logo_secondary_generated_black_usable?: boolean | null
+}): DealerLogoVariantSource {
+  return {
+    ...dealer,
+    logo_url: dealer.logo_secondary_url,
+    logo_light_url: dealer.logo_secondary_light_url,
+    logo_generated_light_url: dealer.logo_secondary_generated_light_url,
+    logo_generated_light_usable: dealer.logo_secondary_generated_light_usable,
+    logo_black_url: dealer.logo_secondary_black_url,
+    logo_generated_black_url: dealer.logo_secondary_generated_black_url,
+    logo_generated_black_usable: dealer.logo_secondary_generated_black_usable,
+  }
+}
+
+export function previewLogoUrl(dealer: DealerLogoVariantSource, variant: DealerLogoVariant | null, surface: 'header' | 'hero') {
+  if (variant) return resolveDisplayedLogo(dealer, variant)
+  const headerIsLight = isLightBrandColor(doorBuilderHeaderSurface(dealer))
+  if (surface === 'hero') return doorBuilderLogoWhenVariantUnset(dealer, 'light-surface')
+  return doorBuilderLogoWhenVariantUnset(dealer, headerIsLight ? 'light-surface' : 'dark-header')
+}
+
 export function resolveWhiteLogoUrl(dealer: DealerLogoVariantSource) {
   const custom = cleanUrl(dealer.logo_light_url)
   if (custom) return custom

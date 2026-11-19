@@ -1401,6 +1401,13 @@ select:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,10
 .logo-background-preview.is-dark{background:#40454c;padding:8px}
 @media(max-width:800px){.logo-background-dialog__grid{grid-template-columns:1fr 1fr}}
 @media(max-width:720px){.logo-variant-settings{padding:20px 16px}.logo-variant-settings__grid,.logo-variant-settings__previews{grid-template-columns:1fr}.logo-variant-preview__stage{padding:14px 16px}}
+.logo-display-uploads{display:grid;gap:12px}
+.logo-display-previews{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}
+.logo-display-previews p{margin:0 0 8px;font-size:13px;font-weight:700}
+.logo-display-preview{display:flex;min-height:72px;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:8px}
+.logo-display-preview img{display:block;width:auto;height:auto;max-width:calc((100% - 17px) / 2);max-height:72px;object-fit:contain}
+.logo-display-preview__divider{width:1px;height:40px;flex:none;background:currentColor;opacity:.35}
+@media(max-width:720px){.logo-display-previews{grid-template-columns:1fr}.logo-display-preview img{max-height:58px}.logo-display-preview__divider{height:32px}}
 
 .crm-integrations{display:grid;gap:24px;padding:0 0 28px;overflow:hidden}
 .crm-integrations__header{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;padding:26px 28px;border-bottom:1px solid var(--color-border)}

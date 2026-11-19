@@ -12,6 +12,7 @@ export type GeneratedWhiteLogo = {
 }
 
 const SOURCE_LOGO_PATH = /^\/storage\/v1\/object\/public\/dealer-logos\/([^/]+)\/(logo|logo-source)\.(png|jpg|jpeg|webp)$/
+const SECONDARY_LOGO_PATH = /^\/storage\/v1\/object\/public\/dealer-logos\/([^/]+)\/(logo-secondary|logo-secondary-source)\.(png|jpg|jpeg|webp)$/
 
 export function validatePrimaryLogoUrl(value: string, dealerId: string, supabaseUrl: string): URL {
   const logoUrl = new URL(value)
@@ -30,6 +31,27 @@ export function validatePrimaryLogoUrl(value: string, dealerId: string, supabase
     || !allowedQuery
   ) {
     throw new Error('Primary logo is not an approved dealer-logo asset.')
+  }
+  return logoUrl
+}
+
+export function validateSecondaryLogoUrl(value: string, dealerId: string, supabaseUrl: string): URL {
+  const logoUrl = new URL(value)
+  const expectedOrigin = new URL(supabaseUrl).origin
+  const path = decodeURIComponent(logoUrl.pathname)
+  const match = path.match(SECONDARY_LOGO_PATH)
+  const allowedQuery = logoUrl.search === '' || /^\?v=[0-9]+$/.test(logoUrl.search)
+  if (
+    logoUrl.protocol !== 'https:'
+    || logoUrl.origin !== expectedOrigin
+    || logoUrl.username
+    || logoUrl.password
+    || logoUrl.hash
+    || !match
+    || match[1] !== dealerId
+    || !allowedQuery
+  ) {
+    throw new Error('Second logo is not an approved dealer-logo asset.')
   }
   return logoUrl
 }

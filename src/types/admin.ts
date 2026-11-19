@@ -18,6 +18,15 @@ export type AdminDealer = {
   logo_header_variant?: 'original' | 'black' | 'white' | null
   logo_pages_variant?: 'original' | 'black' | 'white' | null
   logo_placement?: 'header' | 'hero' | null
+  logo_display?: 'single' | 'dual' | null
+  logo_secondary_url?: string | null
+  logo_secondary_source_url?: string | null
+  logo_secondary_light_url?: string | null
+  logo_secondary_generated_light_url?: string | null
+  logo_secondary_generated_light_usable?: boolean | null
+  logo_secondary_black_url?: string | null
+  logo_secondary_generated_black_url?: string | null
+  logo_secondary_generated_black_usable?: boolean | null
   website: string | null
   address: string | null
   city: string | null

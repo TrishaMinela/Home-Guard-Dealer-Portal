@@ -7,9 +7,10 @@ import { DealerUserAccess } from '../components/DealerUserAccess'
 import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
 import { DealerLogoPlacementSettings, type DealerLogoPlacement } from '../components/DealerLogoPlacementSettings'
 import { DealerLogoVariantSettings } from '../components/DealerLogoVariantSettings'
+import { DealerLogoDisplaySettings } from '../components/DealerLogoDisplaySettings'
 import { LogoBackgroundDialog } from '../components/LogoBackgroundDialog'
 import { readLogoForRemoval } from '../utils/readLogoForRemoval'
-import { generatedLightLogoMessage, lightLogoEyebrow, logoVariantWrite, type DealerLogoVariant } from '../utils/dealerLogoVariants'
+import { generatedLightLogoMessage, lightLogoEyebrow, logoVariantWrite, type DealerLogoDisplay, type DealerLogoVariant } from '../utils/dealerLogoVariants'
 import { AdminDealerMarketingTools } from '../components/AdminDealerMarketingTools'
 import { DealerSectionHeader } from '../components/DealerSectionHeader'
 import { DealerDetailSectionNav } from '../components/DealerDetailSectionNav'
@@ -372,6 +373,35 @@ export function DealerDetailPage({
     return { ...dealer, ...written }
   }
 
+  async function saveLogoDisplay(display: DealerLogoDisplay) {
+    if (!dealer) throw new Error('Dealer not found.')
+    const { data, error: updateError } = await supabase
+      .from('dealers')
+      .update({ logo_display: display })
+      .eq('id', dealer.id)
+      .select('*')
+      .single()
+    if (updateError) throw updateError
+    return { ...dealer, ...(data as AdminDealer), logo_display: display }
+  }
+
+  async function saveSecondaryLogos(assets: {
+    logo_secondary_url: string | null
+    logo_secondary_source_url: string | null
+    logo_secondary_light_url: string | null
+    logo_secondary_black_url: string | null
+  }) {
+    if (!dealer) throw new Error('Dealer not found.')
+    const { data, error: updateError } = await supabase
+      .from('dealers')
+      .update(assets)
+      .eq('id', dealer.id)
+      .select('*')
+      .single()
+    if (updateError) throw updateError
+    return { ...dealer, ...(data as AdminDealer), ...assets }
+  }
+
   async function saveLogoPlacement(placement: DealerLogoPlacement) {
     if (!dealer) throw new Error('Dealer not found.')
     const { data, error: updateError } = await supabase
@@ -566,6 +596,13 @@ export function DealerDetailPage({
           />
         )}
       </section>
+
+      <DealerLogoDisplaySettings
+        dealer={dealer}
+        onSaveDisplay={saveLogoDisplay}
+        onSaveSecondary={saveSecondaryLogos}
+        onUpdated={(updated) => onDealerUpdated(updated, 'Logo display saved.')}
+      />
 
       <DealerLogoVariantSettings
         dealer={dealer}

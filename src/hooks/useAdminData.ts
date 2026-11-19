@@ -60,10 +60,18 @@ export function useAdminData(): AdminDataState {
       const usableById = !usableFlags || usableFlags.error
         ? null
         : new Map(usableFlags.data?.map((row) => [row.id, row.logo_generated_light_usable]) ?? [])
+      const secondaryFlags = dealerResult.error
+        ? null
+        : await supabase.from('dealers').select('id, logo_display, logo_secondary_url, logo_secondary_source_url, logo_secondary_light_url, logo_secondary_generated_light_url, logo_secondary_generated_light_usable, logo_secondary_black_url, logo_secondary_generated_black_url, logo_secondary_generated_black_usable')
+      const secondaryById = !secondaryFlags || secondaryFlags.error
+        ? null
+        : new Map(secondaryFlags.data?.map((row) => [row.id, row]) ?? [])
       if (!isCurrent) return
-      setDealers(usableById
-        ? loadedDealers.map((dealer) => ({ ...dealer, logo_generated_light_usable: usableById.get(dealer.id) ?? null }))
-        : loadedDealers)
+      setDealers(loadedDealers.map((dealer) => ({
+        ...dealer,
+        ...(usableById ? { logo_generated_light_usable: usableById.get(dealer.id) ?? null } : {}),
+        ...(secondaryById?.get(dealer.id) ?? {}),
+      })))
       setLeads(leadResult.data ?? [])
       setIsLoading(false)
     }
