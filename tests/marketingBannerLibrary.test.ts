@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
-import { MARKETING_BANNERS, resolveMarketingBanners } from '../src/features/marketing-banners/catalog.ts'
+import { HIDDEN_BANNER_SLOTS, MARKETING_BANNERS, availableMarketingBanners, resolveMarketingBanners } from '../src/features/marketing-banners/catalog.ts'
 import { marketingBannerFilename, slugifyBannerText } from '../src/features/marketing-banners/filename.ts'
 import { automaticBannerLogo, dealerLogoVariants } from '../src/features/marketing-banners/logos.ts'
 import {
@@ -250,27 +250,40 @@ test('banner logos use a custom light logo, then a readable generated logo, then
   assert.doesNotMatch(library, /variants\[0\]/)
 })
 
-test('missing template records fall back to the eight labeled demo fixtures', () => {
+test('missing template records fall back to the six listed demo fixtures', () => {
   const fallback = resolveMarketingBanners(null)
   assert.equal(fallback.source, 'fixtures')
-  assert.equal(fallback.templates.length, 8)
-  assert.deepEqual(fallback.templates.map((item) => item.slot), [1, 2, 3, 4, 5, 6, 7, 8])
+  assert.equal(fallback.templates.length, 6)
+  assert.deepEqual(fallback.templates.map((item) => item.slot), [2, 3, 4, 6, 7, 8])
   assert.equal(fallback.templates.every((item) => item.imageSource === 'fixture' && item.placementVerified === false), true)
-  assert.equal(fallback.templates.filter((item) => item.category === 'landscape').length, 4)
-  assert.equal(fallback.templates.filter((item) => item.category === 'square').length, 4)
-  const remote = resolveMarketingBanners([{
-    slot: 2,
-    placement: { x: 10, y: 10, width: 20, height: 20, padding: 1, maxLogoWidth: null, maxLogoHeight: null },
-    placementVerified: true,
-    imageUrl: 'https://cdn.example/template.png',
-    imageWidth: 1600,
-    imageHeight: 600,
-  }])
+  assert.equal(fallback.templates.filter((item) => item.category === 'landscape').length, 3)
+  assert.equal(fallback.templates.filter((item) => item.category === 'square').length, 3)
+  const remote = resolveMarketingBanners([
+    {
+      slot: 1,
+      headline: 'Build a Door Made for Your Home',
+      placement: { x: 4, y: 6, width: 30, height: 42, padding: 2, maxLogoWidth: null, maxLogoHeight: null },
+      placementVerified: true,
+      imageUrl: 'https://cdn.example/retired.png',
+      imageWidth: 851,
+      imageHeight: 315,
+    },
+    {
+      slot: 2,
+      placement: { x: 10, y: 10, width: 20, height: 20, padding: 1, maxLogoWidth: null, maxLogoHeight: null },
+      placementVerified: true,
+      imageUrl: 'https://cdn.example/template.png',
+      imageWidth: 1600,
+      imageHeight: 600,
+    },
+  ])
   const updated = remote.templates.find((item) => item.slot === 2)
   assert.equal(updated?.imageSource, 'storage')
   assert.equal(updated?.width, 1600)
   assert.equal(updated?.placementVerified, true)
-  assert.equal(remote.templates.find((item) => item.slot === 1)?.imageSource, 'fixture')
+  assert.equal(updated?.placement.x, 10)
+  assert.equal(remote.templates.some((item) => item.slot === 1 || item.slot === 5 || item.headline === 'Build a Door Made for Your Home'), false)
+  assert.equal(remote.templates.find((item) => item.slot === 3)?.imageSource, 'fixture')
 })
 
 test('catalog headlines, sizes, and unverified default regions are the Phase 1 set', () => {
@@ -356,8 +369,19 @@ test('Marketing Tools renders the banner library instead of the version 1 genera
   assert.match(tools, /getDealerVisualizerUrl\(dealer\.slug\)/)
   assert.match(tools, /Copy Embed Code/)
 
-  assert.equal(MARKETING_BANNERS.length, 8)
   assert.deepEqual(MARKETING_BANNERS.map((item) => item.slot), [1, 2, 3, 4, 5, 6, 7, 8])
+  assert.deepEqual([...HIDDEN_BANNER_SLOTS], [1, 5])
+  assert.deepEqual(availableMarketingBanners().map((item) => [item.slot, item.category, item.headline]), [
+    [2, 'landscape', 'Your Home. Your Style. Your Door.'],
+    [3, 'landscape', 'A New Look Starts at Your Door'],
+    [4, 'landscape', 'See Your Vision Come to Life'],
+    [6, 'square', 'Your Home. Your Style. Your Door.'],
+    [7, 'square', 'A New Look Starts at Your Door'],
+    [8, 'square', 'See Your Vision Come to Life'],
+  ])
+  const adminEditor = await readFile(new URL('../src/components/marketing-banners/MarketingBannerAdminEditor.tsx', import.meta.url), 'utf8')
+  assert.match(adminEditor, /useState\(2\)/)
+  assert.match(adminEditor, /library\?\.templates\.find\(\(item\) => item\.slot === selectedSlot\) \?\? library\?\.templates\[0\]/)
   assert.match(library, /bannersInCategory\(library\.templates, category\)/)
   assert.match(library, /Customize Banner/)
   assert.match(library, /Download/)
