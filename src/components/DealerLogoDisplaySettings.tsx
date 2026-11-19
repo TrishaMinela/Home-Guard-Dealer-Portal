@@ -75,8 +75,9 @@ export function DealerLogoDisplaySettings({ dealer, onSaveDisplay, onSaveSeconda
   const headerPreview = doorBuilderLogoPreview(previewDealer, 'home-header')
   const heroPreview = doorBuilderLogoPreview(previewDealer, 'home-hero')
   const pagesPreview = doorBuilderLogoPreview(previewDealer, 'page-header')
+  const findMyDoorPreview = doorBuilderLogoPreview(previewDealer, 'find-my-door')
   const showPair = display === 'dual'
-  const hiddenSurfaces = [headerPreview, heroPreview, pagesPreview].filter((item) => item && item.primaryUrl && !item.showPair)
+  const hiddenSurfaces = [headerPreview, heroPreview, pagesPreview, findMyDoorPreview].filter((item) => item && item.primaryUrl && !item.showPair)
   const secondaryMissing = showPair && hiddenSurfaces.length > 0
 
   async function saveDisplay() {
@@ -229,7 +230,7 @@ export function DealerLogoDisplaySettings({ dealer, onSaveDisplay, onSaveSeconda
       </div>
       {showPair && (
         <div className="logo-display-uploads">
-          <p>The second logo uses the same Original, White, and Black choice as the first. If that file is missing or does not suit the background, Door Builder shows only the first logo.</p>
+          <p>The second logo uses the same Original, White, or Black choice as the first. If that file is missing, Door Builder shows only the first logo.</p>
           <div className="page-actions">
             <label className={`button button--outline upload-button ${uploading ? 'is-disabled' : ''}`}>
               {uploading === 'primary' ? 'Uploading...' : 'Upload second logo'}
@@ -263,12 +264,18 @@ export function DealerLogoDisplaySettings({ dealer, onSaveDisplay, onSaveSeconda
         )}
         {pagesPreview && (
           <div>
-            <p>Builder pages and Find My Door</p>
+            <p>Builder pages</p>
             <LogoPair primary={pagesPreview.primaryUrl} secondaryUrl={pagesPreview.secondaryUrl} showPair={pagesPreview.showPair} dark={pagesPreview.color === '#ffffff'} background={pagesPreview.background} color={pagesPreview.color} />
           </div>
         )}
+        {findMyDoorPreview && (
+          <div>
+            <p>Find My Door</p>
+            <LogoPair primary={findMyDoorPreview.primaryUrl} secondaryUrl={findMyDoorPreview.secondaryUrl} showPair={findMyDoorPreview.showPair} dark background={findMyDoorPreview.background} color={findMyDoorPreview.color} />
+          </div>
+        )}
       </div>
-      {secondaryMissing && <p className="logo-helper-note" role="status">The second logo is hidden on a surface where its file is missing or does not suit the background. That surface shows the first logo only.</p>}
+      {secondaryMissing && <p className="logo-helper-note" role="status">The second logo is missing for a surface, so that surface shows the first logo only.</p>}
       {message && <div className="portal-alert portal-alert--success" role="status">{message}</div>}
       {error && <div className="portal-alert" role="alert">{error}</div>}
       <div className="dealer-form__actions">

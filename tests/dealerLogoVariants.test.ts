@@ -39,25 +39,22 @@ const transparentInk = { transparent: true, contrasts: true, contrastingShare: 1
 const transparentLowContrast = { transparent: true, contrasts: false, contrastingShare: 0.04 }
 const solidInk = { transparent: false, contrasts: true, contrastingShare: 1 }
 
-test('dark headers offer contrasting original and white, and light headers offer original and black', () => {
+test('logo choices stay available on dark and light headers when the file is transparent', () => {
   const dark = logoVariantOffers(false, { original: transparentInk, white: transparentInk, black: transparentInk })
   assert.equal(dark.original.enabled, true)
   assert.equal(dark.white.enabled, true)
-  assert.equal(dark.black.enabled, false)
-  assert.match(dark.black.reason ?? '', /dark header/)
+  assert.equal(dark.black.enabled, true)
 
   const darkLowOriginal = logoVariantOffers(false, { original: transparentLowContrast, white: 'missing', black: transparentInk })
-  assert.equal(darkLowOriginal.original.enabled, false)
-  assert.match(darkLowOriginal.original.reason ?? '', /3:1/)
+  assert.equal(darkLowOriginal.original.enabled, true)
   assert.equal(darkLowOriginal.white.enabled, false)
   assert.match(darkLowOriginal.white.reason ?? '', /marked readable/)
-  assert.equal(darkLowOriginal.black.enabled, false)
+  assert.equal(darkLowOriginal.black.enabled, true)
 
   const light = logoVariantOffers(true, { original: transparentLowContrast, white: transparentInk, black: transparentInk })
   assert.equal(light.original.enabled, true)
   assert.equal(light.black.enabled, true)
-  assert.equal(light.white.enabled, false)
-  assert.match(light.white.reason ?? '', /light header/)
+  assert.equal(light.white.enabled, true)
 
   const solid = logoVariantOffers(false, { original: solidInk, white: 'missing', black: 'missing' })
   assert.equal(solid.original.enabled, false)

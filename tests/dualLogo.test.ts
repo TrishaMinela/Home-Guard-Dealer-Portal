@@ -7,7 +7,7 @@ import {
   normalizeLogoDisplay,
   previewLogoUrl,
   secondaryLogoSource,
-  secondaryLogoUrlForSurface,
+  selectedSecondaryLogoUrl,
 } from '../src/utils/dealerLogoVariants.ts'
 
 const dealer = {
@@ -35,22 +35,16 @@ test('logo display defaults to one logo and only accepts dual explicitly', () =>
   assert.equal(normalizeLogoDisplay('dual'), 'dual')
 })
 
-test('the second logo matches Door Builder and does not fall back to the wrong color', () => {
+test('the second logo matches Door Builder and stays on the selected file', () => {
   const second = secondaryLogoSource(dealer)
   assert.equal(previewLogoUrl(dealer, 'white', 'header'), 'https://cdn.example/white.png')
   assert.equal(previewLogoUrl(second, 'white', 'header'), 'https://cdn.example/second-white.png')
-  assert.equal(secondaryLogoUrlForSurface({
-    variant: 'white', surfaceIsDark: true, originalUrl: 'https://cdn.example/second.png', whiteUrl: null, blackUrl: null,
-  }), null)
-  assert.equal(secondaryLogoUrlForSurface({
-    variant: 'white', surfaceIsDark: false, originalUrl: 'https://cdn.example/second.png', whiteUrl: 'https://cdn.example/second-white.png', blackUrl: null,
-  }), null)
-  assert.equal(secondaryLogoUrlForSurface({
-    variant: null, surfaceIsDark: false, originalUrl: null, whiteUrl: 'https://cdn.example/second-white.png', blackUrl: null,
-  }), null)
-  assert.equal(secondaryLogoUrlForSurface({
-    variant: 'black', surfaceIsDark: true, originalUrl: 'https://cdn.example/second.png', whiteUrl: null, blackUrl: 'https://cdn.example/second-black.png',
-  }), null)
+  assert.equal(selectedSecondaryLogoUrl({
+    ...dealer, logo_secondary_url: 'https://cdn.example/second.png', logo_secondary_light_url: null, logo_secondary_generated_light_usable: false,
+  }, 'white', 'hero'), null)
+  assert.equal(selectedSecondaryLogoUrl({
+    ...dealer, logo_header_variant: 'black', logo_secondary_black_url: 'https://cdn.example/second-black.png',
+  }, 'black', 'header'), 'https://cdn.example/second-black.png')
   const hero = doorBuilderLogoPreview({
     ...dealer,
     logo_display: 'dual',
@@ -58,12 +52,16 @@ test('the second logo matches Door Builder and does not fall back to the wrong c
     logo_header_variant: 'white',
     logo_secondary_light_url: 'https://cdn.example/second-white.png',
   }, 'home-hero')
-  assert.equal(hero?.background, '#111827')
+  assert.equal(hero?.background, '#ffffff')
   assert.equal(hero?.showPair, true)
   assert.equal(hero?.secondaryUrl, 'https://cdn.example/second-white.png')
   const pages = doorBuilderLogoPreview({ ...dealer, logo_display: 'dual', logo_placement: 'hero' }, 'page-header')
   assert.equal(pages?.primaryUrl, 'https://cdn.example/original.png')
+  assert.equal(pages?.background, '#05040b')
   assert.equal(pages?.showPair, true)
+  const findMyDoor = doorBuilderLogoPreview({ ...dealer, logo_display: 'dual', logo_placement: 'header', secondary_color: '#f7f8f9' }, 'find-my-door')
+  assert.equal(findMyDoor?.background, '#05040b')
+  assert.equal(findMyDoor?.primaryUrl, 'https://cdn.example/original.png')
 })
 
 test('dual logo migration is additive and marketing banners stay on the first logo', () => {

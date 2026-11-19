@@ -84,21 +84,28 @@ export function secondaryLogoSource(dealer: DealerLogoVariantSource & {
   }
 }
 
-/** Same decision as Door Builder secondaryLogoUrlForSurface. A missing file does not fall back to another color. */
-export function secondaryLogoUrlForSurface(input: {
-  variant: DealerLogoVariant | null
-  surfaceIsDark: boolean
-  originalUrl: string | null
-  whiteUrl: string | null
-  blackUrl: string | null
-}): string | null {
-  if (input.variant === 'white') return input.surfaceIsDark ? input.whiteUrl : null
-  if (input.variant === 'black') return input.surfaceIsDark ? null : input.blackUrl
-  if (input.variant === 'original') return input.originalUrl
-  return input.surfaceIsDark ? input.whiteUrl : input.originalUrl
+/** Selected second-logo file only. A missing white or black file does not switch to another color. */
+export function selectedSecondaryLogoUrl(
+  dealer: DealerLogoVariantSource & {
+    logo_secondary_url?: string | null
+    logo_secondary_light_url?: string | null
+    logo_secondary_generated_light_url?: string | null
+    logo_secondary_generated_light_usable?: boolean | null
+    logo_secondary_black_url?: string | null
+    logo_secondary_generated_black_url?: string | null
+    logo_secondary_generated_black_usable?: boolean | null
+  },
+  variant: DealerLogoVariant | null,
+  surface: 'header' | 'hero',
+): string | null {
+  const second = secondaryLogoSource(dealer)
+  if (variant === 'white') return resolveWhiteLogoUrl(second)
+  if (variant === 'black') return resolveBlackLogoUrl(second)
+  if (variant === 'original') return cleanUrl(second.logo_url)
+  return previewLogoUrl(second, null, surface)
 }
 
-export type DoorBuilderPreviewSurface = 'home-header' | 'home-hero' | 'page-header'
+export type DoorBuilderPreviewSurface = 'home-header' | 'home-hero' | 'page-header' | 'find-my-door'
 
 export function doorBuilderLogoPreview(
   dealer: DealerLogoVariantSource & {
@@ -117,28 +124,20 @@ export function doorBuilderLogoPreview(
   const placement = dealer.logo_placement === 'header' ? 'header' : 'hero'
   if (surface === 'home-header' && placement !== 'header') return null
   if (surface === 'home-hero' && placement !== 'hero') return null
-  const variant = normalizeLogoVariant(surface === 'page-header' ? dealer.logo_pages_variant : dealer.logo_header_variant)
-  const headerDark = !isLightBrandColor(doorBuilderHeaderSurface(dealer))
+  const pageVariant = surface === 'home-header' || surface === 'home-hero'
+  const variant = normalizeLogoVariant(pageVariant ? dealer.logo_header_variant : dealer.logo_pages_variant)
   const primaryUrl = surface === 'home-hero'
     ? (variant ? resolveDisplayedLogo(dealer, variant) : doorBuilderLogoWhenVariantUnset(dealer, 'light-surface'))
     : previewLogoUrl(dealer, variant, 'header')
-  const heroDark = surface === 'home-hero' && (
-    (variant === 'white' && Boolean(resolveWhiteLogoUrl(dealer)))
-    || (!variant && !cleanUrl(dealer.logo_url) && Boolean(doorBuilderLegacyLightLogo(dealer)))
-  )
-  const surfaceIsDark = surface === 'home-hero' ? heroDark : headerDark
-  const second = secondaryLogoSource(dealer)
   const secondaryUrl = normalizeLogoDisplay(dealer.logo_display) === 'dual' && primaryUrl
-    ? secondaryLogoUrlForSurface({
-      variant,
-      surfaceIsDark,
-      originalUrl: cleanUrl(second.logo_url),
-      whiteUrl: resolveWhiteLogoUrl(second),
-      blackUrl: resolveBlackLogoUrl(second),
-    })
+    ? selectedSecondaryLogoUrl(dealer, variant, surface === 'home-hero' ? 'hero' : 'header')
     : null
-  const background = surface === 'home-hero' ? (heroDark ? '#111827' : '#ffffff') : doorBuilderHeaderSurface(dealer)
-  const color = surfaceIsDark ? '#ffffff' : '#101417'
+  const background = surface === 'home-hero'
+    ? '#ffffff'
+    : surface === 'find-my-door'
+      ? '#05040b'
+      : doorBuilderHeaderSurface(dealer)
+  const color = isLightBrandColor(background) || background === '#ffffff' ? '#101417' : '#ffffff'
   return { primaryUrl, secondaryUrl, showPair: Boolean(secondaryUrl), background, color }
 }
 
@@ -196,7 +195,6 @@ export type LogoInkStatus = { transparent: boolean; contrasts: boolean; contrast
 
 export type LogoVariantOffer = { enabled: boolean; reason: string | null }
 
-const darkOriginalContrast = 'Original does not have enough contrast on this dark header. At least 30% of its opaque ink needs a 3:1 ratio against the header color.'
 const solidBackground = 'This file still has a solid background, so it is not offered. Upload it again to save a transparent PNG.'
 const unreadableGenerated = 'A generated file is offered only when it is marked readable. An unreadable or unchecked file is never selected.'
 
@@ -214,23 +212,20 @@ function offerFromInk(
 }
 
 /**
- * Dark header: Original when its ink already contrasts, plus a readable transparent White.
- * Light header: Original and Black by default. White and Black that fail the surface are disabled.
+ * A transparent file can be chosen on any background. Contrast does not disable a choice.
+ * A missing file, a solid background, or a generated file that is unreadable or unchecked stays unavailable.
  */
-export function logoVariantOffers(surfaceIsLight: boolean, ink: { original: LogoInkStatus; white: LogoInkStatus; black: LogoInkStatus }): Record<DealerLogoVariant, LogoVariantOffer> {
-  const lightBlocked = 'White is turned off on this light header because white ink does not contrast with it.'
-  const darkBlocked = 'Black is turned off on this dark header because black ink does not contrast with it.'
-  if (surfaceIsLight) {
-    return {
-      original: offerFromInk(ink.original, { allowWithoutContrast: true, blockedReason: null, missingReason: 'Upload a primary logo before choosing Original.', contrastReason: darkOriginalContrast }),
-      black: offerFromInk(ink.black, { allowWithoutContrast: true, blockedReason: null, missingReason: `Black is not offered. ${unreadableGenerated}`, contrastReason: darkOriginalContrast }),
-      white: offerFromInk(ink.white, { allowWithoutContrast: false, blockedReason: lightBlocked, missingReason: lightBlocked, contrastReason: lightBlocked }),
-    }
-  }
+export function logoVariantOffers(_surfaceIsLight: boolean, ink: { original: LogoInkStatus; white: LogoInkStatus; black: LogoInkStatus }): Record<DealerLogoVariant, LogoVariantOffer> {
+  const available = (status: LogoInkStatus, missingReason: string) => offerFromInk(status, {
+    allowWithoutContrast: true,
+    blockedReason: null,
+    missingReason,
+    contrastReason: missingReason,
+  })
   return {
-    original: offerFromInk(ink.original, { allowWithoutContrast: false, blockedReason: null, missingReason: 'Upload a primary logo before choosing Original.', contrastReason: darkOriginalContrast }),
-    white: offerFromInk(ink.white, { allowWithoutContrast: false, blockedReason: null, missingReason: `White is not offered. ${unreadableGenerated}`, contrastReason: 'White does not have enough contrast on this header.' }),
-    black: offerFromInk(ink.black, { allowWithoutContrast: false, blockedReason: darkBlocked, missingReason: darkBlocked, contrastReason: darkBlocked }),
+    original: available(ink.original, 'Upload a primary logo before choosing Original.'),
+    white: available(ink.white, `White is not offered. ${unreadableGenerated}`),
+    black: available(ink.black, `Black is not offered. ${unreadableGenerated}`),
   }
 }
 

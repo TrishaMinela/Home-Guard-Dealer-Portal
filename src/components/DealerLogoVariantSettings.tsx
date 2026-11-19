@@ -193,7 +193,7 @@ export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrate
       <div className="dealer-form__section-heading">
         <p className="eyebrow">Door Builder logos</p>
         <h2 id="logo-variant-heading">Where each logo appears</h2>
-        <p>Choose independently for the homepage header and for the other customer-facing pages. Only a transparent logo that can be read on that header is offered. Leaving a choice unset keeps that area on its current logo.</p>
+        <p>Choose independently for the homepage header and for the other customer-facing pages. A transparent file can be used on any background. A generated file is offered only when it is marked readable. Leaving a choice unset keeps that area on its current logo.</p>
       </div>
       <div className="logo-variant-settings__grid">
         <VariantChoice
