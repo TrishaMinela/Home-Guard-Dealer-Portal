@@ -10,6 +10,7 @@ import {
   doorBuilderLogoPreview,
   doorBuilderPagesSurface,
   isLightBrandColor,
+  logoChoicesAfterFailedSave,
   logoVariantOffers,
   normalizeLogoDisplay,
   normalizeLogoVariant,
@@ -213,7 +214,13 @@ export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrate
       setMessage('Door Builder logo choices saved.')
     } catch (saveError) {
       console.error('Failed to save dealer logo variants.', saveError)
-      setError('We could not save these logo choices. Please try again.')
+      const saved = logoChoicesAfterFailedSave(dealer)
+      dirtyRef.current = false
+      setHeader(saved.header)
+      setPages(saved.pages)
+      setSecondaryHeader(saved.secondaryHeader)
+      setSecondaryPages(saved.secondaryPages)
+      setError('These logo choices were not saved. The previous choices are unchanged.')
     } finally {
       setIsSaving(false)
     }

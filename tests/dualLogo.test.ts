@@ -4,6 +4,8 @@ import test from 'node:test'
 import { validateSecondaryLogoUrl } from '../api/_lib/dealerLightLogo.ts'
 import {
   doorBuilderLogoPreview,
+  logoChoicesAfterFailedSave,
+  logoVariantSavePlan,
   normalizeLogoDisplay,
   previewLogoUrl,
   secondaryLogoSource,
@@ -121,9 +123,11 @@ test('dual logo migration is additive and marketing banners stay on the first lo
   assert.match(migration, /logo_secondary_pages_variant is null or logo_secondary_pages_variant in \('original', 'white', 'black'\)/)
   assert.match(migration, /drop constraint if exists dealers_logo_secondary_header_variant_check/)
   assert.match(migration, /drop constraint if exists dealers_logo_secondary_pages_variant_check/)
-  assert.match(migration, /update_my_dealer_secondary_logo_variants/)
-  assert.match(migration, /revoke all on function public\.update_my_dealer_secondary_logo_variants\(uuid, text, text\) from public, anon/)
-  assert.match(migration, /grant execute on function public\.update_my_dealer_secondary_logo_variants\(uuid, text, text\) to authenticated/)
+  assert.match(migration, /update_my_dealer_all_logo_variants/)
+  assert.match(migration, /revoke all on function public\.update_my_dealer_all_logo_variants\(uuid, text, text, text, text\) from public, anon/)
+  assert.match(migration, /grant execute on function public\.update_my_dealer_all_logo_variants\(uuid, text, text, text, text\) to authenticated/)
+  assert.match(migration, /drop function if exists public\.update_my_dealer_secondary_logo_variants\(uuid, text, text\)/)
+  assert.doesNotMatch(migration, /create or replace function public\.update_my_dealer_secondary_logo_variants/)
   assert.match(migration, /drop column if exists logo_secondary_header_variant/)
   assert.match(migration, /drop column if exists logo_secondary_pages_variant/)
   assert.doesNotMatch(migration, /function public\.update_my_dealer_logo_variants/)
@@ -133,6 +137,66 @@ test('dual logo migration is additive and marketing banners stay on the first lo
   assert.match(profile, /DealerLogoDisplaySettings/)
   assert.match(detail, /DealerLogoDisplaySettings/)
   assert.match(profile, /Marketing banners do not use these choices/)
+})
+
+test('dual logo choices save together and a failure restores the saved choices', () => {
+  const migration = readFileSync('supabase/migrations/20261119000000_add_dealer_dual_logo.sql', 'utf8')
+  const profile = readFileSync('src/pages/DealerCompanyProfilePage.tsx', 'utf8')
+  const detail = readFileSync('src/pages/DealerDetailPage.tsx', 'utf8')
+  const component = readFileSync('src/components/DealerLogoVariantSettings.tsx', 'utf8')
+  const fnStart = migration.indexOf('create or replace function public.update_my_dealer_all_logo_variants')
+  const fnEnd = migration.indexOf('revoke all on function public.update_my_dealer_all_logo_variants')
+  const fn = migration.slice(fnStart, fnEnd)
+  assert.equal((fn.match(/update public\.dealers/g) ?? []).length, 1)
+  assert.match(fn, /logo_header_variant = v_header/)
+  assert.match(fn, /logo_pages_variant = v_pages/)
+  assert.match(fn, /logo_secondary_header_variant = v_secondary_header/)
+  assert.match(fn, /logo_secondary_pages_variant = v_secondary_pages/)
+  assert.match(fn, /security definer/)
+  assert.match(fn, /set search_path = pg_catalog/)
+  assert.match(fn, /dealer_users\.role = 'dealer_admin'/)
+  assert.match(fn, /v_user_id is null/)
+
+  const single = logoVariantSavePlan('single', 'white', 'black', 'original', 'white')
+  assert.equal(single.mode, 'primary')
+  assert.deepEqual(single.fields, { logo_header_variant: 'white', logo_pages_variant: 'black' })
+  const unset = logoVariantSavePlan(null, null, 'original', 'white', 'black')
+  assert.equal(unset.mode, 'primary')
+  assert.deepEqual(unset.fields, { logo_header_variant: null, logo_pages_variant: 'original' })
+  const dual = logoVariantSavePlan('dual', 'original', 'black', 'white', null)
+  assert.equal(dual.mode, 'all')
+  assert.deepEqual(dual.fields, {
+    logo_header_variant: 'original',
+    logo_pages_variant: 'black',
+    logo_secondary_header_variant: 'white',
+    logo_secondary_pages_variant: null,
+  })
+
+  for (const page of [profile, detail]) {
+    assert.match(page, /plan\.mode === 'primary'/)
+    assert.match(page, /logoVariantSavePlan\(dealer\.logo_display, variants\.header, variants\.pages, variants\.secondaryHeader, variants\.secondaryPages\)/)
+    assert.doesNotMatch(page, /update_my_dealer_secondary_logo_variants/)
+  }
+  assert.match(profile, /update_my_dealer_logo_variants/)
+  assert.match(profile, /update_my_dealer_all_logo_variants/)
+  assert.match(detail, /\.update\(written\)/)
+  assert.match(detail, /\.update\(plan\.fields\)/)
+  assert.doesNotMatch(detail, /update_my_dealer_all_logo_variants/)
+  assert.match(component, /These logo choices were not saved\. The previous choices are unchanged\./)
+  assert.match(component, /logoChoicesAfterFailedSave\(dealer\)/)
+  const failure = component.slice(component.indexOf('catch (saveError)'), component.indexOf('} finally'))
+  assert.doesNotMatch(failure, /onUpdated/)
+  assert.deepEqual(logoChoicesAfterFailedSave({
+    logo_header_variant: 'original',
+    logo_pages_variant: 'black',
+    logo_secondary_header_variant: null,
+    logo_secondary_pages_variant: 'white',
+  }), {
+    header: 'original',
+    pages: 'black',
+    secondaryHeader: null,
+    secondaryPages: 'white',
+  })
 })
 
 test('second logo generation uses its own file and does not replace the first logo', () => {

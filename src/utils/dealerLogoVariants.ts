@@ -269,6 +269,38 @@ export function secondaryLogoVariantWrite(header: DealerLogoVariant | null, page
   }
 }
 
+export type LogoVariantSavePlan =
+  | { mode: 'primary'; fields: ReturnType<typeof logoVariantWrite> }
+  | { mode: 'all'; fields: ReturnType<typeof logoVariantWrite> & ReturnType<typeof secondaryLogoVariantWrite> }
+
+/** Single-logo dealers write Logo 1 only. Dual writes all four choices together. */
+export function logoVariantSavePlan(
+  display: string | null | undefined,
+  header: DealerLogoVariant | null,
+  pages: DealerLogoVariant | null,
+  secondaryHeader: DealerLogoVariant | null,
+  secondaryPages: DealerLogoVariant | null,
+): LogoVariantSavePlan {
+  const primary = logoVariantWrite(header, pages)
+  if (normalizeLogoDisplay(display) !== 'dual') return { mode: 'primary', fields: primary }
+  return { mode: 'all', fields: { ...primary, ...secondaryLogoVariantWrite(secondaryHeader, secondaryPages) } }
+}
+
+/** Saved choices to show again when a save fails, so the form matches the database. */
+export function logoChoicesAfterFailedSave(dealer: {
+  logo_header_variant?: string | null
+  logo_pages_variant?: string | null
+  logo_secondary_header_variant?: string | null
+  logo_secondary_pages_variant?: string | null
+}) {
+  return {
+    header: normalizeLogoVariant(dealer.logo_header_variant),
+    pages: normalizeLogoVariant(dealer.logo_pages_variant),
+    secondaryHeader: normalizeLogoVariant(dealer.logo_secondary_header_variant),
+    secondaryPages: normalizeLogoVariant(dealer.logo_secondary_pages_variant),
+  }
+}
+
 export function generatedLightLogoMessage(usable: boolean | null, source: 'primary' | 'regenerate') {
   if (usable === true) {
     return source === 'primary'

@@ -146,7 +146,7 @@ test('admin and dealer branding settings share the same choices and saved fields
   const profile = await readFile(new URL('../src/pages/DealerCompanyProfilePage.tsx', import.meta.url), 'utf8')
   for (const page of [detail, profile]) {
     assert.match(page, /<DealerLogoVariantSettings/)
-    assert.match(page, /logoVariantWrite\(variants\.header, variants\.pages\)/)
+    assert.match(page, /logoVariantSavePlan\(dealer\.logo_display, variants\.header, variants\.pages/)
     assert.doesNotMatch(page, /Homepage\/Header Logo|Normal Pages Logo|Original Colored Logo|White\/Light Logo/)
   }
   assert.match(component, /!offer\.enabled/)
@@ -172,7 +172,7 @@ test('branding settings expose independent homepage and pages logo choices', asy
   assert.match(component, /secondary color/)
   assert.doesNotMatch(component, /DOOR_BUILDER_PAGE_BACKGROUND/)
   assert.doesNotMatch(component, /headerContrastPlate|logo-variant-preview__plate/)
-  assert.match(detail, /logoVariantWrite\(variants\.header, variants\.pages\)/)
+  assert.match(detail, /logoVariantSavePlan\(dealer\.logo_display, variants\.header, variants\.pages/)
   assert.match(profile, /update_my_dealer_logo_variants/)
   const styles = await readFile(new URL('../src/App.css', import.meta.url), 'utf8')
   assert.match(styles, /@media\(max-width:720px\)\{\.logo-variant-settings/)

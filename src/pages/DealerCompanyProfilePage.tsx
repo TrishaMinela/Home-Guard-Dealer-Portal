@@ -19,7 +19,7 @@ import type { DealerLogoDisplay } from '../utils/dealerLogoVariants'
 import { DealerLogoVariantSettings } from '../components/DealerLogoVariantSettings'
 import { LogoBackgroundDialog } from '../components/LogoBackgroundDialog'
 import { readLogoForRemoval } from '../utils/readLogoForRemoval'
-import { generatedLightLogoMessage, lightLogoEyebrow, logoVariantWrite, normalizeLogoDisplay, secondaryLogoVariantWrite, type DealerLogoVariant } from '../utils/dealerLogoVariants'
+import { generatedLightLogoMessage, lightLogoEyebrow, logoVariantSavePlan, type DealerLogoVariant } from '../utils/dealerLogoVariants'
 
 type DealerCompanyProfilePageProps = {
   dealer: DealerAccount
@@ -454,24 +454,30 @@ export function DealerCompanyProfilePage({
     secondaryHeader: DealerLogoVariant | null
     secondaryPages: DealerLogoVariant | null
   }) {
-    const written = logoVariantWrite(variants.header, variants.pages)
+    const plan = logoVariantSavePlan(dealer.logo_display, variants.header, variants.pages, variants.secondaryHeader, variants.secondaryPages)
+    if (plan.mode === 'primary') {
+      const written = plan.fields
+      const { data, error: saveError } = await supabase
+        .rpc('update_my_dealer_logo_variants', {
+          p_dealer_id: dealer.id,
+          p_logo_header_variant: written.logo_header_variant,
+          p_logo_pages_variant: written.logo_pages_variant,
+        })
+        .single()
+      if (saveError) throw saveError
+      return { ...dealer, ...(data as DealerAccount), ...written }
+    }
     const { data, error: saveError } = await supabase
-      .rpc('update_my_dealer_logo_variants', {
+      .rpc('update_my_dealer_all_logo_variants', {
         p_dealer_id: dealer.id,
-        p_logo_header_variant: written.logo_header_variant,
-        p_logo_pages_variant: written.logo_pages_variant,
+        p_logo_header_variant: plan.fields.logo_header_variant,
+        p_logo_pages_variant: plan.fields.logo_pages_variant,
+        p_logo_secondary_header_variant: plan.fields.logo_secondary_header_variant,
+        p_logo_secondary_pages_variant: plan.fields.logo_secondary_pages_variant,
       })
       .single()
     if (saveError) throw saveError
-    if (normalizeLogoDisplay(dealer.logo_display) !== 'dual') return { ...dealer, ...(data as DealerAccount), ...written }
-    const secondary = secondaryLogoVariantWrite(variants.secondaryHeader, variants.secondaryPages)
-    const { error: secondaryError } = await supabase.rpc('update_my_dealer_secondary_logo_variants', {
-      p_dealer_id: dealer.id,
-      p_logo_secondary_header_variant: secondary.logo_secondary_header_variant,
-      p_logo_secondary_pages_variant: secondary.logo_secondary_pages_variant,
-    })
-    if (secondaryError) throw secondaryError
-    return { ...dealer, ...(data as DealerAccount), ...written, ...secondary }
+    return { ...dealer, ...(data as DealerAccount), ...plan.fields }
   }
 
   async function saveLogoDisplay(display: DealerLogoDisplay) {

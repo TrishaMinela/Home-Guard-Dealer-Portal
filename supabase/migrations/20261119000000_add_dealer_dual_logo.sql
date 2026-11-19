@@ -165,8 +165,12 @@ $$;
 revoke all on function public.update_my_dealer_secondary_logo_assets(uuid, text, text, text, text) from public, anon;
 grant execute on function public.update_my_dealer_secondary_logo_assets(uuid, text, text, text, text) to authenticated;
 
-create or replace function public.update_my_dealer_secondary_logo_variants(
+drop function if exists public.update_my_dealer_secondary_logo_variants(uuid, text, text);
+
+create or replace function public.update_my_dealer_all_logo_variants(
   p_dealer_id uuid,
+  p_logo_header_variant text,
+  p_logo_pages_variant text,
   p_logo_secondary_header_variant text,
   p_logo_secondary_pages_variant text
 )
@@ -177,17 +181,25 @@ set search_path = pg_catalog
 as $$
 declare
   v_user_id uuid := auth.uid();
-  v_header text := nullif(btrim(p_logo_secondary_header_variant), '');
-  v_pages text := nullif(btrim(p_logo_secondary_pages_variant), '');
+  v_header text := nullif(btrim(p_logo_header_variant), '');
+  v_pages text := nullif(btrim(p_logo_pages_variant), '');
+  v_secondary_header text := nullif(btrim(p_logo_secondary_header_variant), '');
+  v_secondary_pages text := nullif(btrim(p_logo_secondary_pages_variant), '');
   v_dealer public.dealers;
 begin
   if v_user_id is null then
     raise exception 'Authentication is required.' using errcode = '42501';
   end if;
   if v_header is not null and v_header not in ('original', 'white', 'black') then
-    raise exception 'Second homepage logo must be original, white, or black.' using errcode = '22023';
+    raise exception 'Homepage logo must be original, white, or black.' using errcode = '22023';
   end if;
   if v_pages is not null and v_pages not in ('original', 'white', 'black') then
+    raise exception 'Pages logo must be original, white, or black.' using errcode = '22023';
+  end if;
+  if v_secondary_header is not null and v_secondary_header not in ('original', 'white', 'black') then
+    raise exception 'Second homepage logo must be original, white, or black.' using errcode = '22023';
+  end if;
+  if v_secondary_pages is not null and v_secondary_pages not in ('original', 'white', 'black') then
     raise exception 'Second pages logo must be original, white, or black.' using errcode = '22023';
   end if;
   if not exists (
@@ -200,8 +212,10 @@ begin
   end if;
 
   update public.dealers
-  set logo_secondary_header_variant = v_header,
-      logo_secondary_pages_variant = v_pages,
+  set logo_header_variant = v_header,
+      logo_pages_variant = v_pages,
+      logo_secondary_header_variant = v_secondary_header,
+      logo_secondary_pages_variant = v_secondary_pages,
       updated_at = now()
   where id = p_dealer_id
   returning * into v_dealer;
@@ -213,8 +227,8 @@ begin
 end;
 $$;
 
-revoke all on function public.update_my_dealer_secondary_logo_variants(uuid, text, text) from public, anon;
-grant execute on function public.update_my_dealer_secondary_logo_variants(uuid, text, text) to authenticated;
+revoke all on function public.update_my_dealer_all_logo_variants(uuid, text, text, text, text) from public, anon;
+grant execute on function public.update_my_dealer_all_logo_variants(uuid, text, text, text, text) to authenticated;
 
 drop policy if exists "Dealer admins can upload their own dealer logo" on storage.objects;
 create policy "Dealer admins can upload their own dealer logo"
@@ -264,7 +278,8 @@ revoke all on function public.update_my_dealer_logo_display(uuid, text) from pub
 drop function if exists public.update_my_dealer_logo_display(uuid, text);
 revoke all on function public.update_my_dealer_secondary_logo_assets(uuid, text, text, text, text) from public, anon, authenticated;
 drop function if exists public.update_my_dealer_secondary_logo_assets(uuid, text, text, text, text);
-revoke all on function public.update_my_dealer_secondary_logo_variants(uuid, text, text) from public, anon, authenticated;
+revoke all on function public.update_my_dealer_all_logo_variants(uuid, text, text, text, text) from public, anon, authenticated;
+drop function if exists public.update_my_dealer_all_logo_variants(uuid, text, text, text, text);
 drop function if exists public.update_my_dealer_secondary_logo_variants(uuid, text, text);
 
 drop policy if exists "Dealer admins can upload their own dealer logo" on storage.objects;

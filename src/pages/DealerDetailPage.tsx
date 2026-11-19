@@ -10,7 +10,7 @@ import { DealerLogoVariantSettings } from '../components/DealerLogoVariantSettin
 import { DealerLogoDisplaySettings } from '../components/DealerLogoDisplaySettings'
 import { LogoBackgroundDialog } from '../components/LogoBackgroundDialog'
 import { readLogoForRemoval } from '../utils/readLogoForRemoval'
-import { generatedLightLogoMessage, lightLogoEyebrow, logoVariantWrite, normalizeLogoDisplay, secondaryLogoVariantWrite, type DealerLogoDisplay, type DealerLogoVariant } from '../utils/dealerLogoVariants'
+import { generatedLightLogoMessage, lightLogoEyebrow, logoVariantSavePlan, type DealerLogoDisplay, type DealerLogoVariant } from '../utils/dealerLogoVariants'
 import { AdminDealerMarketingTools } from '../components/AdminDealerMarketingTools'
 import { DealerSectionHeader } from '../components/DealerSectionHeader'
 import { DealerDetailSectionNav } from '../components/DealerDetailSectionNav'
@@ -369,20 +369,22 @@ export function DealerDetailPage({
     secondaryPages: DealerLogoVariant | null
   }) {
     if (!dealer) throw new Error('Dealer not found.')
-    const written = logoVariantWrite(variants.header, variants.pages)
+    const plan = logoVariantSavePlan(dealer.logo_display, variants.header, variants.pages, variants.secondaryHeader, variants.secondaryPages)
+    if (plan.mode === 'primary') {
+      const written = plan.fields
+      const { error: updateError } = await supabase
+        .from('dealers')
+        .update(written)
+        .eq('id', dealer.id)
+      if (updateError) throw updateError
+      return { ...dealer, ...written }
+    }
     const { error: updateError } = await supabase
       .from('dealers')
-      .update(written)
+      .update(plan.fields)
       .eq('id', dealer.id)
     if (updateError) throw updateError
-    if (normalizeLogoDisplay(dealer.logo_display) !== 'dual') return { ...dealer, ...written }
-    const secondary = secondaryLogoVariantWrite(variants.secondaryHeader, variants.secondaryPages)
-    const { error: secondaryError } = await supabase
-      .from('dealers')
-      .update(secondary)
-      .eq('id', dealer.id)
-    if (secondaryError) throw secondaryError
-    return { ...dealer, ...written, ...secondary }
+    return { ...dealer, ...plan.fields }
   }
 
   async function saveLogoDisplay(display: DealerLogoDisplay) {
