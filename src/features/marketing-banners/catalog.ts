@@ -13,11 +13,9 @@ export type MarketingBannerDefinition = {
   region: string
 }
 
-/** Slot numbers stay fixed. These two designs are omitted from selection lists. */
-export const HIDDEN_BANNER_SLOTS = new Set([1, 5])
-
+/** All eight designs are offered. Slot numbers stay fixed. */
 export function availableMarketingBanners() {
-  return MARKETING_BANNERS.filter((item) => !HIDDEN_BANNER_SLOTS.has(item.slot))
+  return MARKETING_BANNERS
 }
 
 export const MARKETING_BANNERS: readonly MarketingBannerDefinition[] = [
