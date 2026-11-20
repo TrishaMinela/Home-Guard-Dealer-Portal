@@ -12,6 +12,7 @@ export const dealerDetailSections: readonly DealerDetailSection[] = [
   { id: 'company-details', label: 'Company Details' },
   { id: 'branding', label: 'Branding' },
   { id: 'design', label: 'Typography & Design' },
+  { id: 'door-builder-lead-webhook', label: 'Lead Webhook' },
   { id: 'marketing-tools', label: 'Marketing Tools', access: 'credentials' },
   { id: 'crm-integrations', label: 'CRM Integrations', access: 'credentials' },
   { id: 'dealer-users', label: 'Dealer Users / Access', access: 'users' },

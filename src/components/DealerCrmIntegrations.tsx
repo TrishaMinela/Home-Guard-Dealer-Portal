@@ -162,7 +162,7 @@ export function DealerCrmIntegrations({ dealerId }: { dealerId: string }) {
   return (
     <section id="crm-integrations" className="content-card dealer-management-card crm-integrations dealer-setup-anchor" tabIndex={-1} aria-labelledby="crm-integrations-title">
       <div className="content-card__header crm-integrations__header">
-        <div><p className="eyebrow">Lead delivery</p><h2 id="crm-integrations-title">CRM Integrations</h2><p>Save credentials and field mappings here. Lead delivery stays off on purpose in this phase. That is not an error.</p></div>
+        <div><p className="eyebrow">Lead delivery</p><h2 id="crm-integrations-title">CRM Integrations</h2><p>Save CRM credentials and field mappings here. CRM provider delivery stays off on purpose in this phase. Door Builder lead webhooks are managed in this section.</p></div>
         <span className="status-badge status-badge--inactive">Delivery off</span>
       </div>
       {!encryptionConfigured && !isLoading && <div className="portal-alert" role="alert">Secure credential storage is not configured. Metadata can be reviewed, but credentials cannot be saved.</div>}
