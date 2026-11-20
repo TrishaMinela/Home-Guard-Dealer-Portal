@@ -292,9 +292,23 @@ test('missing template records fall back to all eight demo fixtures', () => {
   assert.equal(updated?.placement.x, 10)
   const restored = remote.templates.find((item) => item.slot === 1)
   assert.equal(restored?.headline, 'Build a Door Made for Your Home')
-  assert.equal(restored?.imageSource, 'storage')
-  assert.equal(restored?.imageUrl, 'https://cdn.example/retired.png')
-  assert.equal(remote.templates.find((item) => item.slot === 5)?.imageSource, 'fixture')
+  assert.equal(restored?.imageSource, 'fixture')
+  assert.equal(restored?.imageUrl, '/marketing-banner-fixtures/banner-01-landscape.png')
+  assert.equal(restored?.width, 851)
+  assert.equal(restored?.height, 315)
+  assert.equal(restored?.placementVerified, true)
+  const squareWithUpload = resolveMarketingBanners([{
+    slot: 5,
+    imageUrl: 'https://cdn.example/square-upload.png',
+    imageWidth: 1763,
+    imageHeight: 1801,
+    placementVerified: true,
+  }])
+  const restoredSquare = squareWithUpload.templates.find((item) => item.slot === 5)
+  assert.equal(restoredSquare?.imageSource, 'fixture')
+  assert.equal(restoredSquare?.imageUrl, '/marketing-banner-fixtures/banner-05-square.png')
+  assert.equal(restoredSquare?.width, 1080)
+  assert.equal(restoredSquare?.height, 1080)
   assert.equal(remote.templates.find((item) => item.slot === 3)?.imageSource, 'fixture')
 })
 

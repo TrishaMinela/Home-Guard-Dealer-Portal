@@ -18,6 +18,14 @@ export function availableMarketingBanners() {
   return MARKETING_BANNERS
 }
 
+/**
+ * The original "Build a Door Made for Your Home" artwork.
+ * A stored upload may exist for these slots, but the library keeps showing
+ * the repo fixtures so the restored design is the one dealers see.
+ * The stored file and its database row are left unchanged.
+ */
+const RESTORED_ORIGINAL_SLOTS = new Set([1, 5])
+
 export const MARKETING_BANNERS: readonly MarketingBannerDefinition[] = [
   {
     slot: 1,
@@ -151,8 +159,10 @@ function mergeBanner(definition: MarketingBannerDefinition, remote: RemoteBanner
   const fallback = fixtureBanner(definition)
   if (!remote) return fallback
   const placement = normalizePlacement(remote.placement) ?? definition.placement
-  const imageUrl = remote.imageUrl?.trim() ? remote.imageUrl.trim() : fallback.imageUrl
-  const imageSource = remote.imageUrl?.trim() ? 'storage' as const : 'fixture' as const
+  const storedImage = remote.imageUrl?.trim() ?? ''
+  const useStoredImage = storedImage.length > 0 && !RESTORED_ORIGINAL_SLOTS.has(definition.slot)
+  const imageUrl = useStoredImage ? storedImage : fallback.imageUrl
+  const imageSource = useStoredImage ? 'storage' as const : 'fixture' as const
   const width = imageSource === 'storage' && remote.imageWidth && remote.imageWidth > 0 ? remote.imageWidth : definition.width
   const height = imageSource === 'storage' && remote.imageHeight && remote.imageHeight > 0 ? remote.imageHeight : definition.height
   const headline = remote.headline?.trim() ? remote.headline.trim() : definition.headline
