@@ -150,7 +150,11 @@ export function DealerDetailSectionNav({
       const scrollState = readScrollState(first)
       if (lockRef.current) {
         const locked = document.getElementById(lockRef.current)
-        const lockedTop = locked ? locked.getBoundingClientRect().top - scrollState.portTop : offset
+        if (!locked) {
+          rememberActive(lockRef.current)
+          return
+        }
+        const lockedTop = locked.getBoundingClientRect().top - scrollState.portTop
         if (Math.abs(lockedTop - offset) > 6 && !scrollState.atPageEnd) {
           rememberActive(lockRef.current)
           return
@@ -218,7 +222,15 @@ export function DealerDetailSectionNav({
       scrollSectionIntoView(hash, applyStickyOffset(nav), scrollBehavior())
     }
 
+    const onChecklistNavigate = (event: Event) => {
+      const sectionId = (event as CustomEvent<{ sectionId?: string }>).detail?.sectionId
+      if (!sectionId || !ids.includes(sectionId)) return
+      lockSection(sectionId)
+      rememberActive(sectionId)
+    }
+
     bind()
+    window.addEventListener('dealer-detail-section', onChecklistNavigate)
     window.addEventListener('scroll', schedule, { passive: true })
     window.addEventListener('scrollend', onScrollEnd)
     window.addEventListener('resize', bind)
@@ -231,6 +243,7 @@ export function DealerDetailSectionNav({
       sentinelObserver?.disconnect()
       scroller?.removeEventListener('scroll', schedule)
       scroller?.removeEventListener('scrollend', onScrollEnd)
+      window.removeEventListener('dealer-detail-section', onChecklistNavigate)
       window.removeEventListener('scroll', schedule)
       window.removeEventListener('scrollend', onScrollEnd)
       window.removeEventListener('resize', bind)

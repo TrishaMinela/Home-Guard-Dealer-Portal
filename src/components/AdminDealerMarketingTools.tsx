@@ -30,10 +30,10 @@ export function AdminDealerMarketingTools({ dealerId }: { dealerId: string }) {
     return () => { current = false }
   }, [dealerId])
 
-  if (error) return <section className="content-card dealer-settings-section" id="marketing-tools"><div className="portal-alert" role="alert">{error}</div></section>
-  if (!dealer) return <section className="content-card dealer-settings-section" id="marketing-tools"><div className="data-state">Loading Marketing Tools…</div></section>
+  if (error) return <section className="content-card dealer-settings-section dealer-setup-anchor" id="marketing-tools" tabIndex={-1}><div className="portal-alert" role="alert">{error}</div></section>
+  if (!dealer) return <section className="content-card dealer-settings-section dealer-setup-anchor" id="marketing-tools" tabIndex={-1}><div className="data-state">Loading Marketing Tools…</div></section>
   return (
-    <section className="dealer-settings-section dealer-admin-marketing" id="marketing-tools">
+    <section className="dealer-settings-section dealer-admin-marketing dealer-setup-anchor" id="marketing-tools" tabIndex={-1}>
       <MarketingToolsPage
         dealer={dealer}
         embedded

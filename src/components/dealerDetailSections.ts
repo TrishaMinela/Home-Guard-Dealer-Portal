@@ -58,6 +58,36 @@ export function sectionScrollTop(sectionViewportTop: number, currentScrollTop: n
   return Math.max(0, Math.round(sectionViewportTop + currentScrollTop - stickyOffset))
 }
 
+function findScrollParent(element: HTMLElement) {
+  let parent = element.parentElement
+  while (parent && parent !== document.body && parent !== document.documentElement) {
+    const { overflowY } = getComputedStyle(parent)
+    const scrolls = overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay'
+    if (scrolls && parent.scrollHeight > parent.clientHeight + 1) return parent
+    parent = parent.parentElement
+  }
+  return null
+}
+
+/** Scroll a dealer-page target below the sticky section nav and mobile header. */
+export function scrollToDealerDetailTarget(target: HTMLElement) {
+  const nav = document.querySelector<HTMLElement>('.dealer-detail-nav')
+  const mobile = document.querySelector<HTMLElement>('.mobile-header')
+  const headerHeight = mobile && getComputedStyle(mobile).display !== 'none' ? Math.ceil(mobile.getBoundingClientRect().height) : 0
+  const offset = dealerDetailStickyOffset(headerHeight, Math.ceil(nav?.getBoundingClientRect().height ?? 0))
+  const behavior: ScrollBehavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+  const scroller = findScrollParent(target)
+  if (!scroller) {
+    window.scrollTo({ top: sectionScrollTop(target.getBoundingClientRect().top, window.scrollY, offset), behavior })
+    return
+  }
+  const portTop = scroller.getBoundingClientRect().top
+  scroller.scrollTo({
+    top: sectionScrollTop(target.getBoundingClientRect().top - portTop, scroller.scrollTop, offset),
+    behavior,
+  })
+}
+
 export function isScrollerAtEnd(scrollTop: number, clientHeight: number, scrollHeight: number) {
   return scrollTop + clientHeight >= scrollHeight - 2
 }

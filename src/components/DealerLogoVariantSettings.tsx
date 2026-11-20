@@ -199,6 +199,7 @@ export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrate
         <VariantChoice
           title="Homepage Header Logo"
           name={`logo-header-${dealer.id}`}
+          anchorId="homepage-logo-selection"
           value={header}
           offers={headerOffers}
           onChange={(value) => { dirtyRef.current = true; setHeader(value) }}
@@ -206,6 +207,7 @@ export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrate
         <VariantChoice
           title="Normal Pages Logo"
           name={`logo-pages-${dealer.id}`}
+          anchorId="pages-logo-selection"
           value={pages}
           offers={pagesOffers}
           onChange={(value) => { dirtyRef.current = true; setPages(value) }}
@@ -248,18 +250,20 @@ export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrate
 function VariantChoice({
   title,
   name,
+  anchorId,
   value,
   offers,
   onChange,
 }: {
   title: string
   name: string
+  anchorId?: string
   value: DealerLogoVariant | null
   offers: Record<DealerLogoVariant, LogoVariantOffer>
   onChange: (value: DealerLogoVariant) => void
 }) {
   return (
-    <fieldset className="logo-variant-choice">
+    <fieldset className="logo-variant-choice dealer-setup-anchor" id={anchorId} tabIndex={anchorId ? -1 : undefined}>
       <legend>{title}</legend>
       {choices.map((choice) => {
         const offer = offers[choice.value]
