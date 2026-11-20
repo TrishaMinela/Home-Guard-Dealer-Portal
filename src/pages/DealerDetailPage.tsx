@@ -6,6 +6,8 @@ import { getDealerVisualizerDisplayUrl } from '../config/visualizer'
 import { DealerUserAccess } from '../components/DealerUserAccess'
 import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
 import { DealerLogoPlacementSettings, type DealerLogoPlacement } from '../components/DealerLogoPlacementSettings'
+import { DoorBuilderAppearanceSettings } from '../components/DoorBuilderAppearanceSettings'
+import { appearanceUpdate, type DoorBuilderAppearance } from '../utils/doorBuilderAppearance'
 import { DealerLogoVariantSettings } from '../components/DealerLogoVariantSettings'
 import { DealerLogoDisplaySettings } from '../components/DealerLogoDisplaySettings'
 import { LogoBackgroundDialog } from '../components/LogoBackgroundDialog'
@@ -428,6 +430,13 @@ export function DealerDetailPage({
     return { ...dealer, [column]: url }
   }
 
+  async function saveAppearance(appearance: DoorBuilderAppearance | null) {
+    if (!dealer) throw new Error('Dealer not found.')
+    const { error: updateError } = await supabase.from('dealers').update(appearanceUpdate(appearance)).eq('id', dealer.id)
+    if (updateError) throw updateError
+    onDealerUpdated({ ...dealer, door_builder_appearance: appearance }, successMessage)
+  }
+
   async function saveLogoPlacement(placement: DealerLogoPlacement) {
     if (!dealer) throw new Error('Dealer not found.')
     const { data, error: updateError } = await supabase
@@ -645,6 +654,8 @@ export function DealerDetailPage({
         onSave={saveLogoPlacement}
         onUpdated={(updated) => onDealerUpdated(updated, 'Dealer logo placement saved.')}
       />
+
+      <DoorBuilderAppearanceSettings dealer={dealer} mode="admin" onSave={saveAppearance} />
 
       <section id="design" className="content-card dealer-management-card dealer-settings-summary dealer-setup-anchor" tabIndex={-1} aria-labelledby="design-heading">
         <DealerSectionHeader eyebrow="Typography & Design" title="Door Builder Design" headingId="design-heading" description="Manage heading and UI fonts, weights, sizes, custom font files, and a live typography preview." actionLabel="Edit design" actionTo={`/admin/dealers/${dealer.id}/edit#design`} onActionClick={onClearSuccess} />

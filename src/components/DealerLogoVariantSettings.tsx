@@ -22,6 +22,7 @@ import {
   type LogoVariantOffer,
 } from '../utils/dealerLogoVariants'
 import { logoWebsiteFieldValue, logoWebsiteSaveError, normalizeLogoWebsiteUrl } from '../utils/logoWebsiteUrl'
+import '../styles/logoPair.css'
 
 type VariantFields = {
   logo_url: string | null
@@ -612,11 +613,11 @@ function LogoPreview({
 }) {
   const ink = isLightBrandColor(background) ? '#182124' : '#f7faff'
   const logo = logoUrl ? (
-    <span className="logo-variant-preview__logos">
+    <span className="logo-variant-preview__logos logo-pair">
       <img src={logoUrl} alt={`${companyName} ${variant ?? 'current'} logo preview`} />
       {secondaryUrl && (
         <>
-          <span className="logo-variant-preview__divider" aria-hidden="true" />
+          <span className="logo-variant-preview__divider logo-pair__rule" aria-hidden="true" />
           <img src={secondaryUrl} alt={`${companyName} partner logo preview`} />
         </>
       )}
