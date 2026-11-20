@@ -57,6 +57,100 @@ export function normalizeLogoVariant(value: string | null | undefined): DealerLo
   return value === 'original' || value === 'black' || value === 'white' ? value : null
 }
 
+export type DealerLogoDisplay = 'single' | 'dual'
+
+export function normalizeLogoDisplay(value: string | null | undefined): DealerLogoDisplay {
+  return value === 'dual' ? 'dual' : 'single'
+}
+
+export function secondaryLogoSource(dealer: DealerLogoVariantSource & {
+  logo_secondary_url?: string | null
+  logo_secondary_light_url?: string | null
+  logo_secondary_generated_light_url?: string | null
+  logo_secondary_generated_light_usable?: boolean | null
+  logo_secondary_black_url?: string | null
+  logo_secondary_generated_black_url?: string | null
+  logo_secondary_generated_black_usable?: boolean | null
+}): DealerLogoVariantSource {
+  return {
+    ...dealer,
+    logo_url: dealer.logo_secondary_url,
+    logo_light_url: dealer.logo_secondary_light_url,
+    logo_generated_light_url: dealer.logo_secondary_generated_light_url,
+    logo_generated_light_usable: dealer.logo_secondary_generated_light_usable,
+    logo_black_url: dealer.logo_secondary_black_url,
+    logo_generated_black_url: dealer.logo_secondary_generated_black_url,
+    logo_generated_black_usable: dealer.logo_secondary_generated_black_usable,
+  }
+}
+
+/** Selected second-logo file only. A missing white or black file does not switch to another color. */
+export function selectedSecondaryLogoUrl(
+  dealer: DealerLogoVariantSource & {
+    logo_secondary_url?: string | null
+    logo_secondary_light_url?: string | null
+    logo_secondary_generated_light_url?: string | null
+    logo_secondary_generated_light_usable?: boolean | null
+    logo_secondary_black_url?: string | null
+    logo_secondary_generated_black_url?: string | null
+    logo_secondary_generated_black_usable?: boolean | null
+  },
+  variant: DealerLogoVariant | null,
+  surface: 'header' | 'hero',
+): string | null {
+  const second = secondaryLogoSource(dealer)
+  if (variant === 'white') return resolveWhiteLogoUrl(second)
+  if (variant === 'black') return resolveBlackLogoUrl(second)
+  if (variant === 'original') return cleanUrl(second.logo_url)
+  return previewLogoUrl(second, null, surface)
+}
+
+export type DoorBuilderPreviewSurface = 'home-header' | 'home-hero' | 'page-header' | 'find-my-door'
+
+export function doorBuilderLogoPreview(
+  dealer: DealerLogoVariantSource & {
+    logo_display?: string | null
+    logo_placement?: string | null
+    logo_secondary_url?: string | null
+    logo_secondary_light_url?: string | null
+    logo_secondary_generated_light_url?: string | null
+    logo_secondary_generated_light_usable?: boolean | null
+    logo_secondary_black_url?: string | null
+    logo_secondary_generated_black_url?: string | null
+    logo_secondary_generated_black_usable?: boolean | null
+    logo_secondary_header_variant?: string | null
+    logo_secondary_pages_variant?: string | null
+  },
+  surface: DoorBuilderPreviewSurface,
+) {
+  const placement = dealer.logo_placement === 'header' ? 'header' : 'hero'
+  if (surface === 'home-header' && placement !== 'header') return null
+  if (surface === 'home-hero' && placement !== 'hero') return null
+  const pageVariant = surface === 'home-header' || surface === 'home-hero'
+  const variant = normalizeLogoVariant(pageVariant ? dealer.logo_header_variant : dealer.logo_pages_variant)
+  const secondaryChoice = normalizeLogoVariant(pageVariant ? dealer.logo_secondary_header_variant : dealer.logo_secondary_pages_variant)
+  const primaryUrl = surface === 'home-hero'
+    ? (variant ? resolveDisplayedLogo(dealer, variant) : doorBuilderLogoWhenVariantUnset(dealer, 'light-surface'))
+    : previewLogoUrl(dealer, variant, 'header')
+  const secondaryUrl = normalizeLogoDisplay(dealer.logo_display) === 'dual' && primaryUrl
+    ? selectedSecondaryLogoUrl(dealer, secondaryChoice ?? variant, surface === 'home-hero' ? 'hero' : 'header')
+    : null
+  const background = surface === 'home-hero'
+    ? '#ffffff'
+    : surface === 'find-my-door'
+      ? '#05040b'
+      : doorBuilderHeaderSurface(dealer)
+  const color = isLightBrandColor(background) || background === '#ffffff' ? '#101417' : '#ffffff'
+  return { primaryUrl, secondaryUrl, showPair: Boolean(secondaryUrl), background, color }
+}
+
+export function previewLogoUrl(dealer: DealerLogoVariantSource, variant: DealerLogoVariant | null, surface: 'header' | 'hero') {
+  if (variant) return resolveDisplayedLogo(dealer, variant)
+  const headerIsLight = isLightBrandColor(doorBuilderHeaderSurface(dealer))
+  if (surface === 'hero') return doorBuilderLogoWhenVariantUnset(dealer, 'light-surface')
+  return doorBuilderLogoWhenVariantUnset(dealer, headerIsLight ? 'light-surface' : 'dark-header')
+}
+
 export function resolveWhiteLogoUrl(dealer: DealerLogoVariantSource) {
   const custom = cleanUrl(dealer.logo_light_url)
   if (custom) return custom
@@ -104,7 +198,6 @@ export type LogoInkStatus = { transparent: boolean; contrasts: boolean; contrast
 
 export type LogoVariantOffer = { enabled: boolean; reason: string | null }
 
-const darkOriginalContrast = 'Original does not have enough contrast on this dark header. At least 30% of its opaque ink needs a 3:1 ratio against the header color.'
 const solidBackground = 'This file still has a solid background, so it is not offered. Upload it again to save a transparent PNG.'
 const unreadableGenerated = 'A generated file is offered only when it is marked readable. An unreadable or unchecked file is never selected.'
 
@@ -122,23 +215,20 @@ function offerFromInk(
 }
 
 /**
- * Dark header: Original when its ink already contrasts, plus a readable transparent White.
- * Light header: Original and Black by default. White and Black that fail the surface are disabled.
+ * A transparent file can be chosen on any background. Contrast does not disable a choice.
+ * A missing file, a solid background, or a generated file that is unreadable or unchecked stays unavailable.
  */
-export function logoVariantOffers(surfaceIsLight: boolean, ink: { original: LogoInkStatus; white: LogoInkStatus; black: LogoInkStatus }): Record<DealerLogoVariant, LogoVariantOffer> {
-  const lightBlocked = 'White is turned off on this light header because white ink does not contrast with it.'
-  const darkBlocked = 'Black is turned off on this dark header because black ink does not contrast with it.'
-  if (surfaceIsLight) {
-    return {
-      original: offerFromInk(ink.original, { allowWithoutContrast: true, blockedReason: null, missingReason: 'Upload a primary logo before choosing Original.', contrastReason: darkOriginalContrast }),
-      black: offerFromInk(ink.black, { allowWithoutContrast: true, blockedReason: null, missingReason: `Black is not offered. ${unreadableGenerated}`, contrastReason: darkOriginalContrast }),
-      white: offerFromInk(ink.white, { allowWithoutContrast: false, blockedReason: lightBlocked, missingReason: lightBlocked, contrastReason: lightBlocked }),
-    }
-  }
+export function logoVariantOffers(_surfaceIsLight: boolean, ink: { original: LogoInkStatus; white: LogoInkStatus; black: LogoInkStatus }): Record<DealerLogoVariant, LogoVariantOffer> {
+  const available = (status: LogoInkStatus, missingReason: string) => offerFromInk(status, {
+    allowWithoutContrast: true,
+    blockedReason: null,
+    missingReason,
+    contrastReason: missingReason,
+  })
   return {
-    original: offerFromInk(ink.original, { allowWithoutContrast: false, blockedReason: null, missingReason: 'Upload a primary logo before choosing Original.', contrastReason: darkOriginalContrast }),
-    white: offerFromInk(ink.white, { allowWithoutContrast: false, blockedReason: null, missingReason: `White is not offered. ${unreadableGenerated}`, contrastReason: 'White does not have enough contrast on this header.' }),
-    black: offerFromInk(ink.black, { allowWithoutContrast: false, blockedReason: darkBlocked, missingReason: darkBlocked, contrastReason: darkBlocked }),
+    original: available(ink.original, 'Upload a primary logo before choosing Original.'),
+    white: available(ink.white, `White is not offered. ${unreadableGenerated}`),
+    black: available(ink.black, `Black is not offered. ${unreadableGenerated}`),
   }
 }
 
@@ -168,6 +258,46 @@ export function logoVariantWrite(header: DealerLogoVariant | null, pages: Dealer
   return {
     logo_header_variant: normalizeLogoVariant(header),
     logo_pages_variant: normalizeLogoVariant(pages),
+  }
+}
+
+/** NULL means Logo 2 follows Logo 1 for that placement and uses Logo 2's own files. */
+export function secondaryLogoVariantWrite(header: DealerLogoVariant | null, pages: DealerLogoVariant | null) {
+  return {
+    logo_secondary_header_variant: normalizeLogoVariant(header),
+    logo_secondary_pages_variant: normalizeLogoVariant(pages),
+  }
+}
+
+export type LogoVariantSavePlan =
+  | { mode: 'primary'; fields: ReturnType<typeof logoVariantWrite> }
+  | { mode: 'all'; fields: ReturnType<typeof logoVariantWrite> & ReturnType<typeof secondaryLogoVariantWrite> }
+
+/** Single-logo dealers write Logo 1 only. Dual writes all four choices together. */
+export function logoVariantSavePlan(
+  display: string | null | undefined,
+  header: DealerLogoVariant | null,
+  pages: DealerLogoVariant | null,
+  secondaryHeader: DealerLogoVariant | null,
+  secondaryPages: DealerLogoVariant | null,
+): LogoVariantSavePlan {
+  const primary = logoVariantWrite(header, pages)
+  if (normalizeLogoDisplay(display) !== 'dual') return { mode: 'primary', fields: primary }
+  return { mode: 'all', fields: { ...primary, ...secondaryLogoVariantWrite(secondaryHeader, secondaryPages) } }
+}
+
+/** Saved choices to show again when a save fails, so the form matches the database. */
+export function logoChoicesAfterFailedSave(dealer: {
+  logo_header_variant?: string | null
+  logo_pages_variant?: string | null
+  logo_secondary_header_variant?: string | null
+  logo_secondary_pages_variant?: string | null
+}) {
+  return {
+    header: normalizeLogoVariant(dealer.logo_header_variant),
+    pages: normalizeLogoVariant(dealer.logo_pages_variant),
+    secondaryHeader: normalizeLogoVariant(dealer.logo_secondary_header_variant),
+    secondaryPages: normalizeLogoVariant(dealer.logo_secondary_pages_variant),
   }
 }
 

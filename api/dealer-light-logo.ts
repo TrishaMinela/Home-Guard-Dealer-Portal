@@ -1,10 +1,10 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createClient } from '@supabase/supabase-js'
 import sharp from 'sharp'
-import { generateWhiteLogo, validatePrimaryLogoUrl } from './_lib/dealerLightLogo.js'
+import { generateWhiteLogo, validatePrimaryLogoUrl, validateSecondaryLogoUrl } from './_lib/dealerLightLogo.js'
 
 type JsonResponse = ServerResponse<IncomingMessage> & { json?: (value: unknown) => void }
-type Body = { dealerId?: string; tone?: string }
+type Body = { dealerId?: string; tone?: string; target?: string }
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 function send(response: JsonResponse, status: number, value: unknown) {
@@ -50,9 +50,19 @@ export default async function handler(request: IncomingMessage, response: JsonRe
     if (lookupError) throw lookupError
     if (!homeGuard.data && !membership.data) return send(response, 403, { error: 'Dealer logo access required.' })
     if (!dealerResult.data) return send(response, 404, { error: 'Dealer not found.' })
-    if (!dealerResult.data.logo_url) return send(response, 409, { error: 'Upload a primary logo first.' })
+    const target = body.target === 'secondary' ? 'secondary' : 'primary'
+    let secondaryUrl: string | null = null
+    if (target === 'secondary') {
+      const secondary = await admin.from('dealers').select('logo_secondary_url').eq('id', body.dealerId).maybeSingle()
+      if (secondary.error) return send(response, 409, { error: 'Second logo storage is not available yet.' })
+      secondaryUrl = secondary.data?.logo_secondary_url ?? null
+    }
+    const sourceUrl = target === 'secondary' ? secondaryUrl : dealerResult.data.logo_url
+    if (!sourceUrl) return send(response, 409, { error: target === 'secondary' ? 'Upload a second logo first.' : 'Upload a primary logo first.' })
 
-    const primaryUrl = validatePrimaryLogoUrl(dealerResult.data.logo_url, body.dealerId, supabaseUrl)
+    const primaryUrl = target === 'secondary'
+      ? validateSecondaryLogoUrl(sourceUrl, body.dealerId, supabaseUrl)
+      : validatePrimaryLogoUrl(sourceUrl, body.dealerId, supabaseUrl)
     const sourceResponse = await fetch(primaryUrl, { signal: AbortSignal.timeout(15_000) })
     if (!sourceResponse.ok) throw new Error(`Primary logo download failed (${sourceResponse.status}).`)
     const tone = body.tone === 'black' ? 'black' : 'white'
@@ -64,14 +74,20 @@ export default async function handler(request: IncomingMessage, response: JsonRe
       const meta = await sharp(trimmed).metadata()
       if ((meta.width ?? 0) >= 8 && (meta.height ?? 0) >= 8) png = trimmed
     } catch { /* Keep the untrimmed derivative. */ }
-    const objectPath = `${body.dealerId}/${tone === 'black' ? 'logo-generated-black.png' : 'logo-generated-light.png'}`
+    const objectPath = `${body.dealerId}/${target === 'secondary'
+      ? (tone === 'black' ? 'logo-secondary-generated-black.png' : 'logo-secondary-generated-light.png')
+      : (tone === 'black' ? 'logo-generated-black.png' : 'logo-generated-light.png')}`
     const { error: uploadError } = await admin.storage.from('dealer-logos').upload(objectPath, png, { contentType: 'image/png', upsert: true })
     if (uploadError) throw uploadError
     const { data: publicUrl } = admin.storage.from('dealer-logos').getPublicUrl(objectPath)
     const generatedLogoUrl = `${publicUrl.publicUrl}?v=${Date.now()}`
-    const update = tone === 'black'
-      ? { logo_generated_black_url: generatedLogoUrl, logo_generated_black_usable: generated.usable }
-      : { logo_generated_light_url: generatedLogoUrl, logo_generated_light_usable: generated.usable }
+    const update = target === 'secondary'
+      ? tone === 'black'
+        ? { logo_secondary_generated_black_url: generatedLogoUrl, logo_secondary_generated_black_usable: generated.usable }
+        : { logo_secondary_generated_light_url: generatedLogoUrl, logo_secondary_generated_light_usable: generated.usable }
+      : tone === 'black'
+        ? { logo_generated_black_url: generatedLogoUrl, logo_generated_black_usable: generated.usable }
+        : { logo_generated_light_url: generatedLogoUrl, logo_generated_light_usable: generated.usable }
     const { error: updateError } = await admin.from('dealers').update(update).eq('id', body.dealerId)
     if (updateError) throw updateError
     return send(response, 200, {
