@@ -36,8 +36,8 @@ test('branding and typography use section-specific saves', () => {
   assert.match(editPage, /Save Branding/)
   assert.match(editPage, /Save Company Details/)
   assert.match(editPage, /DealerTypographySettings/)
-  assert.match(editPage, /window\.location\.hash === '#branding'/)
-  assert.match(editPage, /window\.location\.hash === '#design'/)
+  assert.match(editPage, /id === 'branding' \|\| id === 'primary-color' \|\| id === 'secondary-color'\) return 'branding'/)
+  assert.match(editPage, /id === 'design' \|\| id === 'heading-font-family'\) return 'design'/)
 })
 
 test('dealer detail actions are accessible and logo placement preview has breathing room', () => {
