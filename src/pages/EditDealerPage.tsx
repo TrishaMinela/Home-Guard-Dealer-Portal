@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { DealerForm } from '../components/DealerForm'
 import { supabase } from '../lib/supabase'
@@ -12,6 +12,13 @@ type EditDealerPageProps = {
   isLoading: boolean
   error: string
   onSaved: (dealer: AdminDealer) => void
+}
+
+function editSectionFromHash(hash: string): 'company' | 'branding' | 'design' {
+  const id = hash.replace(/^#/, '')
+  if (id === 'branding' || id === 'primary-color' || id === 'secondary-color') return 'branding'
+  if (id === 'design' || id === 'heading-font-family') return 'design'
+  return 'company'
 }
 
 function optionalValue(value: string) {
@@ -39,15 +46,24 @@ export function EditDealerPage({ dealers, isLoading, error, onSaved }: EditDeale
   const { dealerId } = useParams()
   const [formError, setFormError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [activeSection, setActiveSection] = useState<'company' | 'branding' | 'design'>(() => {
-    if (window.location.hash === '#branding') return 'branding'
-    if (window.location.hash === '#design') return 'design'
-    return 'company'
-  })
+  const [activeSection, setActiveSection] = useState<'company' | 'branding' | 'design'>(() => editSectionFromHash(window.location.hash))
   const [brandColors, setBrandColors] = useState<{ primary: string; secondary: string } | null>(null)
   const [brandingMessage, setBrandingMessage] = useState('')
   const [brandingError, setBrandingError] = useState('')
   const [isSavingBranding, setIsSavingBranding] = useState(false)
+
+  useEffect(() => {
+    const id = window.location.hash.replace(/^#/, '')
+    if (!id) return
+    const target = document.getElementById(id)
+    if (!target) return
+    const behavior: ScrollBehavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+    target.scrollIntoView({ block: 'center', behavior })
+    target.focus({ preventScroll: true })
+    target.classList.add('dealer-setup-target')
+    const timer = window.setTimeout(() => target.classList.remove('dealer-setup-target'), 1800)
+    return () => window.clearTimeout(timer)
+  }, [activeSection])
   const navigate = useNavigate()
   const dealer = dealers.find((item) => item.id === dealerId)
 

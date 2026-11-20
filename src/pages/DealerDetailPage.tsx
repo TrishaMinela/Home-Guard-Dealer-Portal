@@ -52,8 +52,8 @@ function DetailItem({ label, value, href }: { label: string; value: string | nul
   )
 }
 
-function DetailGroup({ title, children }: { title: string; children: ReactNode }) {
-  return <section className="dealer-detail-group"><h3>{title}</h3><dl>{children}</dl></section>
+function DetailGroup({ title, children, id }: { title: string; children: ReactNode; id?: string }) {
+  return <section className="dealer-detail-group dealer-setup-anchor" id={id} tabIndex={id ? -1 : undefined}><h3>{title}</h3><dl>{children}</dl></section>
 }
 
 export function DealerDetailPage({
@@ -493,7 +493,7 @@ export function DealerDetailPage({
         </div>
       )}
 
-      <DealerSetupChecklist dealer={dealer} />
+      <DealerSetupChecklist dealer={dealer} dealerId={dealer.id} />
 
       {isConfirmingDisable && (
         <section className="disable-confirmation" role="alertdialog" aria-labelledby="disable-title">
@@ -507,16 +507,17 @@ export function DealerDetailPage({
         <DealerSectionHeader eyebrow="Company record" title="Company Details" headingId="company-details-heading" description="Core identity, contact information, location, and public links for this dealer." actionLabel="Edit" actionTo={`/admin/dealers/${dealer.id}/edit#company`} onActionClick={onClearSuccess} trailing={<span className={`status-badge ${dealer.is_active ? 'status-badge--active' : 'status-badge--inactive'}`}>{dealer.is_active ? 'Active' : 'Disabled'}</span>} />
         <div className="dealer-detail-groups">
           <DetailGroup title="Core identity"><DetailItem label="Company Name" value={dealer.company_name} /><DetailItem label="Dealer Slug" value={dealer.slug} /><DetailItem label="Status" value={dealer.is_active ? 'Active' : 'Disabled'} /><DetailItem label="Created Date" value={formatDate(dealer.created_at)} /></DetailGroup>
-          <DetailGroup title="Contact information"><DetailItem label="Primary Contact" value={dealer.primary_contact_name} /><DetailItem label="Email" value={dealer.email} href={dealer.email ? `mailto:${dealer.email}` : undefined} /><DetailItem label="Phone" value={dealer.phone} href={dealer.phone ? `tel:${dealer.phone}` : undefined} /></DetailGroup>
+          <DetailGroup id="company-contact" title="Contact information"><DetailItem label="Primary Contact" value={dealer.primary_contact_name} /><DetailItem label="Email" value={dealer.email} href={dealer.email ? `mailto:${dealer.email}` : undefined} /><DetailItem label="Phone" value={dealer.phone} href={dealer.phone ? `tel:${dealer.phone}` : undefined} /></DetailGroup>
           <DetailGroup title="Address & location"><DetailItem label="Street Address" value={dealer.address} /><DetailItem label="City" value={dealer.city} /><DetailItem label="State" value={dealer.state} /><DetailItem label="ZIP" value={dealer.zip} /></DetailGroup>
-          <DetailGroup title="Public links"><DetailItem label="Door Builder URL" value={getDealerVisualizerDisplayUrl(dealer.slug)} href={getDealerVisualizerDisplayUrl(dealer.slug)} /><DetailItem label="Website" value={dealer.website} href={dealer.website ?? undefined} /></DetailGroup>
+          <DetailGroup id="dealer-slug" title="Public links"><DetailItem label="Door Builder URL" value={getDealerVisualizerDisplayUrl(dealer.slug)} href={getDealerVisualizerDisplayUrl(dealer.slug)} /><DetailItem label="Website" value={dealer.website} href={dealer.website ?? undefined} /></DetailGroup>
         </div>
       </section>
 
       <section id="branding" className="content-card dealer-management-card dealer-settings-section dealer-branding-panel" aria-labelledby="branding-heading">
         <DealerSectionHeader eyebrow="Branding" title="Customer-facing Door Builder" headingId="branding-heading" description="Logos are managed here. Brand colors and typography are saved with Edit colors. Marketing banners use the logo and do not recolor the template." actionLabel="Edit colors" actionTo={`/admin/dealers/${dealer.id}/edit#branding`} onActionClick={onClearSuccess} />
+        <p id="branding-colors" className="dealer-setup-anchor" tabIndex={-1}>Brand colors are saved with Edit colors. This section does not contain a second color form.</p>
         <div className="profile-logo-grid">
-        <section className="profile-logo-card">
+        <section className="profile-logo-card dealer-setup-anchor" id="logo-original" tabIndex={-1}>
           <div className="profile-logo-preview">
             {dealer.logo_url ? (
               <img src={dealer.logo_url} alt={`${dealer.company_name} primary logo`} />
@@ -539,7 +540,7 @@ export function DealerDetailPage({
           {removalNotice && <p className="logo-helper-note" role="status">{removalNotice}</p>}
         </section>
 
-        <section className="profile-logo-card">
+        <section className="profile-logo-card dealer-setup-anchor" id="logo-white" tabIndex={-1}>
           <div className="profile-logo-preview profile-logo-preview--dark">
             {dealer.logo_light_url || dealer.logo_generated_light_url ? (
               <img src={dealer.logo_light_url ?? dealer.logo_generated_light_url ?? ''} alt={`${dealer.company_name} light logo`} />
@@ -574,7 +575,7 @@ export function DealerDetailPage({
             )}
           </div>
         </section>
-        <section className="profile-logo-card">
+        <section className="profile-logo-card dealer-setup-anchor" id="logo-black" tabIndex={-1}>
           <div className="profile-logo-preview">
             {dealer.logo_black_url || (dealer.logo_generated_black_usable && dealer.logo_generated_black_url) ? (
               <img src={dealer.logo_black_url ?? dealer.logo_generated_black_url ?? ''} alt={`${dealer.company_name} black logo`} />
@@ -631,7 +632,7 @@ export function DealerDetailPage({
         onUpdated={(updated) => onDealerUpdated(updated, 'Dealer logo placement saved.')}
       />
 
-      <section id="design" className="content-card dealer-management-card dealer-settings-summary" aria-labelledby="design-heading">
+      <section id="design" className="content-card dealer-management-card dealer-settings-summary dealer-setup-anchor" tabIndex={-1} aria-labelledby="design-heading">
         <DealerSectionHeader eyebrow="Typography & Design" title="Door Builder Design" headingId="design-heading" description="Manage heading and UI fonts, weights, sizes, custom font files, and a live typography preview." actionLabel="Edit design" actionTo={`/admin/dealers/${dealer.id}/edit#design`} onActionClick={onClearSuccess} />
         <div className="dealer-design-preview" aria-hidden="true"><span>Aa</span><div><strong>Build a Door Made for Your Home.</strong><small>Heading and interface typography preview</small></div></div>
       </section>
@@ -642,7 +643,7 @@ export function DealerDetailPage({
           <DealerCrmIntegrations dealerId={dealer.id} />
         </>
       ) : (
-        <section className="content-card dealer-management-card" id="marketing-and-crm" aria-labelledby="marketing-and-crm-heading">
+        <section className="content-card dealer-management-card dealer-setup-anchor" id="marketing-and-crm" tabIndex={-1} aria-labelledby="marketing-and-crm-heading">
           <h2 id="marketing-and-crm-heading">Marketing Tools and CRM Integrations</h2>
           <p>This section needs additional access. It is available to an access manager.</p>
         </section>
@@ -691,7 +692,7 @@ export function DealerDetailPage({
       {canManageDealerUsers ? (
         <DealerUserAccess dealerId={dealer.id} sectionId="dealer-users" canSetPassword={canManageDealerCredentials} />
       ) : (
-        <section className="content-card dealer-management-card" id="dealer-users" aria-labelledby="dealer-users-locked-heading">
+        <section className="content-card dealer-management-card dealer-setup-anchor" id="dealer-users" tabIndex={-1} aria-labelledby="dealer-users-locked-heading">
           <h2 id="dealer-users-locked-heading">Dealer Users</h2>
           <p>This section needs additional access. It is available to an access manager or a billing admin.</p>
         </section>

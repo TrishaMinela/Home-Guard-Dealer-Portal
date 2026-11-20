@@ -268,7 +268,7 @@ export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrate
         <p>Choose independently for the homepage header and for the other customer-facing pages. A transparent file can be used on any background. A generated file is offered only when it is marked readable. Leaving Logo 1 unset keeps that area on its current logo. Leaving Logo 2 unset follows Logo 1.</p>
       </div>
       <div className="logo-variant-settings__grid">
-        <div className="logo-variant-settings__pair">
+        <div className="logo-variant-settings__pair dealer-setup-anchor" id="homepage-logo-selection" tabIndex={-1}>
           <VariantChoice
             title="Homepage Header Logo"
             name={`logo-header-${dealer.id}`}
@@ -287,7 +287,7 @@ export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrate
             />
           )}
         </div>
-        <div className="logo-variant-settings__pair">
+        <div className="logo-variant-settings__pair dealer-setup-anchor" id="pages-logo-selection" tabIndex={-1}>
           <VariantChoice
             title="Normal Pages Logo"
             name={`logo-pages-${dealer.id}`}
@@ -361,6 +361,7 @@ export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrate
 function VariantChoice({
   title,
   name,
+  anchorId,
   value,
   offers,
   unsetHint,
@@ -368,13 +369,14 @@ function VariantChoice({
 }: {
   title: string
   name: string
+  anchorId?: string
   value: DealerLogoVariant | null
   offers: Record<DealerLogoVariant, LogoVariantOffer>
   unsetHint?: string
   onChange: (value: DealerLogoVariant) => void
 }) {
   return (
-    <fieldset className="logo-variant-choice">
+    <fieldset className="logo-variant-choice dealer-setup-anchor" id={anchorId} tabIndex={anchorId ? -1 : undefined}>
       <legend>{title}</legend>
       {choices.map((choice) => {
         const offer = offers[choice.value]

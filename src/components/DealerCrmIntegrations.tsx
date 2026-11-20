@@ -160,7 +160,7 @@ export function DealerCrmIntegrations({ dealerId }: { dealerId: string }) {
   }
 
   return (
-    <section id="crm-integrations" className="content-card dealer-management-card crm-integrations" aria-labelledby="crm-integrations-title">
+    <section id="crm-integrations" className="content-card dealer-management-card crm-integrations dealer-setup-anchor" tabIndex={-1} aria-labelledby="crm-integrations-title">
       <div className="content-card__header crm-integrations__header">
         <div><p className="eyebrow">Lead delivery</p><h2 id="crm-integrations-title">CRM Integrations</h2><p>Save credentials and field mappings here. Lead delivery stays off on purpose in this phase. That is not an error.</p></div>
         <span className="status-badge status-badge--inactive">Delivery off</span>

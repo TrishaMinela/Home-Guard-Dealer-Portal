@@ -87,7 +87,7 @@ export function DealerUserAccess({ dealerId, sectionId, canSetPassword = false }
   }
 
   return <>
-    <section className="content-card billing-access-card dealer-user-access" id={sectionId}>
+    <section className="content-card billing-access-card dealer-user-access dealer-setup-anchor" id={sectionId} tabIndex={-1}>
       <DealerSectionHeader eyebrow="Dealer security" title="Dealer Users / Access" description="Current users assigned to this dealer. Access managers can add existing accounts or send the secure Portal invitation to new users." actionLabel="Manage access" actionHref="#add-dealer-user" actionIcon="manage" />
       {error && <p className="message message--error" role="alert">{error}</p>}
       {success && <p className="message message--success" role="status">{success}</p>}
