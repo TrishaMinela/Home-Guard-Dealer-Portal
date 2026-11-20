@@ -353,11 +353,6 @@ export function DealerLogoVariantSettings({ dealer, onSave, onSaveWebsite, onWeb
   const unchanged = sameVariants(dealer, header, pages, secondaryHeader, secondaryPages)
   const primaryWebsiteBaseline = logoWebsiteFieldValue(dealer.logo_website_url, dealer.website)
   const secondaryWebsiteBaseline = logoWebsiteFieldValue(dealer.logo_secondary_website_url)
-  const primaryWebsiteHint = dealer.logo_website_url?.trim()
-    ? 'Homepage and normal pages use this address for Logo 1.'
-    : dealer.website?.trim()
-      ? 'Prefilled from the company website. Homepage and normal pages use it for Logo 1 until you save a different address.'
-      : 'Homepage and normal pages use this address for Logo 1. Leave it blank and Logo 1 is not a link.'
 
   return (
     <section className="content-card dealer-management-card logo-variant-settings" aria-labelledby="logo-variant-heading">
@@ -378,7 +373,7 @@ export function DealerLogoVariantSettings({ dealer, onSave, onSaveWebsite, onWeb
           <LogoWebsiteField
             id={`logo-1-website-${dealer.id}`}
             label="Logo 1 Website URL"
-            hint={primaryWebsiteHint}
+            hint="If left blank, Logo 1 uses the dealer's company website."
             value={primaryWebsite}
             error={primaryWebsiteError}
             message={primaryWebsiteMessage}
@@ -401,7 +396,7 @@ export function DealerLogoVariantSettings({ dealer, onSave, onSaveWebsite, onWeb
               <LogoWebsiteField
                 id={`logo-2-website-${dealer.id}`}
                 label="Logo 2 Website URL"
-                hint="Homepage and normal pages use this address for Logo 2. Leave it blank and Logo 2 is not a link."
+                hint="If left blank, Logo 2 is not clickable."
                 value={secondaryWebsite}
                 error={secondaryWebsiteError}
                 message={secondaryWebsiteMessage}

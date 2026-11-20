@@ -2,6 +2,12 @@
 -- Logo 1 falls back to dealers.website when this column is null.
 -- Logo 2 has no fallback. Existing rows stay null. This file is not applied by deploy.
 -- No backfill: do not copy dealers.website into these columns.
+--
+-- Do not apply this with an unrestricted supabase db push.
+-- On udbcnpjtwhmjzpjjhoph, apply_migration records its own version. The dual-logo
+-- file 20261119000000_add_dealer_dual_logo.sql is already recorded as version
+-- 20261120071843. A full db push can treat that file, and other renamed versions,
+-- as pending and try to run them again. Apply only this migration by name.
 
 alter table public.dealers
   add column if not exists logo_website_url text null,
