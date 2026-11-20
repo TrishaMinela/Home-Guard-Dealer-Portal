@@ -53,6 +53,26 @@ export function useAccountAccess(user: User | null) {
         return
       }
 
+      const { data: salesperson, error: salespersonError } = await supabase
+        .from('salespeople')
+        .select('id, display_name, email, is_active')
+        .eq('user_id', authenticatedUser.id)
+        .maybeSingle()
+
+      if (!isCurrent) return
+      if (salespersonError) {
+        console.warn('Salesperson access is not available yet.')
+      } else if (salesperson?.is_active) {
+        setAccess({
+          userId: authenticatedUser.id,
+          type: 'salesperson',
+          dealer: null,
+          message: '',
+          salesperson: { id: salesperson.id, displayName: salesperson.display_name, email: salesperson.email },
+        })
+        return
+      }
+
       const { data: billingAccounts, error: billingMembershipError } = await supabase
         .rpc('list_billing_client_accounts')
 
