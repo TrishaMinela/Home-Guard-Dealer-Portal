@@ -45,6 +45,24 @@ Changing the key later does not re-encrypt existing rows. Save credentials only 
 5. Select Production, Preview, and Development, subject to the separate-production-secret rule above.
 6. Save, delete the local key file, and redeploy the target environment so the serverless function receives the variable.
 
+## Check that saved Opta credentials decrypt
+
+This command reads the America's Best Opta row and prints only true/false field flags. It does not send a lead. Vercel will not return a Secret-type `CRM_CREDENTIAL_ENCRYPTION_KEY` from `vercel env pull`. Put that key, `SUPABASE_URL` (`https://udbcnpjtwhmjzpjjhoph.supabase.co`), and `SUPABASE_SERVICE_ROLE_KEY` in a mode `600` file named `.env.opta-verify.local`, which is already gitignored. Delete the file when finished. Do not pass the values as shell arguments.
+
+`SUPABASE_SERVICE_ROLE_KEY` must be the service-role secret: the legacy `service_role` JWT, or a new `sb_secret_` key. The publishable or anon key cannot read the credential columns. A bad key now reports `supabase_auth_failed`. A key that signs in but lacks permission reports `supabase_permission_denied`. A missing dealer reports `dealer_not_found`. Do not wrap values in quotes or leave a trailing space. `@supabase/supabase-js` 2.112.4 accepts `sb_secret_` keys and this check sends them only in the `apikey` header.
+
+```bash
+node --env-file=.env.opta-verify.local --experimental-strip-types scripts/opta-synthetic-test.ts --verify-credentials
+```
+
+Sending one test lead uses the same saved row and the same env file, plus `OPTA_SYNTHETIC_POST_ENABLED=true` in that file, and is a separate explicit command:
+
+```bash
+node --env-file=.env.opta-verify.local --experimental-strip-types scripts/opta-synthetic-test.ts --send --confirm=send-americas-best-synthetic-test
+```
+
+Do not run the send command until the endpoint and auth field are confirmed.
+
 ## Delivery dedupe, not applied
 
 `dealer_crm_lead_deliveries` already has `unique (integration_id, lead_id)` and `unique (idempotency_key)`. Those constraints are enough to stop a second delivery row for a real lead. No migration is required for that.
