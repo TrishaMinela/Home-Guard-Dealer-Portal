@@ -7,9 +7,10 @@ import { DealerUserAccess } from '../components/DealerUserAccess'
 import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
 import { DealerLogoPlacementSettings, type DealerLogoPlacement } from '../components/DealerLogoPlacementSettings'
 import { DealerLogoVariantSettings } from '../components/DealerLogoVariantSettings'
+import { DealerLogoDisplaySettings } from '../components/DealerLogoDisplaySettings'
 import { LogoBackgroundDialog } from '../components/LogoBackgroundDialog'
 import { readLogoForRemoval } from '../utils/readLogoForRemoval'
-import { generatedLightLogoMessage, lightLogoEyebrow, logoVariantWrite, type DealerLogoVariant } from '../utils/dealerLogoVariants'
+import { generatedLightLogoMessage, lightLogoEyebrow, logoVariantSavePlan, type DealerLogoDisplay, type DealerLogoVariant } from '../utils/dealerLogoVariants'
 import { AdminDealerMarketingTools } from '../components/AdminDealerMarketingTools'
 import { DealerSectionHeader } from '../components/DealerSectionHeader'
 import { DealerDetailSectionNav } from '../components/DealerDetailSectionNav'
@@ -361,15 +362,58 @@ export function DealerDetailPage({
       : 'Custom light logo removed.')
   }
 
-  async function saveLogoVariants(variants: { header: DealerLogoVariant | null; pages: DealerLogoVariant | null }) {
+  async function saveLogoVariants(variants: {
+    header: DealerLogoVariant | null
+    pages: DealerLogoVariant | null
+    secondaryHeader: DealerLogoVariant | null
+    secondaryPages: DealerLogoVariant | null
+  }) {
     if (!dealer) throw new Error('Dealer not found.')
-    const written = logoVariantWrite(variants.header, variants.pages)
+    const plan = logoVariantSavePlan(dealer.logo_display, variants.header, variants.pages, variants.secondaryHeader, variants.secondaryPages)
+    if (plan.mode === 'primary') {
+      const written = plan.fields
+      const { error: updateError } = await supabase
+        .from('dealers')
+        .update(written)
+        .eq('id', dealer.id)
+      if (updateError) throw updateError
+      return { ...dealer, ...written }
+    }
     const { error: updateError } = await supabase
       .from('dealers')
-      .update(written)
+      .update(plan.fields)
       .eq('id', dealer.id)
     if (updateError) throw updateError
-    return { ...dealer, ...written }
+    return { ...dealer, ...plan.fields }
+  }
+
+  async function saveLogoDisplay(display: DealerLogoDisplay) {
+    if (!dealer) throw new Error('Dealer not found.')
+    const { data, error: updateError } = await supabase
+      .from('dealers')
+      .update({ logo_display: display })
+      .eq('id', dealer.id)
+      .select('*')
+      .single()
+    if (updateError) throw updateError
+    return { ...dealer, ...(data as AdminDealer), logo_display: display }
+  }
+
+  async function saveSecondaryLogos(assets: {
+    logo_secondary_url: string | null
+    logo_secondary_source_url: string | null
+    logo_secondary_light_url: string | null
+    logo_secondary_black_url: string | null
+  }) {
+    if (!dealer) throw new Error('Dealer not found.')
+    const { data, error: updateError } = await supabase
+      .from('dealers')
+      .update(assets)
+      .eq('id', dealer.id)
+      .select('*')
+      .single()
+    if (updateError) throw updateError
+    return { ...dealer, ...(data as AdminDealer), ...assets }
   }
 
   async function saveLogoPlacement(placement: DealerLogoPlacement) {
@@ -566,6 +610,13 @@ export function DealerDetailPage({
           />
         )}
       </section>
+
+      <DealerLogoDisplaySettings
+        dealer={dealer}
+        onSaveDisplay={saveLogoDisplay}
+        onSaveSecondary={saveSecondaryLogos}
+        onUpdated={(updated) => onDealerUpdated(updated, 'Logo display saved.')}
+      />
 
       <DealerLogoVariantSettings
         dealer={dealer}

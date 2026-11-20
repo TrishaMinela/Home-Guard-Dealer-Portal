@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 export async function generateDefaultDealerLightLogo(
   dealerId: string,
   tone: 'white' | 'black' = 'white',
+  target: 'primary' | 'secondary' = 'primary',
 ): Promise<{ generatedLightLogoUrl: string | null; generatedLightUsable: boolean | null; generatedLogoUrl: string | null; generatedLogoUsable: boolean | null; error: string | null }> {
   const empty = { generatedLightLogoUrl: null, generatedLightUsable: null, generatedLogoUrl: null, generatedLogoUsable: null }
   try {
@@ -12,7 +13,7 @@ export async function generateDefaultDealerLightLogo(
     const response = await fetch('/api/dealer-light-logo', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dealerId, tone }),
+      body: JSON.stringify({ dealerId, tone, target }),
     })
     const payload = await response.json().catch(() => null) as { generatedLogoUrl?: string; generatedLogoUsable?: boolean; generatedLightLogoUrl?: string; generatedLightUsable?: boolean; error?: string } | null
     const url = payload?.generatedLogoUrl ?? payload?.generatedLightLogoUrl ?? null

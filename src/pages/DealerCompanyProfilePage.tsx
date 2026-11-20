@@ -14,10 +14,12 @@ import { DealerTypographySettings } from '../components/DealerTypographySettings
 import { typographyPayload, type DealerTypographyValues } from '../utils/dealerTypography'
 import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
 import { DealerLogoPlacementSettings, type DealerLogoPlacement } from '../components/DealerLogoPlacementSettings'
+import { DealerLogoDisplaySettings } from '../components/DealerLogoDisplaySettings'
+import type { DealerLogoDisplay } from '../utils/dealerLogoVariants'
 import { DealerLogoVariantSettings } from '../components/DealerLogoVariantSettings'
 import { LogoBackgroundDialog } from '../components/LogoBackgroundDialog'
 import { readLogoForRemoval } from '../utils/readLogoForRemoval'
-import { generatedLightLogoMessage, lightLogoEyebrow, logoVariantWrite, type DealerLogoVariant } from '../utils/dealerLogoVariants'
+import { generatedLightLogoMessage, lightLogoEyebrow, logoVariantSavePlan, type DealerLogoVariant } from '../utils/dealerLogoVariants'
 
 type DealerCompanyProfilePageProps = {
   dealer: DealerAccount
@@ -446,17 +448,62 @@ export function DealerCompanyProfilePage({
     return data as DealerAccount
   }
 
-  async function saveLogoVariants(variants: { header: DealerLogoVariant | null; pages: DealerLogoVariant | null }) {
-    const written = logoVariantWrite(variants.header, variants.pages)
+  async function saveLogoVariants(variants: {
+    header: DealerLogoVariant | null
+    pages: DealerLogoVariant | null
+    secondaryHeader: DealerLogoVariant | null
+    secondaryPages: DealerLogoVariant | null
+  }) {
+    const plan = logoVariantSavePlan(dealer.logo_display, variants.header, variants.pages, variants.secondaryHeader, variants.secondaryPages)
+    if (plan.mode === 'primary') {
+      const written = plan.fields
+      const { data, error: saveError } = await supabase
+        .rpc('update_my_dealer_logo_variants', {
+          p_dealer_id: dealer.id,
+          p_logo_header_variant: written.logo_header_variant,
+          p_logo_pages_variant: written.logo_pages_variant,
+        })
+        .single()
+      if (saveError) throw saveError
+      return { ...dealer, ...(data as DealerAccount), ...written }
+    }
     const { data, error: saveError } = await supabase
-      .rpc('update_my_dealer_logo_variants', {
+      .rpc('update_my_dealer_all_logo_variants', {
         p_dealer_id: dealer.id,
-        p_logo_header_variant: written.logo_header_variant,
-        p_logo_pages_variant: written.logo_pages_variant,
+        p_logo_header_variant: plan.fields.logo_header_variant,
+        p_logo_pages_variant: plan.fields.logo_pages_variant,
+        p_logo_secondary_header_variant: plan.fields.logo_secondary_header_variant,
+        p_logo_secondary_pages_variant: plan.fields.logo_secondary_pages_variant,
       })
       .single()
     if (saveError) throw saveError
-    return { ...dealer, ...(data as DealerAccount), ...written }
+    return { ...dealer, ...(data as DealerAccount), ...plan.fields }
+  }
+
+  async function saveLogoDisplay(display: DealerLogoDisplay) {
+    const { data, error: saveError } = await supabase.rpc('update_my_dealer_logo_display', {
+      p_dealer_id: dealer.id,
+      p_logo_display: display,
+    }).single()
+    if (saveError) throw saveError
+    return { ...dealer, ...(data as DealerAccount), logo_display: display }
+  }
+
+  async function saveSecondaryLogos(assets: {
+    logo_secondary_url: string | null
+    logo_secondary_source_url: string | null
+    logo_secondary_light_url: string | null
+    logo_secondary_black_url: string | null
+  }) {
+    const { data, error: saveError } = await supabase.rpc('update_my_dealer_secondary_logo_assets', {
+      p_dealer_id: dealer.id,
+      p_logo_secondary_url: assets.logo_secondary_url ?? '',
+      p_logo_secondary_source_url: assets.logo_secondary_source_url ?? '',
+      p_logo_secondary_light_url: assets.logo_secondary_light_url ?? '',
+      p_logo_secondary_black_url: assets.logo_secondary_black_url ?? '',
+    }).single()
+    if (saveError) throw saveError
+    return { ...dealer, ...(data as DealerAccount), ...assets }
   }
 
   async function saveLogoPlacement(placement: DealerLogoPlacement) {
@@ -621,6 +668,7 @@ export function DealerCompanyProfilePage({
 
       <section id="door-builder-branding">
         <p className="profile-section-note">The homepage logo and the logo on other Door Builder pages are chosen here. Marketing banners do not use these choices; they use the logo you select in Marketing Tools.</p>
+        <DealerLogoDisplaySettings dealer={dealer} onSaveDisplay={saveLogoDisplay} onSaveSecondary={saveSecondaryLogos} onUpdated={onDealerUpdated} />
         <DealerLogoVariantSettings
           dealer={dealer}
           onSave={saveLogoVariants}
