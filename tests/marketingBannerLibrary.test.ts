@@ -2,7 +2,9 @@ import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
-import { HIDDEN_BANNER_SLOTS, MARKETING_BANNERS, availableMarketingBanners, resolveMarketingBanners } from '../src/features/marketing-banners/catalog.ts'
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
+import { MARKETING_BANNERS, availableMarketingBanners, resolveMarketingBanners } from '../src/features/marketing-banners/catalog.ts'
 import { marketingBannerFilename, slugifyBannerText } from '../src/features/marketing-banners/filename.ts'
 import { automaticBannerLogo, dealerLogoVariants } from '../src/features/marketing-banners/logos.ts'
 import {
@@ -250,14 +252,20 @@ test('banner logos use a custom light logo, then a readable generated logo, then
   assert.doesNotMatch(library, /variants\[0\]/)
 })
 
-test('missing template records fall back to the six listed demo fixtures', () => {
+test('missing template records fall back to all eight demo fixtures', () => {
   const fallback = resolveMarketingBanners(null)
   assert.equal(fallback.source, 'fixtures')
-  assert.equal(fallback.templates.length, 6)
-  assert.deepEqual(fallback.templates.map((item) => item.slot), [2, 3, 4, 6, 7, 8])
+  assert.equal(fallback.templates.length, 8)
+  assert.deepEqual(fallback.templates.map((item) => item.slot), [1, 2, 3, 4, 5, 6, 7, 8])
+  assert.equal(fallback.templates[0]?.headline, 'Build a Door Made for Your Home')
+  assert.equal(fallback.templates[0]?.imageUrl, '/marketing-banner-fixtures/banner-01-landscape.png')
   assert.equal(fallback.templates.every((item) => item.imageSource === 'fixture' && item.placementVerified === false), true)
-  assert.equal(fallback.templates.filter((item) => item.category === 'landscape').length, 3)
-  assert.equal(fallback.templates.filter((item) => item.category === 'square').length, 3)
+  assert.equal(fallback.templates.filter((item) => item.category === 'landscape').length, 4)
+  assert.equal(fallback.templates.filter((item) => item.category === 'square').length, 4)
+  const landscape = createHash('sha256').update(readFileSync(new URL('../public/marketing-banner-fixtures/banner-01-landscape.png', import.meta.url))).digest('hex')
+  const square = createHash('sha256').update(readFileSync(new URL('../public/marketing-banner-fixtures/banner-05-square.png', import.meta.url))).digest('hex')
+  assert.equal(landscape, 'e0f7061d6e3ffca50384a977017c8b45dc4163eb75b121090d921cacd175b051')
+  assert.equal(square, '5aeeda4ab1d96845c50f2a464880d90d78d46155330c348c368125c3c8e1be48')
   const remote = resolveMarketingBanners([
     {
       slot: 1,
@@ -282,7 +290,25 @@ test('missing template records fall back to the six listed demo fixtures', () =>
   assert.equal(updated?.width, 1600)
   assert.equal(updated?.placementVerified, true)
   assert.equal(updated?.placement.x, 10)
-  assert.equal(remote.templates.some((item) => item.slot === 1 || item.slot === 5 || item.headline === 'Build a Door Made for Your Home'), false)
+  const restored = remote.templates.find((item) => item.slot === 1)
+  assert.equal(restored?.headline, 'Build a Door Made for Your Home')
+  assert.equal(restored?.imageSource, 'fixture')
+  assert.equal(restored?.imageUrl, '/marketing-banner-fixtures/banner-01-landscape.png')
+  assert.equal(restored?.width, 851)
+  assert.equal(restored?.height, 315)
+  assert.equal(restored?.placementVerified, true)
+  const squareWithUpload = resolveMarketingBanners([{
+    slot: 5,
+    imageUrl: 'https://cdn.example/square-upload.png',
+    imageWidth: 1763,
+    imageHeight: 1801,
+    placementVerified: true,
+  }])
+  const restoredSquare = squareWithUpload.templates.find((item) => item.slot === 5)
+  assert.equal(restoredSquare?.imageSource, 'fixture')
+  assert.equal(restoredSquare?.imageUrl, '/marketing-banner-fixtures/banner-05-square.png')
+  assert.equal(restoredSquare?.width, 1080)
+  assert.equal(restoredSquare?.height, 1080)
   assert.equal(remote.templates.find((item) => item.slot === 3)?.imageSource, 'fixture')
 })
 
@@ -370,11 +396,12 @@ test('Marketing Tools renders the banner library instead of the version 1 genera
   assert.match(tools, /Copy Embed Code/)
 
   assert.deepEqual(MARKETING_BANNERS.map((item) => item.slot), [1, 2, 3, 4, 5, 6, 7, 8])
-  assert.deepEqual([...HIDDEN_BANNER_SLOTS], [1, 5])
   assert.deepEqual(availableMarketingBanners().map((item) => [item.slot, item.category, item.headline]), [
+    [1, 'landscape', 'Build a Door Made for Your Home'],
     [2, 'landscape', 'Your Home. Your Style. Your Door.'],
     [3, 'landscape', 'A New Look Starts at Your Door'],
     [4, 'landscape', 'See Your Vision Come to Life'],
+    [5, 'square', 'Build a Door Made for Your Home'],
     [6, 'square', 'Your Home. Your Style. Your Door.'],
     [7, 'square', 'A New Look Starts at Your Door'],
     [8, 'square', 'See Your Vision Come to Life'],
