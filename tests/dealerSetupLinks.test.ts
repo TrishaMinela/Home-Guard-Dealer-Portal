@@ -27,25 +27,26 @@ test('every checklist item maps to one destination or an explicit non-link', () 
   const items = dealerSetupChecklist(savedDealer)
   assert.deepEqual(items.map((item) => item.id), Object.keys(dealerSetupDestinations))
   const expected = {
-    'company-details': ['company-contact', 'company-details', 'Company Details'],
-    'door-builder-url': ['dealer-slug', 'company-details', 'Company Details'],
+    'company-details': ['company-name', 'company', 'Company Details', 'company-name'],
+    'door-builder-url': ['dealer-slug', 'company', 'Company Details', 'dealer-slug'],
     'dealer-admin': ['dealer-users', 'dealer-users', 'Dealer Users / Access'],
     'logo-original': ['logo-original', 'branding', 'Branding'],
     'logo-white': ['logo-white', 'branding', 'Branding'],
     'logo-black': ['logo-black', 'branding', 'Branding'],
     'homepage-logo': ['homepage-logo-selection', 'branding', 'Branding'],
     'pages-logo': ['pages-logo-selection', 'branding', 'Branding'],
-    colors: ['branding-colors', 'branding', 'Branding'],
-    typography: ['design', 'design', 'Typography & Design'],
+    colors: ['primary-color', 'branding', 'Branding', 'primary-color'],
+    typography: ['heading-font-family', 'design', 'Typography & Design', 'heading-font-family'],
     marketing: ['marketing-tools', 'marketing-tools', 'Marketing Tools'],
     crm: ['crm-integrations', 'crm-integrations', 'CRM Integrations'],
   } as const
-  for (const [id, [anchorId, sectionId, tabLabel]] of Object.entries(expected)) {
+  for (const [id, [anchorId, sectionId, tabLabel, focusId]] of Object.entries(expected)) {
     const destination = dealerSetupDestination(id)
     assert.ok(destination, id)
     assert.equal(destination.anchorId, anchorId, id)
     assert.equal(destination.sectionId, sectionId, id)
     assert.equal(destination.tabLabel, tabLabel, id)
+    if (focusId) assert.equal(destination.editFocusId, focusId, id)
   }
   for (const id of ['workflows', 'lead-routing']) {
     assert.equal(dealerSetupDestination(id), null, id)

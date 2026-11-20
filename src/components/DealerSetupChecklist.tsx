@@ -23,10 +23,16 @@ function revealTarget(destination: SetupDestination) {
   if (window.location.hash !== hash) window.history.pushState(null, '', hash)
 }
 
-export function DealerSetupChecklist({ dealer }: { dealer: DealerSetupSource }) {
+function destinationHref(destination: SetupDestination, dealerId?: string) {
+  if (destination.editFocusId && dealerId) return `/admin/dealers/${dealerId}/edit#${destination.editFocusId}`
+  return `#${destination.anchorId}`
+}
+
+export function DealerSetupChecklist({ dealer, dealerId }: { dealer: DealerSetupSource; dealerId?: string }) {
   const items = dealerSetupChecklist(dealer)
 
   function openDestination(event: MouseEvent<HTMLAnchorElement>, destination: SetupDestination) {
+    if (destination.editFocusId && dealerId) return
     event.preventDefault()
     revealTarget(destination)
   }
@@ -53,7 +59,7 @@ export function DealerSetupChecklist({ dealer }: { dealer: DealerSetupSource }) 
               {destination ? (
                 <a
                   className="dealer-setup__link"
-                  href={`#${destination.anchorId}`}
+                  href={destinationHref(destination, dealerId)}
                   aria-label={`Go to ${destination.tabLabel}: ${destination.targetLabel}`}
                   onClick={(event) => openDestination(event, destination)}
                 >

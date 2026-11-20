@@ -493,7 +493,7 @@ export function DealerDetailPage({
         </div>
       )}
 
-      <DealerSetupChecklist dealer={dealer} />
+      <DealerSetupChecklist dealer={dealer} dealerId={dealer.id} />
 
       {isConfirmingDisable && (
         <section className="disable-confirmation" role="alertdialog" aria-labelledby="disable-title">
