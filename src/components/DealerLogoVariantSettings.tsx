@@ -21,6 +21,7 @@ import {
   type LogoInkStatus,
   type LogoVariantOffer,
 } from '../utils/dealerLogoVariants'
+import { logoWebsiteFieldValue, logoWebsiteSaveError, normalizeLogoWebsiteUrl } from '../utils/logoWebsiteUrl'
 
 type VariantFields = {
   logo_url: string | null
@@ -43,6 +44,8 @@ type Props = {
     secondaryHeader: DealerLogoVariant | null
     secondaryPages: DealerLogoVariant | null
   }) => Promise<AdminDealer>
+  onSaveWebsite: (slot: 'primary' | 'secondary', url: string | null) => Promise<AdminDealer>
+  onWebsiteUpdated?: (dealer: AdminDealer) => void
   onUpdated: (dealer: AdminDealer) => void
   onHydrated?: (dealer: AdminDealer) => void
 }
@@ -84,19 +87,28 @@ function inkKey(url: string, background: string) {
   return `${url}@@${background}`
 }
 
-export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrated }: Props) {
+export function DealerLogoVariantSettings({ dealer, onSave, onSaveWebsite, onWebsiteUpdated, onUpdated, onHydrated }: Props) {
   const whiteLogoUrl = resolveWhiteLogoUrl(dealer)
   const blackLogoUrl = resolveBlackLogoUrl(dealer)
   const [header, setHeader] = useState<DealerLogoVariant | null>(normalizeLogoVariant(dealer.logo_header_variant))
   const [pages, setPages] = useState<DealerLogoVariant | null>(normalizeLogoVariant(dealer.logo_pages_variant))
   const [secondaryHeader, setSecondaryHeader] = useState<DealerLogoVariant | null>(normalizeLogoVariant(dealer.logo_secondary_header_variant))
   const [secondaryPages, setSecondaryPages] = useState<DealerLogoVariant | null>(normalizeLogoVariant(dealer.logo_secondary_pages_variant))
+  const [primaryWebsite, setPrimaryWebsite] = useState(logoWebsiteFieldValue(dealer.logo_website_url, dealer.website))
+  const [secondaryWebsite, setSecondaryWebsite] = useState(logoWebsiteFieldValue(dealer.logo_secondary_website_url))
+  const [primaryWebsiteError, setPrimaryWebsiteError] = useState('')
+  const [secondaryWebsiteError, setSecondaryWebsiteError] = useState('')
+  const [primaryWebsiteMessage, setPrimaryWebsiteMessage] = useState('')
+  const [secondaryWebsiteMessage, setSecondaryWebsiteMessage] = useState('')
+  const [savingWebsite, setSavingWebsite] = useState<'primary' | 'secondary' | null>(null)
   const [samples, setSamples] = useState<Record<string, LogoInkSample | 'unreadable'>>({})
   const [isSaving, setIsSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const dealerRef = useRef(dealer)
   const dirtyRef = useRef(false)
+  const primaryWebsiteDirtyRef = useRef(false)
+  const secondaryWebsiteDirtyRef = useRef(false)
   const onHydratedRef = useRef(onHydrated)
   dealerRef.current = dealer
   onHydratedRef.current = onHydrated
@@ -107,6 +119,12 @@ export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrate
     setPages(normalizeLogoVariant(dealerRef.current.logo_pages_variant))
     setSecondaryHeader(normalizeLogoVariant(dealerRef.current.logo_secondary_header_variant))
     setSecondaryPages(normalizeLogoVariant(dealerRef.current.logo_secondary_pages_variant))
+    primaryWebsiteDirtyRef.current = false
+    secondaryWebsiteDirtyRef.current = false
+    setPrimaryWebsite(logoWebsiteFieldValue(dealerRef.current.logo_website_url, dealerRef.current.website))
+    setSecondaryWebsite(logoWebsiteFieldValue(dealerRef.current.logo_secondary_website_url))
+    setPrimaryWebsiteError('')
+    setSecondaryWebsiteError('')
     let active = true
     void (async () => {
       try {
@@ -158,11 +176,33 @@ export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrate
         }
         const secondaryChanged = normalizeLogoVariant(current.logo_secondary_header_variant) !== nextSecondaryHeader
           || normalizeLogoVariant(current.logo_secondary_pages_variant) !== nextSecondaryPages
-        if (changed || secondaryChanged) onHydratedRef.current?.({
+        const { data: websiteData, error: websiteError } = await supabase
+          .from('dealers')
+          .select('logo_website_url, logo_secondary_website_url')
+          .eq('id', dealer.id)
+          .maybeSingle()
+        if (!active) return
+        const nextPrimaryWebsite = !websiteError && websiteData
+          ? nullableText(websiteData.logo_website_url)
+          : current.logo_website_url ?? null
+        const nextSecondaryWebsite = !websiteError && websiteData
+          ? nullableText(websiteData.logo_secondary_website_url)
+          : current.logo_secondary_website_url ?? null
+        if (!primaryWebsiteDirtyRef.current) setPrimaryWebsite(logoWebsiteFieldValue(nextPrimaryWebsite, current.website))
+        if (!secondaryWebsiteDirtyRef.current) setSecondaryWebsite(logoWebsiteFieldValue(nextSecondaryWebsite))
+        const websiteChanged = !websiteError && (
+          (current.logo_website_url ?? null) !== nextPrimaryWebsite
+          || (current.logo_secondary_website_url ?? null) !== nextSecondaryWebsite
+        )
+        if (changed || secondaryChanged || websiteChanged) onHydratedRef.current?.({
           ...current,
           ...fields,
           logo_secondary_header_variant: nextSecondaryHeader,
           logo_secondary_pages_variant: nextSecondaryPages,
+          ...(websiteError ? {} : {
+            logo_website_url: nextPrimaryWebsite,
+            logo_secondary_website_url: nextSecondaryWebsite,
+          }),
         })
       } catch {
         // The columns are absent until the migration is applied.
@@ -226,6 +266,58 @@ export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrate
     }
   }
 
+  async function saveWebsite(slot: 'primary' | 'secondary') {
+    const raw = slot === 'primary' ? primaryWebsite : secondaryWebsite
+    const parsed = normalizeLogoWebsiteUrl(raw)
+    if (slot === 'primary') {
+      setPrimaryWebsiteMessage('')
+      setPrimaryWebsiteError(parsed.error ?? '')
+    } else {
+      setSecondaryWebsiteMessage('')
+      setSecondaryWebsiteError(parsed.error ?? '')
+    }
+    if (parsed.error) return
+    setSavingWebsite(slot)
+    try {
+      const updated = await onSaveWebsite(slot, parsed.url)
+      if (slot === 'primary') {
+        primaryWebsiteDirtyRef.current = false
+        setPrimaryWebsite(logoWebsiteFieldValue(updated.logo_website_url, updated.website))
+        setPrimaryWebsiteMessage(parsed.url
+          ? 'Logo 1 website saved.'
+          : updated.website?.trim()
+            ? 'Logo 1 will use the company website.'
+            : 'Logo 1 will not link to a website.')
+      } else {
+        secondaryWebsiteDirtyRef.current = false
+        setSecondaryWebsite(logoWebsiteFieldValue(updated.logo_secondary_website_url))
+        setSecondaryWebsiteMessage(parsed.url ? 'Logo 2 website saved.' : 'Logo 2 will stay visible without a link.')
+      }
+      ;(onWebsiteUpdated ?? onUpdated)(updated)
+    } catch (saveError) {
+      console.error('Failed to save logo website.', saveError)
+      const text = logoWebsiteSaveError(saveError)
+      if (slot === 'primary') setPrimaryWebsiteError(text)
+      else setSecondaryWebsiteError(text)
+    } finally {
+      setSavingWebsite(null)
+    }
+  }
+
+  function cancelWebsite(slot: 'primary' | 'secondary') {
+    if (slot === 'primary') {
+      primaryWebsiteDirtyRef.current = false
+      setPrimaryWebsite(logoWebsiteFieldValue(dealer.logo_website_url, dealer.website))
+      setPrimaryWebsiteError('')
+      setPrimaryWebsiteMessage('')
+      return
+    }
+    secondaryWebsiteDirtyRef.current = false
+    setSecondaryWebsite(logoWebsiteFieldValue(dealer.logo_secondary_website_url))
+    setSecondaryWebsiteError('')
+    setSecondaryWebsiteMessage('')
+  }
+
   const headerBorder = doorBuilderColor(dealer.primary_color, DOOR_BUILDER_PRIMARY_FALLBACK)
   const headerOffers = logoVariantOffers(isLightBrandColor(headerSurface), {
     original: statusFor(dealer.logo_url ?? null, headerSurface),
@@ -259,6 +351,13 @@ export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrate
   const builderPreview = doorBuilderLogoPreview(draft, 'page-header')
   const findMyDoorPreview = doorBuilderLogoPreview(draft, 'find-my-door')
   const unchanged = sameVariants(dealer, header, pages, secondaryHeader, secondaryPages)
+  const primaryWebsiteBaseline = logoWebsiteFieldValue(dealer.logo_website_url, dealer.website)
+  const secondaryWebsiteBaseline = logoWebsiteFieldValue(dealer.logo_secondary_website_url)
+  const primaryWebsiteHint = dealer.logo_website_url?.trim()
+    ? 'Homepage and normal pages use this address for Logo 1.'
+    : dealer.website?.trim()
+      ? 'Prefilled from the company website. Homepage and normal pages use it for Logo 1 until you save a different address.'
+      : 'Homepage and normal pages use this address for Logo 1. Leave it blank and Logo 1 is not a link.'
 
   return (
     <section className="content-card dealer-management-card logo-variant-settings" aria-labelledby="logo-variant-heading">
@@ -276,15 +375,43 @@ export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrate
             offers={headerOffers}
             onChange={(value) => { dirtyRef.current = true; setHeader(value) }}
           />
+          <LogoWebsiteField
+            id={`logo-1-website-${dealer.id}`}
+            label="Logo 1 Website URL"
+            hint={primaryWebsiteHint}
+            value={primaryWebsite}
+            error={primaryWebsiteError}
+            message={primaryWebsiteMessage}
+            saving={savingWebsite === 'primary'}
+            unchanged={primaryWebsite.trim() === primaryWebsiteBaseline}
+            onChange={(value) => { primaryWebsiteDirtyRef.current = true; setPrimaryWebsiteError(''); setPrimaryWebsiteMessage(''); setPrimaryWebsite(value) }}
+            onCancel={() => cancelWebsite('primary')}
+            onSave={() => void saveWebsite('primary')}
+          />
           {dual && (
-            <VariantChoice
-              title="Homepage Header — Logo 2"
-              name={`logo-secondary-header-${dealer.id}`}
-              value={secondaryHeader}
-              offers={secondHeaderOffers}
-              unsetHint="No explicit choice yet. Logo 2 follows Logo 1 for this area."
-              onChange={(value) => { dirtyRef.current = true; setSecondaryHeader(value) }}
-            />
+            <>
+              <VariantChoice
+                title="Homepage Header — Logo 2"
+                name={`logo-secondary-header-${dealer.id}`}
+                value={secondaryHeader}
+                offers={secondHeaderOffers}
+                unsetHint="No explicit choice yet. Logo 2 follows Logo 1 for this area."
+                onChange={(value) => { dirtyRef.current = true; setSecondaryHeader(value) }}
+              />
+              <LogoWebsiteField
+                id={`logo-2-website-${dealer.id}`}
+                label="Logo 2 Website URL"
+                hint="Homepage and normal pages use this address for Logo 2. Leave it blank and Logo 2 is not a link."
+                value={secondaryWebsite}
+                error={secondaryWebsiteError}
+                message={secondaryWebsiteMessage}
+                saving={savingWebsite === 'secondary'}
+                unchanged={secondaryWebsite.trim() === secondaryWebsiteBaseline}
+                onChange={(value) => { secondaryWebsiteDirtyRef.current = true; setSecondaryWebsiteError(''); setSecondaryWebsiteMessage(''); setSecondaryWebsite(value) }}
+                onCancel={() => cancelWebsite('secondary')}
+                onSave={() => void saveWebsite('secondary')}
+              />
+            </>
           )}
         </div>
         <div className="logo-variant-settings__pair dealer-setup-anchor" id="pages-logo-selection" tabIndex={-1}>
@@ -355,6 +482,69 @@ export function DealerLogoVariantSettings({ dealer, onSave, onUpdated, onHydrate
         </button>
       </div>
     </section>
+  )
+}
+
+function LogoWebsiteField({
+  id,
+  label,
+  hint,
+  value,
+  error,
+  message,
+  saving,
+  unchanged,
+  onChange,
+  onCancel,
+  onSave,
+}: {
+  id: string
+  label: string
+  hint: string
+  value: string
+  error: string
+  message: string
+  saving: boolean
+  unchanged: boolean
+  onChange: (value: string) => void
+  onCancel: () => void
+  onSave: () => void
+}) {
+  const hintId = `${id}-hint`
+  const errorId = `${id}-error`
+  return (
+    <div
+      className="logo-website-field"
+      onKeyDown={(event) => {
+        if (event.key !== 'Enter' || !(event.target instanceof HTMLInputElement)) return
+        event.preventDefault()
+        event.stopPropagation()
+        if (!saving && !unchanged) onSave()
+      }}
+    >
+      <label htmlFor={id}>{label}</label>
+      <input
+        id={id}
+        type="text"
+        inputMode="url"
+        autoComplete="url"
+        autoCapitalize="off"
+        autoCorrect="off"
+        spellCheck={false}
+        placeholder="https://example.com"
+        value={value}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${hintId} ${errorId}` : hintId}
+        onChange={(event) => onChange(event.target.value)}
+      />
+      <p id={hintId} className="logo-website-field__hint">{hint}</p>
+      {message && <p className="logo-website-field__status" role="status">{message}</p>}
+      {error && <p id={errorId} className="logo-website-field__error" role="alert">{error}</p>}
+      <div className="logo-website-field__actions">
+        <button className="button button--outline" type="button" disabled={saving || unchanged} onClick={onCancel}>Cancel</button>
+        <button className="button button--primary" type="button" disabled={saving || unchanged} onClick={onSave}>{saving ? 'Saving...' : 'Save URL'}</button>
+      </div>
+    </div>
   )
 }
 

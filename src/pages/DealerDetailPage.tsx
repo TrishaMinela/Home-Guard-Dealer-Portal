@@ -416,6 +416,17 @@ export function DealerDetailPage({
     return { ...dealer, ...(data as AdminDealer), ...assets }
   }
 
+  async function saveLogoWebsite(slot: 'primary' | 'secondary', url: string | null) {
+    if (!dealer) throw new Error('Dealer not found.')
+    const column = slot === 'primary' ? 'logo_website_url' : 'logo_secondary_website_url'
+    const { error: updateError } = await supabase
+      .from('dealers')
+      .update({ [column]: url })
+      .eq('id', dealer.id)
+    if (updateError) throw updateError
+    return { ...dealer, [column]: url }
+  }
+
   async function saveLogoPlacement(placement: DealerLogoPlacement) {
     if (!dealer) throw new Error('Dealer not found.')
     const { data, error: updateError } = await supabase
@@ -622,6 +633,8 @@ export function DealerDetailPage({
       <DealerLogoVariantSettings
         dealer={dealer}
         onSave={saveLogoVariants}
+        onSaveWebsite={saveLogoWebsite}
+        onWebsiteUpdated={(updated) => onDealerUpdated(updated, 'Logo website saved.')}
         onUpdated={(updated) => onDealerUpdated(updated, 'Door Builder logo choices saved.')}
         onHydrated={(updated) => onDealerUpdated(updated, successMessage)}
       />

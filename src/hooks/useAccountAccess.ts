@@ -124,16 +124,17 @@ export function useAccountAccess(user: User | null) {
         return
       }
 
-      const [lightLogos, blackLogos, secondaryLogos] = await Promise.all([
+      const [lightLogos, blackLogos, secondaryLogos, logoWebsites] = await Promise.all([
         supabase.from('dealers').select('logo_generated_light_usable').eq('id', dealerRecord.id).maybeSingle(),
         supabase.from('dealers').select('logo_black_url, logo_generated_black_url, logo_generated_black_usable').eq('id', dealerRecord.id).maybeSingle(),
         supabase.from('dealers').select('logo_display, logo_secondary_url, logo_secondary_source_url, logo_secondary_light_url, logo_secondary_generated_light_url, logo_secondary_generated_light_usable, logo_secondary_black_url, logo_secondary_generated_black_url, logo_secondary_generated_black_usable, logo_secondary_header_variant, logo_secondary_pages_variant').eq('id', dealerRecord.id).maybeSingle(),
+        supabase.from('dealers').select('logo_website_url, logo_secondary_website_url').eq('id', dealerRecord.id).maybeSingle(),
       ])
       if (!isCurrent) return
       setAccess({
         userId: authenticatedUser.id,
         type: 'dealer',
-        dealer: dealerWithSavedLogos(dealerRecord, lightLogos, blackLogos, secondaryLogos),
+        dealer: dealerWithSavedLogos(dealerRecord, lightLogos, blackLogos, secondaryLogos, logoWebsites),
         message: '',
       })
     }

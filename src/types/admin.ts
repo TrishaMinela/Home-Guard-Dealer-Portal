@@ -29,6 +29,8 @@ export type AdminDealer = {
   logo_secondary_generated_black_usable?: boolean | null
   logo_secondary_header_variant?: 'original' | 'black' | 'white' | null
   logo_secondary_pages_variant?: 'original' | 'black' | 'white' | null
+  logo_website_url?: string | null
+  logo_secondary_website_url?: string | null
   website: string | null
   address: string | null
   city: string | null
