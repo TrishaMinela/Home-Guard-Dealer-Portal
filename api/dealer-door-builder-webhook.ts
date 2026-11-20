@@ -1,12 +1,12 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createClient } from '@supabase/supabase-js'
-import { authorizeBillingAccessManager } from './_lib/authorizeBillingAccessManager.js'
-import { decryptCrmCredentials, encryptCrmCredentials, isCrmCredentialEncryptionConfigured } from './_lib/dealerCrmIntegration.js'
+import { authorizeDoorBuilderWebhookManager } from './_lib/authorizeHgiAdmin.js'
+import { decryptCrmCredentials, encryptCrmCredentials } from './_lib/dealerCrmIntegration.js'
 import { executeDoorBuilderWebhookRequest, validateZapierCatchHookUrl, type WebhookEnvelope } from './_lib/doorBuilderWebhookPolicy.js'
 import { createSupabaseDoorBuilderWebhookStore, type WebhookAdminClient } from './_lib/doorBuilderWebhookStore.js'
 
 type JsonResponse = ServerResponse<IncomingMessage> & { json?: (value: unknown) => void }
-type RequestBody = { action?: string; dealerId?: string; webhookUrl?: unknown; confirm?: unknown }
+type RequestBody = { action?: string; dealerId?: string; webhookUrl?: unknown; contact?: unknown; submissionId?: unknown; confirm?: unknown }
 
 const MAX_BODY_BYTES = 8 * 1024
 const EXPECTED_PROJECT_REF = 'udbcnpjtwhmjzpjjhoph'
@@ -37,7 +37,12 @@ async function readBody(request: IncomingMessage): Promise<RequestBody> {
 }
 
 function encryptionKey() {
-  return process.env.CRM_CREDENTIAL_ENCRYPTION_KEY
+  return process.env.DOOR_BUILDER_WEBHOOK_ENCRYPTION_KEY
+}
+
+function webhookKeyConfigured(value: string | undefined) {
+  if (!value) return false
+  try { return Buffer.from(value, 'base64').byteLength === 32 } catch { return false }
 }
 
 function encryptWebhook(webhookUrl: string, key: string): WebhookEnvelope {
@@ -82,12 +87,14 @@ export default async function handler(request: IncomingMessage, response: JsonRe
     dealerId,
     action: body.action,
     webhookUrl: body.webhookUrl,
+    contact: body.contact,
+    submissionId: body.submissionId,
     confirm: body.confirm,
     authorization,
-    authorize: authorizeBillingAccessManager,
+    authorize: authorizeDoorBuilderWebhookManager,
     store: createSupabaseDoorBuilderWebhookStore(admin as unknown as WebhookAdminClient),
     fetchImpl: globalThis.fetch,
-    encryptionConfigured: isCrmCredentialEncryptionConfigured(key),
+    encryptionConfigured: webhookKeyConfigured(key),
     encryptionKey: key,
     encrypt: encryptWebhook,
     decrypt: decryptWebhook,

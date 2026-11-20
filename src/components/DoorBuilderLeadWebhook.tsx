@@ -13,15 +13,22 @@ type WebhookState = {
   lastTestAt: string | null
   lastTestHttpStatus: number | null
 }
-type AuditEntry = { id: string; action: string; maskedUrl: string | null; httpStatus: number | null; createdAt: string }
+type AuditEntry = { id: string; action: string; maskedUrl: string | null; httpStatus: number | null; testSubmissionId?: string | null; createdAt: string }
+type SampleContact = { fullName: string; firstName: string; lastName: string; email: string; phone: string; postalCode: string }
+type FailureRow = { id: string; submissionId: string; attemptNumber: number; httpStatus: number | null; attemptedAt: string; canRetry: boolean; blockedReason: string | null }
 type ApiResponse = {
   encryptionConfigured?: boolean
   webhook?: WebhookState
   audit?: AuditEntry[]
+  failures?: FailureRow[]
+  sampleContact?: SampleContact
+  sampleDoor?: Record<string, string>
+  sampleNote?: string
   notice?: string
   error?: string
-  test?: { accepted: boolean; httpStatus: number | null; message: string }
+  test?: { accepted: boolean; httpStatus: number | null; testedAt?: string; message: string }
 }
+const defaultContact: SampleContact = { fullName: 'Trisha Sumiran', firstName: 'Trisha', lastName: 'Sumiran', email: 'Trisha.byu@gmail.com', phone: '8083934057', postalCode: '91762' }
 type Preview = { encryptionConfigured: boolean; webhook: WebhookState; audit?: AuditEntry[] }
 
 const emptyWebhook: WebhookState = {
@@ -72,10 +79,19 @@ export function DoorBuilderLeadWebhook({ dealerId, preview }: { dealerId: string
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [testMessage, setTestMessage] = useState('')
+  const [contact, setContact] = useState<SampleContact>(defaultContact)
+  const [doorFields, setDoorFields] = useState<Record<string, string>>({})
+  const [sampleNote, setSampleNote] = useState('TEST LEAD — NOT A REAL CUSTOMER')
+  const [failures, setFailures] = useState<FailureRow[]>([])
+  const [confirmTest, setConfirmTest] = useState(false)
 
   const apply = useCallback((payload: ApiResponse) => {
     if (payload.webhook) setWebhook(payload.webhook)
     if (payload.audit) setAudit(payload.audit)
+    if (payload.failures) setFailures(payload.failures)
+    if (payload.sampleContact) setContact(payload.sampleContact)
+    if (payload.sampleDoor) setDoorFields(payload.sampleDoor)
+    if (payload.sampleNote) setSampleNote(payload.sampleNote)
     setEncryptionConfigured(payload.encryptionConfigured === true)
   }, [])
 
@@ -126,10 +142,13 @@ export function DoorBuilderLeadWebhook({ dealerId, preview }: { dealerId: string
     try {
       const payload = await authenticatedRequest('/api/dealer-door-builder-webhook', {
         method: 'POST',
-        body: JSON.stringify({ action: 'test', dealerId }),
+        body: JSON.stringify({ action: 'test', dealerId, confirm: true, contact }),
       })
       apply(payload)
-      setTestMessage(payload.test?.message ?? 'The connection test finished.')
+      const when = payload.test?.testedAt ? ` Sent at ${new Date(payload.test.testedAt).toLocaleString()}.` : ''
+      const status = payload.test?.httpStatus ? ` HTTP ${payload.test.httpStatus}.` : ''
+      setTestMessage(`${payload.test?.message ?? 'The connection test finished.'}${status}${when}`)
+      setConfirmTest(false)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'The connection test could not be completed.')
     } finally {
@@ -156,6 +175,25 @@ export function DoorBuilderLeadWebhook({ dealerId, preview }: { dealerId: string
       setError(cause instanceof Error ? cause.message : 'The webhook could not be removed.')
     } finally {
       setIsRemoving(false)
+    }
+  }
+
+  async function retry(submissionId: string) {
+    if (isSaving || isTesting || isRemoving || fixture) return
+    setIsTesting(true)
+    setError('')
+    setNotice('')
+    try {
+      const payload = await authenticatedRequest('/api/dealer-door-builder-webhook', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'retry', dealerId, submissionId }),
+      })
+      apply(payload)
+      setNotice(payload.notice ?? 'Retry finished.')
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'The delivery could not be retried.')
+    } finally {
+      setIsTesting(false)
     }
   }
 
@@ -189,13 +227,30 @@ export function DoorBuilderLeadWebhook({ dealerId, preview }: { dealerId: string
             <p className="door-builder-webhook__hint">Paste the Catch Hook URL to save or replace it. After saving, only a masked value is shown.</p>
             <div className="door-builder-webhook__actions">
               <button className="button button--primary" type="submit" disabled={busy || !encryptionConfigured || !draft.trim()}>{isSaving ? 'Saving securely…' : 'Save Webhook'}</button>
-              <button className="button button--outline" type="button" disabled={busy || !configured} aria-describedby={warningId} onClick={() => void testConnection()}>{isTesting ? 'Testing…' : 'Test Connection'}</button>
+              <button className="button button--outline" type="button" disabled={busy || !configured} aria-describedby={warningId} onClick={() => setConfirmTest(true)}>{isTesting ? 'Testing…' : 'Test Connection'}</button>
               <button className="button button--danger-outline" type="button" disabled={busy || !configured} onClick={() => setConfirmRemove(true)}>Remove Webhook</button>
             </div>
           </form>
-          <p className="door-builder-webhook__warning" id={warningId}>A test may trigger an active Zap and its downstream actions. The test sends no customer information. An HTTP success means Zapier accepted the request. It does not mean the rest of the Zap succeeded.</p>
+          <div className="door-builder-webhook__sample">
+            <h4>Sample lead preview</h4>
+            <p>This is the lead Test Connection sends. It is not saved as a Portal lead and is not sent to the Home Guard master webhook.</p>
+            <div className="form-grid">
+              {([
+                ['fullName', 'Full Name'], ['firstName', 'First Name'], ['lastName', 'Last Name'],
+                ['email', 'Email'], ['phone', 'Phone'], ['postalCode', 'Postal Code'],
+              ] as const).map(([key, label]) => (
+                <label key={key}>{label}<input value={contact[key]} onChange={(event) => setContact((current) => ({ ...current, [key]: event.target.value }))} /></label>
+              ))}
+            </div>
+            <dl className="door-builder-webhook__meta">
+              {Object.entries(doorFields).map(([key, value]) => <div key={key}><dt>{key.replaceAll('_', ' ')}</dt><dd>{value}</dd></div>)}
+              <div><dt>notes</dt><dd>{sampleNote}</dd></div>
+            </dl>
+          </div>
+          <p className="door-builder-webhook__warning" id={warningId}>A test may trigger a real Zap, including emails and Google Sheets rows. An HTTP success means Zapier accepted the sample lead. It does not mean email or later Zap steps succeeded.</p>
           {testMessage && <p className="door-builder-webhook__result" role="status">{testMessage}</p>}
-          {audit.length > 0 && <div className="door-builder-webhook__audit"><h4>Webhook history</h4><ul>{audit.slice(0, 6).map((entry) => <li key={entry.id}><span><strong>{entry.action}</strong>{entry.maskedUrl ? ` · ${entry.maskedUrl}` : ''}{entry.httpStatus ? ` · HTTP ${entry.httpStatus}` : ''}</span><time dateTime={entry.createdAt}>{new Date(entry.createdAt).toLocaleString()}</time></li>)}</ul></div>}
+          {failures.length > 0 && <div className="door-builder-webhook__audit"><h4>Failed deliveries</h4><ul>{failures.map((row) => <li key={row.id}><span><strong>Attempt {row.attemptNumber}</strong>{row.httpStatus ? ` · HTTP ${row.httpStatus}` : ''}{row.blockedReason ? ` · ${row.blockedReason}` : ''}</span>{row.canRetry ? <button className="button button--outline" type="button" disabled={busy} onClick={() => void retry(row.submissionId)}>Retry</button> : null}</li>)}</ul><p className="door-builder-webhook__hint">A successful delivery is never sent again. Customer submission does not automatically retry a failed dealer copy.</p></div>}
+          {audit.length > 0 && <div className="door-builder-webhook__audit"><h4>Webhook history</h4><ul>{audit.slice(0, 6).map((entry) => <li key={entry.id}><span><strong>{entry.action}</strong>{entry.maskedUrl ? ` · ${entry.maskedUrl}` : ''}{entry.httpStatus ? ` · HTTP ${entry.httpStatus}` : ''}{entry.testSubmissionId ? ` · ${entry.testSubmissionId}` : ''}</span><time dateTime={entry.createdAt}>{new Date(entry.createdAt).toLocaleString()}</time></li>)}</ul></div>}
         </>
       )}
       <ConfirmationModal
@@ -209,6 +264,17 @@ export function DoorBuilderLeadWebhook({ dealerId, preview }: { dealerId: string
         isConfirming={isRemoving}
         onCancel={() => { if (!isRemoving) setConfirmRemove(false) }}
         onConfirm={() => void remove()}
+      />
+      <ConfirmationModal
+        open={confirmTest}
+        title="Send sample lead?"
+        message="Zapier may run the full Zap, including emails and Google Sheets. This sample is not saved as a Portal lead and is not sent to the Home Guard master webhook."
+        target={`${contact.fullName} · ${contact.email}`}
+        confirmLabel="Send Sample Lead"
+        confirmingLabel="Sending…"
+        isConfirming={isTesting}
+        onCancel={() => { if (!isTesting) setConfirmTest(false) }}
+        onConfirm={() => void testConnection()}
       />
     </div>
   )

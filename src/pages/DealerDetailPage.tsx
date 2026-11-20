@@ -15,6 +15,7 @@ import { AdminDealerMarketingTools } from '../components/AdminDealerMarketingToo
 import { DealerSectionHeader } from '../components/DealerSectionHeader'
 import { DealerDetailSectionNav } from '../components/DealerDetailSectionNav'
 import { DealerCrmIntegrations } from '../components/DealerCrmIntegrations'
+import { DoorBuilderLeadWebhook } from '../components/DoorBuilderLeadWebhook'
 import { DealerSetupChecklist } from '../components/DealerSetupChecklist'
 
 const logoExtensions: Record<string, string> = {
@@ -649,6 +650,8 @@ export function DealerDetailPage({
         <DealerSectionHeader eyebrow="Typography & Design" title="Door Builder Design" headingId="design-heading" description="Manage heading and UI fonts, weights, sizes, custom font files, and a live typography preview." actionLabel="Edit design" actionTo={`/admin/dealers/${dealer.id}/edit#design`} onActionClick={onClearSuccess} />
         <div className="dealer-design-preview" aria-hidden="true"><span>Aa</span><div><strong>Build a Door Made for Your Home.</strong><small>Heading and interface typography preview</small></div></div>
       </section>
+
+      <DoorBuilderLeadWebhook dealerId={dealer.id} />
 
       {canManageDealerCredentials ? (
         <>

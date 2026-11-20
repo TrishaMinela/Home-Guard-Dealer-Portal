@@ -33,7 +33,7 @@ function encrypt(webhookUrl: string, key: string): WebhookEnvelope {
 
 function memoryStore(initial?: { slug?: string; companyName?: string }) {
   const calls: string[] = []
-  let secret: { envelope: WebhookEnvelope; maskedUrl: string } | null = null
+  let secret: { webhookId: string; envelope: WebhookEnvelope; maskedUrl: string } | null = null
   let webhook: StoredWebhookRecord | null = null
   const audit: WebhookAuditRecord[] = []
   const store: DoorBuilderWebhookStore = {
@@ -48,19 +48,19 @@ function memoryStore(initial?: { slug?: string; companyName?: string }) {
       calls.push('write')
       const action = webhook ? 'replaced' as const : 'saved' as const
       webhook = {
-        id: 'webhook-1', dealerId: input.dealerId, maskedUrl: input.maskedUrl, updatedAt: '2026-11-20T00:00:00.000Z',
+        id: 'webhook-1', dealerId: input.dealerId, maskedUrl: input.maskedUrl, verified: false, updatedAt: '2026-11-20T00:00:00.000Z',
         lastSuccessAt: webhook?.lastSuccessAt ?? null, lastSuccessHttpStatus: webhook?.lastSuccessHttpStatus ?? null,
         lastFailureAt: webhook?.lastFailureAt ?? null, lastFailureHttpStatus: webhook?.lastFailureHttpStatus ?? null,
         lastTestAt: webhook?.lastTestAt ?? null, lastTestHttpStatus: webhook?.lastTestHttpStatus ?? null,
       }
-      secret = { envelope: input.envelope, maskedUrl: input.maskedUrl }
-      audit.unshift({ id: `audit-${audit.length + 1}`, action, maskedUrl: input.maskedUrl, httpStatus: null, actorUserId: input.actorUserId, createdAt: '2026-11-20T00:00:00.000Z' })
+      secret = { webhookId: 'webhook-1', envelope: input.envelope, maskedUrl: input.maskedUrl }
+      audit.unshift({ id: `audit-${audit.length + 1}`, action, maskedUrl: input.maskedUrl, httpStatus: null, testSubmissionId: null, actorUserId: input.actorUserId, createdAt: '2026-11-20T00:00:00.000Z' })
       return action
     },
     async removeWebhook(input) {
       calls.push('remove')
       if (!webhook) return false
-      audit.unshift({ id: `audit-${audit.length + 1}`, action: 'removed', maskedUrl: input.maskedUrl, httpStatus: null, actorUserId: input.actorUserId, createdAt: '2026-11-20T00:01:00.000Z' })
+      audit.unshift({ id: `audit-${audit.length + 1}`, action: 'removed', maskedUrl: input.maskedUrl, httpStatus: null, testSubmissionId: null, actorUserId: input.actorUserId, createdAt: '2026-11-20T00:01:00.000Z' })
       webhook = null
       secret = null
       return true
@@ -68,10 +68,13 @@ function memoryStore(initial?: { slug?: string; companyName?: string }) {
     async recordTest(input) {
       calls.push('record-test')
       if (!webhook) throw new Error('missing')
-      webhook = { ...webhook, lastTestAt: '2026-11-20T00:02:00.000Z', lastTestHttpStatus: input.httpStatus }
-      audit.unshift({ id: `audit-${audit.length + 1}`, action: 'tested', maskedUrl: input.maskedUrl, httpStatus: input.httpStatus, actorUserId: input.actorUserId, createdAt: '2026-11-20T00:02:00.000Z' })
+      webhook = { ...webhook, verified: input.accepted ? true : webhook.verified, lastTestAt: '2026-11-20T00:02:00.000Z', lastTestHttpStatus: input.httpStatus }
+      audit.unshift({ id: `audit-${audit.length + 1}`, action: 'tested', maskedUrl: input.maskedUrl, httpStatus: input.httpStatus, testSubmissionId: input.testSubmissionId, actorUserId: input.actorUserId, createdAt: '2026-11-20T00:02:00.000Z' })
     },
     async listAudit() { return audit },
+    async listFailures() { return [] },
+    async claimRetry() { return { result: 'not_failed' as const } },
+    async finishRetry() { return undefined },
   }
   return { store, calls, read: () => ({ webhook, secret, audit }) }
 }
@@ -173,19 +176,24 @@ test('connection test posts a labeled payload and does not follow redirects', as
   const { fetches, run } = command()
   await run({ method: 'POST', action: 'save', webhookUrl: HOOK })
   fetches.length = 0
-  const tested = await run({ method: 'POST', action: 'test' })
+  const tested = await run({ method: 'POST', action: 'test', confirm: true })
   assert.equal(tested.status, 200)
   assert.equal(fetches.length, 1)
   assert.equal(fetches[0].url, HOOK)
   assert.equal(fetches[0].init?.redirect, 'manual')
   const payload = JSON.parse(String(fetches[0].init?.body)) as Record<string, unknown>
   assert.equal(payload.test, true)
-  assert.equal(payload.email, '')
-  assert.equal(payload.phone, '')
-  assert.equal(payload.full_name, '')
+  assert.equal(payload.full_name, 'Trisha Sumiran')
+  assert.equal(payload.email, 'Trisha.byu@gmail.com')
+  assert.equal(payload.phone, '8083934057')
+  assert.equal(payload.postal_code, '91762')
+  assert.equal(payload.door_configuration, 'French Door')
+  assert.equal(payload.main_door_glass, 'Clear Glass')
+  assert.match(String(payload.notes), /^TEST LEAD — NOT A REAL CUSTOMER/)
+  assert.match(String(payload.test_submission_id), /^test-/)
   assert.equal(payload.dealer_slug, 'americas-best-windows-and-doors')
   assert.equal(payload.lead_source, 'AB')
-  assert.match(String(payload.notes), /not a customer lead/)
+  assert.match(String(payload.notes), /TEST LEAD — NOT A REAL CUSTOMER/)
   assert.match(String((tested.body.test as { message: string }).message), /does not mean the rest of the Zap succeeded/)
   assert.equal(JSON.stringify(tested.body).includes('abcdefgh'), false)
 
@@ -198,7 +206,7 @@ test('connection test posts a labeled payload and does not follow redirects', as
     },
   })
   await redirecting.run({ method: 'POST', action: 'save', webhookUrl: HOOK })
-  const redirected = await redirecting.run({ method: 'POST', action: 'test' })
+  const redirected = await redirecting.run({ method: 'POST', action: 'test', confirm: true })
   assert.equal(redirectCalls, 1)
   assert.equal((redirected.body.test as { accepted: boolean }).accepted, false)
   assert.match(String((redirected.body.test as { message: string }).message), /not followed/)
@@ -221,18 +229,20 @@ test('management stays on the access-manager API and out of public dealer respon
   const dealerPage = readFileSync('src/pages/DealerDetailPage.tsx', 'utf8')
   const store = readFileSync('api/_lib/doorBuilderWebhookStore.ts', 'utf8')
   const migration = readFileSync('supabase/migrations/20261120190000_add_dealer_door_builder_webhooks.sql', 'utf8')
-  assert.match(endpoint, /authorizeBillingAccessManager/)
+  assert.match(endpoint, /authorizeDoorBuilderWebhookManager/)
+  assert.doesNotMatch(endpoint, /authorizeBillingAccessManager|CRM_CREDENTIAL_ENCRYPTION_KEY/)
+  assert.match(endpoint, /DOOR_BUILDER_WEBHOOK_ENCRYPTION_KEY/)
   assert.match(endpoint, /expectedProjectRef|EXPECTED_PROJECT_REF/)
   assert.match(endpoint, /udbcnpjtwhmjzpjjhoph/)
   assert.doesNotMatch(endpoint, /webhook_ciphertext|console\./)
   assert.match(component, /Save Webhook/)
   assert.match(component, /Test Connection/)
   assert.match(component, /Remove Webhook/)
-  assert.match(component, /downstream actions/)
+  assert.match(component, /Google Sheets/)
   assert.match(component, /Configured/)
   assert.match(component, /Not Configured/)
   assert.doesNotMatch(component, /CRM_CREDENTIAL_ENCRYPTION_KEY|webhook_ciphertext|credentials_auth_tag/)
-  assert.match(crm, /<DoorBuilderLeadWebhook dealerId=\{dealerId\} \/>/)
+  assert.doesNotMatch(crm, /<DoorBuilderLeadWebhook/)
   assert.match(dealerPage, /canManageDealerCredentials \? \([\s\S]*<DealerCrmIntegrations/)
   assert.match(store, /PUBLIC_COLUMNS = 'id,dealer_id,masked_url/)
   assert.doesNotMatch(store, /PUBLIC_COLUMNS = '[^']*webhook_ciphertext/)
@@ -241,6 +251,13 @@ test('management stays on the access-manager API and out of public dealer respon
   assert.match(migration, /webhook_ciphertext text not null/)
   assert.match(migration, /grant select \(/)
   assert.doesNotMatch(migration, /grant select \([^)]*webhook_ciphertext/s)
-  assert.match(migration, /is_billing_access_manager\(\)/)
-  assert.match(migration, /unique \(dealer_id, submission_id\)/)
+  assert.match(migration, /can_manage_door_builder_webhooks\(\)/)
+  assert.doesNotMatch(migration, /is_billing_access_manager\(\)/)
+  assert.match(migration, /door_builder_integration_managers/)
+  assert.match(migration, /claim_door_builder_webhook_retry/)
+  assert.match(component, /Send Sample Lead/)
+  assert.match(component, /TEST LEAD/)
+  assert.match(dealerPage, /<DoorBuilderLeadWebhook/)
+  assert.match(migration, /unique \(dealer_id, submission_id, attempt_number\)/)
+  assert.match(migration, /delivery_status = 'succeeded'/)
 })

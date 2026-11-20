@@ -61,6 +61,36 @@ export async function authorizeHgiAdmin(
   return { authorized: true, userId: userData.user.id }
 }
 
+export async function authorizeDoorBuilderWebhookManager(
+  authorization: string | undefined,
+): Promise<AuthorizationResult> {
+  const token = bearerToken(authorization)
+  if (!token) return { authorized: false, status: 401, message: 'Authentication required.' }
+  const supabaseUrl = process.env.VITE_SUPABASE_URL
+  const supabasePublishableKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY
+  if (!supabaseUrl || !supabasePublishableKey) {
+    return { authorized: false, status: 500, message: 'Server authentication is not configured.' }
+  }
+  const supabase = createClient(supabaseUrl, supabasePublishableKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  })
+  const { data: userData, error: userError } = await supabase.auth.getUser(token)
+  if (userError || !userData.user) return { authorized: false, status: 401, message: 'Authentication required.' }
+  const { data: admin, error: adminError } = await supabase
+    .from('home_guard_admins')
+    .select('id')
+    .eq('user_id', userData.user.id)
+    .maybeSingle()
+  if (adminError) return { authorized: false, status: 500, message: 'Unable to verify administrator access.' }
+  if (admin) return { authorized: true, userId: userData.user.id }
+  const { data: allowed, error: allowedError } = await supabase.rpc('can_manage_door_builder_webhooks')
+  if (allowedError || allowed !== true) {
+    return { authorized: false, status: 403, message: 'Home Guard administrator or Door Builder integration manager access required.' }
+  }
+  return { authorized: true, userId: userData.user.id }
+}
+
 export async function authorizeInternalBillingAdmin(
   authorization: string | undefined,
 ): Promise<AuthorizationResult> {

@@ -1,5 +1,7 @@
-// Door Builder Catch Hook rules. This module has no database or network imports so
-// tests can load it directly. The API wires encryption and storage around it.
+import { createHash } from 'node:crypto'
+import { buildSampleZapierLead, DEFAULT_SAMPLE_CONTACT, SAMPLE_DOOR_FIELDS, SAMPLE_LEAD_NOTE, sampleContactFromInput } from './sampleDoorBuilderLead.ts'
+
+// Door Builder Catch Hook rules. Tests load this module directly.
 
 export const ZAPIER_CATCH_HOOK_HOST = 'hooks.zapier.com'
 const CATCH_PATH = /^\/hooks\/catch\/(\d{1,12})\/([A-Za-z0-9]{6,80})\/?$/
@@ -16,6 +18,7 @@ export type StoredWebhookRecord = {
   id: string
   dealerId: string
   maskedUrl: string
+  verified: boolean
   updatedAt: string
   lastSuccessAt: string | null
   lastSuccessHttpStatus: number | null
@@ -30,18 +33,38 @@ export type WebhookAuditRecord = {
   action: 'saved' | 'replaced' | 'removed' | 'tested'
   maskedUrl: string | null
   httpStatus: number | null
+  testSubmissionId: string | null
   actorUserId: string | null
   createdAt: string
 }
 
+export type FailedDeliveryRecord = {
+  id: string
+  submissionId: string
+  attemptNumber: number
+  httpStatus: number | null
+  errorCode: string | null
+  attemptedAt: string
+  webhookId: string | null
+  destinationFingerprint: string
+  leaseActive: boolean
+}
+
+export type RetryClaim =
+  | { result: 'claimed'; attemptId: string; webhookId: string | null; destinationFingerprint: string; payload: Record<string, unknown> }
+  | { result: 'already_succeeded' | 'in_progress' | 'not_failed' }
+
 export type DoorBuilderWebhookStore = {
   findDealer(dealerId: string): Promise<{ id: string; companyName: string; slug: string } | null>
   findWebhook(dealerId: string): Promise<StoredWebhookRecord | null>
-  readSecret(dealerId: string): Promise<{ envelope: WebhookEnvelope; maskedUrl: string } | null>
+  readSecret(dealerId: string): Promise<{ webhookId: string; envelope: WebhookEnvelope; maskedUrl: string } | null>
   writeWebhook(input: { dealerId: string; actorUserId: string; envelope: WebhookEnvelope; maskedUrl: string }): Promise<'saved' | 'replaced'>
   removeWebhook(input: { dealerId: string; actorUserId: string; maskedUrl: string }): Promise<boolean>
-  recordTest(input: { dealerId: string; actorUserId: string; maskedUrl: string; httpStatus: number | null }): Promise<void>
+  recordTest(input: { dealerId: string; actorUserId: string; maskedUrl: string; httpStatus: number | null; accepted: boolean; testSubmissionId: string }): Promise<void>
   listAudit(dealerId: string): Promise<WebhookAuditRecord[]>
+  listFailures(dealerId: string): Promise<FailedDeliveryRecord[]>
+  claimRetry(dealerId: string, submissionId: string): Promise<RetryClaim>
+  finishRetry(input: { attemptId: string; dealerId: string; status: 'succeeded' | 'failed'; httpStatus: number | null; errorCode: string | null }): Promise<void>
 }
 
 export class DoorBuilderWebhookStorageUnavailable extends Error {
@@ -59,6 +82,8 @@ export type WebhookCommand = {
   dealerId: string
   action?: string
   webhookUrl?: unknown
+  contact?: unknown
+  submissionId?: unknown
   confirm?: unknown
   authorization: string | undefined
   authorize: (authorization: string | undefined) => Promise<Authorization>
@@ -89,6 +114,10 @@ export function validateZapierCatchHookUrl(input: unknown): string {
   const canonicalPath = `/hooks/catch/${match[1]}/${match[2]}/`
   if (url.pathname !== canonicalPath && url.pathname !== canonicalPath.slice(0, -1)) throw new Error('INVALID_WEBHOOK')
   return `https://${ZAPIER_CATCH_HOOK_HOST}${canonicalPath}`
+}
+
+export function webhookDestinationFingerprint(webhookUrl: string) {
+  return createHash('sha256').update(validateZapierCatchHookUrl(webhookUrl)).digest('hex')
 }
 
 export function maskZapierCatchHookUrl(webhookUrl: string): string {
@@ -153,6 +182,7 @@ function emptyWebhook() {
   return {
     status: 'not_configured' as const,
     maskedUrl: null,
+    verified: false,
     updatedAt: null,
     lastSuccessAt: null,
     lastSuccessHttpStatus: null,
@@ -167,6 +197,7 @@ function presentWebhook(record: StoredWebhookRecord) {
   return {
     status: 'configured' as const,
     maskedUrl: record.maskedUrl,
+    verified: record.verified,
     updatedAt: record.updatedAt,
     lastSuccessAt: record.lastSuccessAt,
     lastSuccessHttpStatus: record.lastSuccessHttpStatus,
@@ -177,17 +208,53 @@ function presentWebhook(record: StoredWebhookRecord) {
   }
 }
 
-async function snapshot(store: DoorBuilderWebhookStore, dealerId: string, encryptionConfigured: boolean, notice?: string, test?: { accepted: boolean; httpStatus: number | null; message: string }) {
-  const [webhook, audit] = await Promise.all([store.findWebhook(dealerId), store.listAudit(dealerId)])
+async function publicFailures(store: DoorBuilderWebhookStore, dealerId: string, current: { webhookId: string; fingerprint: string } | null) {
+  const rows = await store.listFailures(dealerId)
+  return rows.map((row) => {
+    const destinationMatches = Boolean(current && row.webhookId === current.webhookId && row.destinationFingerprint === current.fingerprint)
+    const blockedReason = row.leaseActive
+      ? 'A retry is already in progress.'
+      : destinationMatches
+        ? null
+        : 'The webhook was changed or removed after this failure, so it was not sent to a different destination.'
+    return {
+      id: row.id,
+      submissionId: row.submissionId,
+      attemptNumber: row.attemptNumber,
+      httpStatus: row.httpStatus,
+      errorCode: row.errorCode,
+      attemptedAt: row.attemptedAt,
+      canRetry: !row.leaseActive && destinationMatches,
+      blockedReason,
+    }
+  })
+}
+
+async function snapshot(store: DoorBuilderWebhookStore, dealer: { id: string; slug: string; companyName: string }, encryptionConfigured: boolean, current: { webhookId: string; fingerprint: string } | null, notice?: string, test?: { accepted: boolean; httpStatus: number | null; testedAt: string; message: string }) {
+  const [webhook, audit, failures] = await Promise.all([
+    store.findWebhook(dealer.id),
+    store.listAudit(dealer.id),
+    publicFailures(store, dealer.id, current),
+  ])
   return {
     encryptionConfigured,
     webhook: webhook ? presentWebhook(webhook) : emptyWebhook(),
+    sampleLead: buildSampleZapierLead({
+      contact: { ...DEFAULT_SAMPLE_CONTACT, note: '' },
+      dealer: { ...dealer, leadSource: doorBuilderLeadSource(dealer.slug) },
+      submittedAt: 'Set when the test is sent',
+      testSubmissionId: 'test-…',
+    }),
+    sampleDoor: SAMPLE_DOOR_FIELDS,
+    sampleContact: DEFAULT_SAMPLE_CONTACT,
+    sampleNote: SAMPLE_LEAD_NOTE,
+    failures,
     audit: audit.map((entry) => ({
       id: entry.id,
       action: entry.action,
       maskedUrl: entry.maskedUrl,
       httpStatus: entry.httpStatus,
-      actorUserId: entry.actorUserId,
+      testSubmissionId: entry.testSubmissionId,
       createdAt: entry.createdAt,
     })),
     ...(notice ? { notice } : {}),
@@ -204,6 +271,23 @@ function safeDealerIdentity(dealer: { slug: string; companyName: string }) {
   return { slug: dealer.slug, companyName }
 }
 
+async function currentPin(
+  store: DoorBuilderWebhookStore,
+  dealerId: string,
+  encryptionKey: string | undefined,
+  decrypt: (envelope: WebhookEnvelope, key: string) => string,
+) {
+  if (!encryptionKey) return null
+  const secret = await store.readSecret(dealerId)
+  if (!secret) return null
+  try {
+    const url = validateZapierCatchHookUrl(decrypt(secret.envelope, encryptionKey))
+    return { webhookId: secret.webhookId, fingerprint: webhookDestinationFingerprint(url), url }
+  } catch {
+    return null
+  }
+}
+
 async function postCatchHook(destination: string, body: unknown, fetchImpl: typeof fetch) {
   let response: Response
   try {
@@ -214,8 +298,9 @@ async function postCatchHook(destination: string, body: unknown, fetchImpl: type
       redirect: 'manual',
       signal: AbortSignal.timeout(10_000),
     })
-  } catch {
-    return { accepted: false, httpStatus: null as number | null, redirected: false }
+  } catch (error) {
+    const timedOut = error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')
+    return { accepted: false, httpStatus: null as number | null, redirected: false, timedOut }
   }
   const redirected = (response.status >= 300 && response.status < 400) || response.type === 'opaqueredirect'
   await response.arrayBuffer().catch(() => undefined)
@@ -224,6 +309,7 @@ async function postCatchHook(destination: string, body: unknown, fetchImpl: type
     accepted: !redirected && response.status >= 200 && response.status < 300,
     httpStatus,
     redirected,
+    timedOut: false,
   }
 }
 
@@ -238,7 +324,8 @@ export async function executeDoorBuilderWebhookRequest(input: WebhookCommand): P
     if (!dealer || dealer.id !== input.dealerId) return { status: 404, body: { error: 'Dealer not found.' } }
 
     let notice: string | undefined
-    let test: { accepted: boolean; httpStatus: number | null; message: string } | undefined
+    let test: { accepted: boolean; httpStatus: number | null; testedAt: string; message: string } | undefined
+    const current = await currentPin(input.store, dealer.id, input.encryptionKey, input.decrypt)
 
     if (input.method === 'POST') {
       if (input.action === 'save') {
@@ -272,6 +359,7 @@ export async function executeDoorBuilderWebhookRequest(input: WebhookCommand): P
         await input.store.removeWebhook({ dealerId: dealer.id, actorUserId: access.userId, maskedUrl: current.maskedUrl })
         notice = 'Door Builder webhook removed.'
       } else if (input.action === 'test') {
+        if (input.confirm !== true) return { status: 400, body: { error: 'Confirm the sample lead before sending it.' } }
         if (!input.encryptionConfigured || !input.encryptionKey) {
           return { status: 503, body: { error: 'Secure webhook storage is not configured.' } }
         }
@@ -279,32 +367,76 @@ export async function executeDoorBuilderWebhookRequest(input: WebhookCommand): P
         if (!secret) return { status: 404, body: { error: 'Save a Door Builder webhook before testing the connection.' } }
         const identity = safeDealerIdentity(dealer)
         if (!identity) return { status: 500, body: { error: 'Door Builder webhook settings could not be tested.' } }
+        let contact
+        try { contact = sampleContactFromInput(input.contact) } catch (error) {
+          return { status: 400, body: { error: error instanceof Error ? error.message : 'Review the sample contact and try again.' } }
+        }
         let destination: string
-        try {
-          destination = validateZapierCatchHookUrl(input.decrypt(secret.envelope, input.encryptionKey))
-        } catch {
+        try { destination = validateZapierCatchHookUrl(input.decrypt(secret.envelope, input.encryptionKey)) } catch {
           return { status: 500, body: { error: 'The saved webhook could not be used. Save it again.' } }
         }
         const submittedAt = (input.now ?? (() => new Date()))().toISOString()
-        const payload = doorBuilderWebhookTestPayload(identity, submittedAt)
+        const testSubmissionId = `test-${crypto.randomUUID()}`
+        const payload = buildSampleZapierLead({
+          contact,
+          dealer: { ...identity, leadSource: doorBuilderLeadSource(identity.slug) },
+          submittedAt,
+          testSubmissionId,
+        })
         const result = await postCatchHook(destination, payload, input.fetchImpl)
         await input.store.recordTest({
           dealerId: dealer.id,
           actorUserId: access.userId,
           maskedUrl: secret.maskedUrl,
           httpStatus: result.httpStatus,
+          accepted: result.accepted,
+          testSubmissionId,
         })
+        const timedOut = result.timedOut
         test = {
           accepted: result.accepted,
           httpStatus: result.httpStatus,
-          message: testConnectionMessage(result.httpStatus, result.redirected),
+          testedAt: submittedAt,
+          message: timedOut
+            ? 'The sample lead request timed out before Zapier returned a status. No Portal lead was saved.'
+            : `${testConnectionMessage(result.httpStatus, result.redirected)} No Portal lead was saved, and the Home Guard master webhook was not called.`,
+        }
+      } else if (input.action === 'retry') {
+        if (typeof input.submissionId !== 'string' || !UUID_PATTERN.test(input.submissionId)) {
+          return { status: 400, body: { error: 'A failed delivery is required.' } }
+        }
+        const claim = await input.store.claimRetry(dealer.id, input.submissionId)
+        if (claim.result === 'already_succeeded') return { status: 409, body: { error: 'This delivery already succeeded and was not sent again.' } }
+        if (claim.result === 'in_progress') return { status: 409, body: { error: 'A retry is already in progress.' } }
+        if (claim.result !== 'claimed') return { status: 404, body: { error: 'No failed delivery is available to retry.' } }
+        const pinned = await currentPin(input.store, dealer.id, input.encryptionKey, input.decrypt)
+        const sameDestination = Boolean(pinned && claim.webhookId && pinned.webhookId === claim.webhookId && pinned.fingerprint === claim.destinationFingerprint)
+        if (!sameDestination || !pinned) {
+          await input.store.finishRetry({ attemptId: claim.attemptId, dealerId: dealer.id, status: 'failed', httpStatus: null, errorCode: 'DESTINATION_CHANGED' })
+          notice = 'The webhook was changed or removed after this failure, so the lead was not sent to a different destination.'
+        } else {
+          const destination = pinned.url
+          if (destination && webhookDestinationFingerprint(destination) === claim.destinationFingerprint) {
+            const result = await postCatchHook(destination, claim.payload, input.fetchImpl)
+            await input.store.finishRetry({
+              attemptId: claim.attemptId,
+              dealerId: dealer.id,
+              status: result.accepted ? 'succeeded' : 'failed',
+              httpStatus: result.httpStatus,
+              errorCode: result.accepted ? null : 'HTTP_FAILURE',
+            })
+            notice = result.accepted ? 'The failed delivery was sent again to the original webhook.' : 'The retry was not accepted by Zapier. The master lead was not changed.'
+          } else if (destination) {
+            await input.store.finishRetry({ attemptId: claim.attemptId, dealerId: dealer.id, status: 'failed', httpStatus: null, errorCode: 'DESTINATION_CHANGED' })
+            notice = 'The webhook was changed after this failure, so the lead was not sent to the new destination.'
+          }
         }
       } else {
         return { status: 400, body: { error: 'Choose a webhook action.' } }
       }
     }
 
-    return { status: 200, body: await snapshot(input.store, dealer.id, input.encryptionConfigured, notice, test) }
+    return { status: 200, body: await snapshot(input.store, dealer, input.encryptionConfigured, current, notice, test) }
   } catch (error) {
     if (error instanceof DoorBuilderWebhookStorageUnavailable) {
       return { status: 503, body: { error: 'Door Builder webhook storage is not available yet.' } }

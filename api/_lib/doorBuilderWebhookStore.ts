@@ -13,6 +13,7 @@ type Filter = PromiseLike<StorageResult<Record<string, unknown>[]>> & {
 }
 
 export type WebhookAdminClient = {
+  rpc(fn: string, args: Record<string, unknown>): Promise<StorageResult<Record<string, unknown> | null>>
   from(table: string): {
     select(columns: string): Filter
     insert(values: Record<string, unknown>): Filter
@@ -23,9 +24,10 @@ export type WebhookAdminClient = {
 
 const WEBHOOKS = 'dealer_door_builder_webhooks'
 const AUDIT = 'dealer_door_builder_webhook_audit'
-const PUBLIC_COLUMNS = 'id,dealer_id,masked_url,updated_at,last_success_at,last_success_http_status,last_failure_at,last_failure_http_status,last_test_at,last_test_http_status'
-const SECRET_COLUMNS = 'webhook_ciphertext,webhook_iv,webhook_auth_tag,credential_key_version,masked_url'
-const AUDIT_COLUMNS = 'id,action,masked_url,http_status,actor_user_id,created_at'
+const PUBLIC_COLUMNS = 'id,dealer_id,masked_url,verified,updated_at,last_success_at,last_success_http_status,last_failure_at,last_failure_http_status,last_test_at,last_test_http_status'
+const SECRET_COLUMNS = 'id,webhook_ciphertext,webhook_iv,webhook_auth_tag,credential_key_version,masked_url'
+const AUDIT_COLUMNS = 'id,action,masked_url,http_status,test_submission_id,actor_user_id,created_at'
+const FAILURE_COLUMNS = 'id,submission_id,attempt_number,http_status,error_code,attempted_at,webhook_id,destination_fingerprint,lease_expires_at,delivery_status'
 
 function unwrap<T>(result: StorageResult<T>): T {
   if (result.error) {
@@ -49,6 +51,7 @@ function webhookRecord(row: Record<string, unknown>): StoredWebhookRecord {
     id: String(row.id),
     dealerId: String(row.dealer_id),
     maskedUrl: String(row.masked_url),
+    verified: row.verified === true,
     updatedAt: String(row.updated_at),
     lastSuccessAt: text(row.last_success_at),
     lastSuccessHttpStatus: statusCode(row.last_success_http_status),
@@ -69,6 +72,7 @@ function auditRecord(row: Record<string, unknown>): WebhookAuditRecord {
     action,
     maskedUrl: text(row.masked_url),
     httpStatus: statusCode(row.http_status),
+    testSubmissionId: text(row.test_submission_id),
     actorUserId: text(row.actor_user_id),
     createdAt: String(row.created_at),
   }
@@ -94,7 +98,7 @@ export function createSupabaseDoorBuilderWebhookStore(admin: WebhookAdminClient)
         authTag: String(result.webhook_auth_tag),
         keyVersion: Number(result.credential_key_version),
       }
-      return { envelope, maskedUrl: String(result.masked_url ?? '') }
+      return { webhookId: String(result.id), envelope, maskedUrl: String(result.masked_url ?? '') }
     },
     async writeWebhook({ dealerId, actorUserId, envelope, maskedUrl }) {
       const existing = unwrap(await admin.from(WEBHOOKS).select('id').eq('dealer_id', dealerId).maybeSingle())
@@ -104,6 +108,7 @@ export function createSupabaseDoorBuilderWebhookStore(admin: WebhookAdminClient)
         webhook_iv: envelope.iv,
         webhook_auth_tag: envelope.authTag,
         credential_key_version: envelope.keyVersion,
+        verified: false,
         updated_by: actorUserId,
         updated_at: new Date().toISOString(),
       }
@@ -132,12 +137,13 @@ export function createSupabaseDoorBuilderWebhookStore(admin: WebhookAdminClient)
       unwrap(await admin.from(WEBHOOKS).delete().eq('id', String(existing.id)).eq('dealer_id', dealerId))
       return true
     },
-    async recordTest({ dealerId, actorUserId, maskedUrl, httpStatus }) {
+    async recordTest({ dealerId, actorUserId, maskedUrl, httpStatus, accepted, testSubmissionId }) {
       const existing = unwrap(await admin.from(WEBHOOKS).select('id').eq('dealer_id', dealerId).maybeSingle())
       if (!existing?.id) throw new Error('Door Builder webhook storage request failed.')
       unwrap(await admin.from(WEBHOOKS).update({
         last_test_at: new Date().toISOString(),
         last_test_http_status: httpStatus,
+        ...(accepted ? { verified: true } : {}),
       }).eq('id', String(existing.id)).eq('dealer_id', dealerId))
       unwrap(await admin.from(AUDIT).insert({
         webhook_id: existing.id,
@@ -146,7 +152,55 @@ export function createSupabaseDoorBuilderWebhookStore(admin: WebhookAdminClient)
         action: 'tested',
         masked_url: maskedUrl,
         http_status: httpStatus,
+        test_submission_id: testSubmissionId,
       }))
+    },
+    async listFailures(dealerId) {
+      const rows = unwrap(await admin.from('dealer_door_builder_webhook_deliveries').select(FAILURE_COLUMNS).eq('dealer_id', dealerId).order('attempt_number', { ascending: false }).limit(100))
+      const latest = new Map<string, Record<string, unknown>>()
+      for (const row of rows) {
+        const submissionId = String(row.submission_id)
+        if (!latest.has(submissionId)) latest.set(submissionId, row)
+      }
+      return [...latest.values()].filter((row) => row.delivery_status === 'failed').map((row) => ({
+        id: String(row.id),
+        submissionId: String(row.submission_id),
+        attemptNumber: Number(row.attempt_number),
+        httpStatus: statusCode(row.http_status),
+        errorCode: text(row.error_code),
+        attemptedAt: String(row.attempted_at),
+        webhookId: text(row.webhook_id),
+        destinationFingerprint: String(row.destination_fingerprint),
+        leaseActive: false,
+      }))
+    },
+    async claimRetry(dealerId, submissionId) {
+      const result = unwrap(await admin.rpc('claim_door_builder_webhook_retry', { p_dealer_id: dealerId, p_submission_id: submissionId }))
+      const row = result as unknown as Record<string, unknown>
+      if (row.result === 'claimed' && row.payload && typeof row.payload === 'object' && !Array.isArray(row.payload)) {
+        return {
+          result: 'claimed' as const,
+          attemptId: String(row.attemptId),
+          webhookId: text(row.webhookId),
+          destinationFingerprint: String(row.destinationFingerprint),
+          payload: row.payload as Record<string, unknown>,
+        }
+      }
+      const outcome = row.result
+      if (outcome === 'already_succeeded' || outcome === 'in_progress' || outcome === 'not_failed') return { result: outcome }
+      return { result: 'not_failed' as const }
+    },
+    async finishRetry({ attemptId, dealerId, status, httpStatus, errorCode }) {
+      unwrap(await admin.from('dealer_door_builder_webhook_deliveries').update({
+        delivery_status: status,
+        http_status: httpStatus,
+        error_code: errorCode,
+        updated_at: new Date().toISOString(),
+        lease_expires_at: null,
+      }).eq('id', attemptId).eq('dealer_id', dealerId))
+      if (status === 'succeeded') {
+        unwrap(await admin.from(WEBHOOKS).update({ verified: true }).eq('dealer_id', dealerId))
+      }
     },
     async listAudit(dealerId) {
       const rows = unwrap(await admin.from(AUDIT).select(AUDIT_COLUMNS).eq('dealer_id', dealerId).order('created_at', { ascending: false }).limit(25))

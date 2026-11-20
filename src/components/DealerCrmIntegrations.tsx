@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
-import { DoorBuilderLeadWebhook } from './DoorBuilderLeadWebhook'
 
 type Provider = 'opta' | 'gohighlevel' | 'custom_webhook'
 type Integration = {
@@ -169,7 +168,6 @@ export function DealerCrmIntegrations({ dealerId }: { dealerId: string }) {
       {!encryptionConfigured && !isLoading && <div className="portal-alert" role="alert">Secure credential storage is not configured. Metadata can be reviewed, but credentials cannot be saved.</div>}
       {error && <div className="portal-alert" role="alert">{error}</div>}
       {notice && <div className="portal-alert portal-alert--success" role="status">{notice}</div>}
-      <DoorBuilderLeadWebhook dealerId={dealerId} />
       {isLoading ? <div className="data-state">Loading CRM integrations…</div> : (
         <div className="crm-provider-grid">
           {providers.map((provider) => {
