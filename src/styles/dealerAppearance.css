@@ -1,0 +1,185 @@
+/* Door Builder appearance tokens. Unset tokens keep the colors already in use.
+   Header background, text, and accent fall back to the current brand header.
+   Find My Door keeps its black and gold header until those tokens are set.
+   Product artwork, door renders, and card images are not recolored.
+   Keep this file identical in the Portal and the Door Builder. */
+
+.app.dealer-cobranded > header,
+.dealer-cobranded > header {
+  background: var(--db-header-background, var(--dealer-secondary));
+  color: var(--db-header-text, var(--dealer-secondary-foreground));
+  border-bottom-color: var(--db-header-accent, var(--dealer-primary));
+}
+
+.dealer-cobranded > header.find-my-door-header,
+.find-my-door-app.dealer-cobranded > header.find-my-door-header {
+  background: var(--db-header-background, var(--black, #05040b));
+  color: var(--db-header-text, #ffffff);
+  border-bottom-color: var(--db-header-accent, var(--gold, #f8d30e));
+}
+
+.dealer-cobranded[style*="--db-header-icon"] > header svg {
+  color: var(--db-header-icon);
+}
+
+.dealer-cobranded[style*="--db-header-button-background"] > header :is(.home-return, .dealer-website-link, .find-my-door-builder-link) {
+  background: var(--db-header-button-background);
+}
+
+.dealer-cobranded[style*="--db-header-button-text"] > header :is(.home-return, .dealer-website-link, .find-my-door-builder-link) {
+  color: var(--db-header-button-text);
+}
+
+.dealer-cobranded[style*="--db-header-button-border"] > header :is(.home-return, .dealer-website-link, .find-my-door-builder-link) {
+  border-color: var(--db-header-button-border);
+}
+
+.dealer-cobranded[style*="--db-body-background"] :is(.builder-panel, .home-page, .home-hero, .find-my-door-main, .find-door-options) {
+  background: var(--db-body-background);
+}
+
+.dealer-cobranded[style*="--db-heading-text"] :is(.builder-panel, .home-hero, .find-my-door-main) :is(h1, h2) {
+  color: var(--db-heading-text);
+}
+
+.dealer-cobranded[style*="--db-body-text"] :is(.builder-panel, .home-hero-copy, .find-my-door-main) :is(p, .section-heading p) {
+  color: var(--db-body-text);
+}
+
+.dealer-cobranded[style*="--db-section-divider"] :is(.section-heading h1:after, .home-hero h1:after, .find-my-door-main h1:after) {
+  background: var(--db-section-divider);
+}
+
+.dealer-cobranded[style*="--db-section-divider"] :is(.find-door-options .builder-actions, .section-heading) {
+  border-color: var(--db-section-divider);
+}
+
+.dealer-cobranded[style*="--db-step-background"] :is(.stepper, .find-door-steps) {
+  background: var(--db-step-background);
+}
+
+.dealer-cobranded[style*="--db-step-text"] :is(.stepper button, .find-door-steps button, .find-door-steps span) {
+  color: var(--db-step-text);
+}
+
+.dealer-cobranded[style*="--db-step-active"] :is(.stepper .active, .find-door-steps .current) {
+  color: var(--db-step-active);
+}
+
+.dealer-cobranded[style*="--db-step-active"] :is(.stepper .active span, .find-door-steps .current i) {
+  background: var(--db-step-active);
+  border-color: var(--db-step-active);
+  color: #ffffff;
+}
+
+.dealer-cobranded[style*="--db-card-background"] :is(.option-card, .glass-choice-card, .hardware-option-card, .find-door-choice, .find-door-pick) {
+  background: var(--db-card-background);
+}
+
+.dealer-cobranded[style*="--db-card-title"] :is(.option-card, .glass-choice-card, .hardware-option-card, .find-door-choice, .find-door-pick) :is(strong, h3) {
+  color: var(--db-card-title);
+}
+
+.dealer-cobranded[style*="--db-card-description"] :is(.option-card, .glass-choice-card, .hardware-option-card, .find-door-choice, .find-door-pick) :is(.option-copy span, .option-copy p, small) {
+  color: var(--db-card-description);
+}
+
+.dealer-cobranded[style*="--db-card-border"] :is(.option-card, .glass-choice-card, .hardware-option-card, .find-door-choice, .find-door-pick) {
+  border-color: var(--db-card-border);
+}
+
+.dealer-cobranded[style*="--db-card-selected"] :is(.option-card.selected, .glass-choice-card.selected, .hardware-option-card.selected, .find-door-choice.is-selected, .find-door-pick.is-selected) {
+  border-color: var(--db-card-selected);
+  outline-color: var(--db-card-selected);
+}
+
+.dealer-cobranded[style*="--db-card-hover"] :is(.option-card, .glass-choice-card, .hardware-option-card, .find-door-choice, .find-door-pick):hover {
+  border-color: var(--db-card-hover);
+}
+
+.dealer-cobranded[style*="--db-preview-background"] :is(aside, .find-door-stage, .db-preview-panel) {
+  background: var(--db-preview-background);
+}
+
+.dealer-cobranded[style*="--db-preview-text"] :is(aside, .find-door-stage, .db-preview-panel) :is(p, h2) {
+  color: var(--db-preview-text);
+}
+
+.dealer-cobranded[style*="--db-preview-label"] :is(aside, .db-preview-panel) :is(label, .preview-comparison-label, .db-preview-label) {
+  color: var(--db-preview-label);
+}
+
+.dealer-cobranded[style*="--db-preview-divider"] :is(aside, .db-preview-panel) {
+  border-color: var(--db-preview-divider);
+}
+
+.dealer-cobranded[style*="--db-preview-controls-background"] :is(.preview-view-toggle, .db-preview-controls) {
+  background: var(--db-preview-controls-background);
+}
+
+.dealer-cobranded[style*="--db-preview-controls-text"] :is(.preview-view-toggle button, .db-preview-controls button) {
+  color: var(--db-preview-controls-text);
+}
+
+.dealer-cobranded[style*="--db-primary-button-background"] :is(.builder-actions .next, .start-building, .submit-button, .wizard-navigation .wizard-continue, .find-door-actions .next) {
+  background: var(--db-primary-button-background);
+}
+
+.dealer-cobranded[style*="--db-primary-button-text"] :is(.builder-actions .next, .start-building, .submit-button, .wizard-navigation .wizard-continue, .find-door-actions .next) {
+  color: var(--db-primary-button-text);
+}
+
+.dealer-cobranded[style*="--db-primary-button-border"] :is(.builder-actions .next, .start-building, .submit-button, .find-door-actions .next) {
+  border: 1px solid var(--db-primary-button-border);
+}
+
+.dealer-cobranded[style*="--db-primary-button-hover"] :is(.builder-actions .next, .start-building, .submit-button, .find-door-actions .next):hover:not(:disabled) {
+  background: var(--db-primary-button-hover);
+}
+
+.dealer-cobranded[style*="--db-secondary-button-background"] :is(.builder-actions .back, .find-door-actions .back, .preview-reset-design) {
+  background: var(--db-secondary-button-background);
+}
+
+.dealer-cobranded[style*="--db-secondary-button-text"] :is(.builder-actions .back, .find-door-actions .back, .preview-reset-design) {
+  color: var(--db-secondary-button-text);
+}
+
+.dealer-cobranded[style*="--db-secondary-button-border"] :is(.builder-actions .back, .find-door-actions .back, .preview-reset-design) {
+  border: 1px solid var(--db-secondary-button-border);
+}
+
+.dealer-cobranded[style*="--db-secondary-button-hover"] :is(.builder-actions .back, .find-door-actions .back, .preview-reset-design):hover:not(:disabled) {
+  background: var(--db-secondary-button-hover);
+}
+
+.dealer-cobranded :is(.builder-actions .next, .builder-actions .back, .submit-button):disabled {
+  cursor: not-allowed;
+}
+
+.dealer-cobranded[style*="--db-primary-button-background"] :is(.builder-actions .next, .submit-button):disabled,
+.dealer-cobranded[style*="--db-secondary-button-background"] :is(.builder-actions .back, .preview-reset-design):disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.dealer-cobranded[style*="--db-footer-background"] > .shared-site-footer.site-footer {
+  background: var(--db-footer-background);
+}
+
+.dealer-cobranded[style*="--db-footer-text"] > .shared-site-footer.site-footer {
+  color: var(--db-footer-text);
+}
+
+.dealer-cobranded[style*="--db-footer-link"] > .shared-site-footer a {
+  color: var(--db-footer-link);
+}
+
+.dealer-cobranded[style*="--db-footer-icon"] > .shared-site-footer .site-footer-contact a svg,
+.dealer-cobranded[style*="--db-footer-icon"] > .shared-site-footer svg {
+  color: var(--db-footer-icon);
+}
+
+.dealer-cobranded[style*="--db-footer-accent"] > .shared-site-footer.site-footer {
+  border-top-color: var(--db-footer-accent);
+}

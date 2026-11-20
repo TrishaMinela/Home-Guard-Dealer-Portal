@@ -8,6 +8,7 @@ import {
   normalizeLogoDisplay,
   type DealerLogoDisplay,
 } from '../utils/dealerLogoVariants'
+import '../styles/logoPair.css'
 
 type SecondaryAssets = {
   logo_secondary_url: string | null
@@ -49,11 +50,11 @@ function LogoPair({
 }) {
   const single = !showPair || !secondaryUrl
   return (
-    <div className={`logo-display-preview ${dark ? 'logo-display-preview--dark' : ''}`} style={{ background, color }}>
+    <div className={`logo-display-preview ${single ? '' : 'logo-pair'} ${dark ? 'logo-display-preview--dark' : ''}`} style={{ background, color }}>
       {primary ? <img src={primary} alt="" /> : <span>First logo</span>}
       {!single && (
         <>
-          <span className="logo-display-preview__divider" aria-hidden="true" />
+          <span className="logo-display-preview__divider logo-pair__rule" aria-hidden="true" />
           <img src={secondaryUrl ?? ''} alt="" />
         </>
       )}

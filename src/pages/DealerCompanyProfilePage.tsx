@@ -14,6 +14,8 @@ import { DealerTypographySettings } from '../components/DealerTypographySettings
 import { typographyPayload, type DealerTypographyValues } from '../utils/dealerTypography'
 import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
 import { DealerLogoPlacementSettings, type DealerLogoPlacement } from '../components/DealerLogoPlacementSettings'
+import { DoorBuilderAppearanceSettings } from '../components/DoorBuilderAppearanceSettings'
+import { appearanceRpcArgs, type DoorBuilderAppearance } from '../utils/doorBuilderAppearance'
 import { DealerLogoDisplaySettings } from '../components/DealerLogoDisplaySettings'
 import type { DealerLogoDisplay } from '../utils/dealerLogoVariants'
 import { DealerLogoVariantSettings } from '../components/DealerLogoVariantSettings'
@@ -517,6 +519,12 @@ export function DealerCompanyProfilePage({
     return { ...dealer, ...(data as DealerAccount), [column]: url }
   }
 
+  async function saveAppearance(appearance: DoorBuilderAppearance | null) {
+    const { error: saveError } = await supabase.rpc('update_my_dealer_door_builder_appearance', appearanceRpcArgs(dealer.id, appearance))
+    if (saveError) throw saveError
+    onDealerUpdated({ ...dealer, door_builder_appearance: appearance })
+  }
+
   async function saveLogoPlacement(placement: DealerLogoPlacement) {
     const { data, error: saveError } = await supabase
       .rpc('update_my_dealer_logo_placement', {
@@ -544,6 +552,7 @@ export function DealerCompanyProfilePage({
         <a href="#company-details">Company Details</a>
         <a href="#logos">Logos</a>
         <a href="#door-builder-branding">Door Builder Branding</a>
+        <a href="#door-builder-appearance">Door Builder Appearance</a>
         <a href="#colors-and-typography">Colors and Typography</a>
         <a href="#website-address">Website Address</a>
       </nav>
@@ -689,6 +698,7 @@ export function DealerCompanyProfilePage({
         />
         <DealerLogoPlacementSettings dealer={dealer} onSave={saveLogoPlacement} onUpdated={onDealerUpdated} />
       </section>
+      <DoorBuilderAppearanceSettings dealer={dealer} mode="dealer" onSave={saveAppearance} />
 
       <section id="colors-and-typography">
         <div className="content-card dealer-form">

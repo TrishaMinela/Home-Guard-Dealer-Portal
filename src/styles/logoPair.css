@@ -1,0 +1,152 @@
+/* Shared logo pair. Each logo keeps its own aspect ratio up to one max height.
+   Links hug the artwork. The divider stretches to that row and is not a link.
+   A single logo does not use .logo-pair, so its header size stays as it is.
+   Keep this file identical in the Portal and the Door Builder. */
+
+.logo-pair {
+  --logo-pair-gap: 12px;
+  --logo-pair-max-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--logo-pair-gap);
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.dealer-brand-mark.dealer-brand-mark--pair.logo-pair {
+  gap: var(--logo-pair-gap);
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.dealer-header-brand:has(.logo-pair),
+.dealer-brand-home:has(.logo-pair),
+.find-my-door-header .brand:has(.logo-pair) {
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 auto;
+}
+
+.dealer-brand-mark.dealer-brand-mark--pair.logo-pair > .dealer-logo-link,
+.dealer-brand-mark.dealer-brand-mark--pair.logo-pair > img,
+.logo-pair > .logo-pair__link,
+.logo-pair > img {
+  flex: 0 1 auto;
+  min-width: 0;
+  width: auto;
+  max-width: min(320px, 46%);
+}
+
+.dealer-brand-mark.dealer-brand-mark--pair.logo-pair > .dealer-logo-link,
+.logo-pair > .logo-pair__link {
+  display: inline-flex;
+  align-items: center;
+}
+
+.dealer-brand-mark.dealer-brand-mark--pair.logo-pair > img,
+.dealer-brand-mark.dealer-brand-mark--pair.logo-pair > .dealer-logo-link > img,
+.logo-pair > img,
+.logo-pair .logo-pair__link > img,
+.logo-pair .dealer-logo-link > img {
+  display: block;
+  width: auto !important;
+  height: auto !important;
+  max-width: 100%;
+  max-height: var(--logo-pair-max-height);
+  object-fit: contain;
+  flex: none;
+  aspect-ratio: auto;
+  background: transparent;
+}
+
+.logo-pair > .dealer-logo-divider,
+.logo-pair > .logo-pair__rule,
+.logo-pair > .logo-variant-preview__divider,
+.logo-pair > .logo-display-preview__divider {
+  width: 1px;
+  align-self: stretch;
+  height: auto;
+  min-height: 0;
+  flex: none;
+  margin-block: 2px;
+  background: currentColor;
+  opacity: .45;
+  pointer-events: none;
+}
+
+.dealer-cobranded > header .logo-pair,
+.find-my-door-app > header .logo-pair {
+  --logo-pair-max-height: 72px;
+}
+
+.dealer-hero-logo .dealer-brand-mark.dealer-brand-mark--pair.logo-pair,
+.home-app.dealer-logo-in-hero .dealer-hero-logo .dealer-brand-mark.dealer-brand-mark--pair.logo-pair {
+  max-width: min(720px, 100%);
+  justify-content: center;
+}
+
+.dealer-hero-logo .logo-pair,
+.home-app.dealer-logo-in-hero .dealer-hero-logo .logo-pair {
+  --logo-pair-max-height: 140px;
+}
+
+.dealer-hero-logo .dealer-brand-mark.dealer-brand-mark--pair.logo-pair > .dealer-logo-link,
+.dealer-hero-logo .dealer-brand-mark.dealer-brand-mark--pair.logo-pair > img,
+.home-app.dealer-logo-in-hero .dealer-hero-logo .dealer-brand-mark.dealer-brand-mark--pair.logo-pair > img {
+  max-width: min(340px, 46%);
+}
+
+@media (max-width: 900px) {
+  .dealer-cobranded > header .logo-pair,
+  .find-my-door-app > header .logo-pair {
+    --logo-pair-max-height: 58px;
+  }
+  .dealer-brand-mark.dealer-brand-mark--pair.logo-pair > .dealer-logo-link,
+  .dealer-brand-mark.dealer-brand-mark--pair.logo-pair > img {
+    max-width: min(220px, 46%);
+  }
+}
+
+@media (max-width: 700px) {
+  .home-app.dealer-logo-in-hero .dealer-hero-logo .logo-pair {
+    --logo-pair-max-height: 110px;
+  }
+}
+
+@media (max-width: 560px) {
+  .dealer-cobranded > header .logo-pair,
+  .find-my-door-app > header .logo-pair {
+    --logo-pair-max-height: 40px;
+  }
+  .dealer-brand-mark.dealer-brand-mark--pair.logo-pair > .dealer-logo-link,
+  .dealer-brand-mark.dealer-brand-mark--pair.logo-pair > img {
+    max-width: min(140px, 46%);
+  }
+  .dealer-hero-logo .logo-pair,
+  .home-app.dealer-logo-in-hero .dealer-hero-logo .logo-pair {
+    --logo-pair-max-height: 72px;
+  }
+}
+
+.logo-variant-preview__stage .logo-pair {
+  --logo-pair-max-height: 56px;
+}
+
+.db-preview-frame {
+  container-type: inline-size;
+}
+
+@container (max-width: 900px) {
+  .db-appearance-preview header .logo-pair {
+    --logo-pair-max-height: 58px;
+  }
+}
+
+@container (max-width: 560px) {
+  .db-appearance-preview header .logo-pair {
+    --logo-pair-max-height: 40px;
+  }
+}

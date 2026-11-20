@@ -1,4 +1,5 @@
 import type { Lead } from './lead'
+import type { DoorBuilderAppearance } from '../utils/doorBuilderAppearance'
 
 export type AdminDealer = {
   id: string
@@ -31,6 +32,7 @@ export type AdminDealer = {
   logo_secondary_pages_variant?: 'original' | 'black' | 'white' | null
   logo_website_url?: string | null
   logo_secondary_website_url?: string | null
+  door_builder_appearance?: DoorBuilderAppearance | null
   website: string | null
   address: string | null
   city: string | null
