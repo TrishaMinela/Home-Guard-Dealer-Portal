@@ -6,6 +6,7 @@ import type { AdminDealer, DealerFormValues } from '../types/admin'
 import { isReservedDealerSlug } from '../utils/dealerSlug'
 import { DealerTypographySettings } from '../components/DealerTypographySettings'
 import { typographyPayload, type DealerTypographyValues } from '../utils/dealerTypography'
+import { useEditDealerHashFocus } from '../utils/editDealerHashFocus'
 
 type EditDealerPageProps = {
   dealers: AdminDealer[]
@@ -51,21 +52,16 @@ export function EditDealerPage({ dealers, isLoading, error, onSaved }: EditDeale
   const [brandingMessage, setBrandingMessage] = useState('')
   const [brandingError, setBrandingError] = useState('')
   const [isSavingBranding, setIsSavingBranding] = useState(false)
-
-  useEffect(() => {
-    const id = window.location.hash.replace(/^#/, '')
-    if (!id) return
-    const target = document.getElementById(id)
-    if (!target) return
-    const behavior: ScrollBehavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
-    target.scrollIntoView({ block: 'center', behavior })
-    target.focus({ preventScroll: true })
-    target.classList.add('dealer-setup-target')
-    const timer = window.setTimeout(() => target.classList.remove('dealer-setup-target'), 1800)
-    return () => window.clearTimeout(timer)
-  }, [activeSection])
   const navigate = useNavigate()
   const dealer = dealers.find((item) => item.id === dealerId)
+
+  useEffect(() => {
+    const syncSection = () => setActiveSection(editSectionFromHash(window.location.hash))
+    window.addEventListener('hashchange', syncSection)
+    return () => window.removeEventListener('hashchange', syncSection)
+  }, [])
+
+  useEditDealerHashFocus(!isLoading && !error && Boolean(dealer))
 
   const selectedBrandColors = brandColors ?? { primary: dealer?.primary_color ?? '', secondary: dealer?.secondary_color ?? '' }
 
