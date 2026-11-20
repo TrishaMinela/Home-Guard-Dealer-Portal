@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { buildSampleZapierLead, DEFAULT_SAMPLE_CONTACT, SAMPLE_DOOR_FIELDS, SAMPLE_LEAD_NOTE, sampleContactFromInput } from './sampleDoorBuilderLead.ts'
+import { buildSampleZapierLead, DEFAULT_SAMPLE_CONTACT, SAMPLE_DOOR_FIELDS, SAMPLE_LEAD_NOTE, sampleContactFromInput } from './sampleDoorBuilderLead.js'
 
 // Door Builder Catch Hook rules. Tests load this module directly.
 
