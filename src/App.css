@@ -1448,6 +1448,29 @@ select:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,10
 @media(max-width:1000px){.crm-provider-grid{grid-template-columns:1fr}.crm-provider-card{display:grid;grid-template-columns:minmax(0,1fr) auto}.crm-provider-card__meta{grid-column:1/-1}.crm-provider-card>.button{grid-column:1/-1;justify-self:start}.crm-mapping-row{grid-template-columns:1fr 1fr}.crm-mapping-row>.button{grid-column:1/-1;justify-self:start}}
 @media(max-width:640px){.crm-integrations__header{align-items:flex-start;flex-direction:column;padding:21px 18px}.crm-integrations>.portal-alert,.crm-integration-editor,.crm-audit-history{margin-inline:18px}.crm-provider-grid{padding-inline:18px}.crm-provider-card{display:flex}.crm-integration-editor{padding:18px}.crm-integration-editor__settings,.crm-mapping-row{grid-template-columns:1fr}.crm-integration-editor__heading{align-items:stretch;flex-direction:column}.crm-integration-editor__heading .button{align-self:flex-start}.crm-integration-editor__notice{flex-direction:column}.crm-integration-editor .page-actions{display:grid;grid-template-columns:1fr}.crm-integration-editor .page-actions .button{width:100%}.crm-audit-history li{align-items:flex-start;flex-direction:column;gap:5px}.crm-audit-history time{white-space:normal}}
 
+.door-builder-webhook{display:grid;gap:16px;margin:0 28px;padding:20px;border:1px solid #cbd7d5;border-radius:12px;background:#f8faf9}
+.door-builder-webhook__heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.door-builder-webhook__heading h3{font-size:18px}
+.door-builder-webhook__heading p{margin-top:6px;color:var(--color-muted);font-size:12px;line-height:1.55}
+.door-builder-webhook__meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 18px;margin:0}
+.door-builder-webhook__meta div{display:flex;justify-content:space-between;gap:12px;min-width:0}
+.door-builder-webhook__meta dt{color:var(--color-muted);font-size:10px;font-weight:700;text-transform:uppercase}
+.door-builder-webhook__meta dd{margin:0;overflow-wrap:anywhere;font-size:12px;text-align:right}
+.door-builder-webhook form{display:grid;gap:10px}
+.door-builder-webhook label{display:grid;gap:7px;color:var(--color-ink);font-size:11px;font-weight:700}
+.door-builder-webhook input{width:100%;min-height:44px;border:1px solid #bdc9c6;border-radius:8px;padding:9px 11px;background:#fff;color:var(--color-ink);font:inherit}
+.door-builder-webhook__hint,.door-builder-webhook__warning{margin:0;color:#58706c;font-size:12px;line-height:1.5}
+.door-builder-webhook__warning{padding:12px 14px;border-radius:8px;background:#fff8e8;color:#5c4a12}
+.door-builder-webhook__actions{display:flex;flex-wrap:wrap;gap:10px}
+.door-builder-webhook__actions .button{min-height:44px}
+.door-builder-webhook__result{margin:0;padding:12px 14px;border-radius:8px;background:#edf5f4;color:#34514d;font-size:12px;line-height:1.5}
+.door-builder-webhook__audit h4{font-size:13px}
+.door-builder-webhook__audit ul{display:grid;gap:0;margin:8px 0 0;padding:0;list-style:none;border:1px solid var(--color-border);border-radius:9px;overflow:hidden}
+.door-builder-webhook__audit li{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:11px 14px;background:#fff;font-size:11px}
+.door-builder-webhook__audit li+li{border-top:1px solid var(--color-border)}
+.door-builder-webhook__audit time{color:var(--color-muted);white-space:nowrap}
+@media(max-width:640px){.door-builder-webhook{margin-inline:18px;padding:16px}.door-builder-webhook__heading,.door-builder-webhook__audit li{align-items:flex-start;flex-direction:column}.door-builder-webhook__meta{grid-template-columns:1fr}.door-builder-webhook__meta div{align-items:flex-start;flex-direction:column;gap:4px}.door-builder-webhook__meta dd{text-align:left}.door-builder-webhook__actions{display:grid}.door-builder-webhook__actions .button{width:100%}.door-builder-webhook__audit time{white-space:normal}}
+
 /* Admin sidebar. Scoped to the admin shell so the dealer and billing rails stay unchanged. */
 body.admin-drawer-open { overflow: hidden; overscroll-behavior: none; }
 .portal-shell--admin .portal-main { margin-left: 252px; }
