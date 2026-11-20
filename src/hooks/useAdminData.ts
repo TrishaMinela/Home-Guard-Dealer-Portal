@@ -66,11 +66,18 @@ export function useAdminData(): AdminDataState {
       const secondaryById = !secondaryFlags || secondaryFlags.error
         ? null
         : new Map(secondaryFlags.data?.map((row) => [row.id, row]) ?? [])
+      const logoWebsites = dealerResult.error
+        ? null
+        : await supabase.from('dealers').select('id, logo_website_url, logo_secondary_website_url')
+      const websiteById = !logoWebsites || logoWebsites.error
+        ? null
+        : new Map(logoWebsites.data?.map((row) => [row.id, row]) ?? [])
       if (!isCurrent) return
       setDealers(loadedDealers.map((dealer) => ({
         ...dealer,
         ...(usableById ? { logo_generated_light_usable: usableById.get(dealer.id) ?? null } : {}),
         ...(secondaryById?.get(dealer.id) ?? {}),
+        ...(websiteById?.get(dealer.id) ?? {}),
       })))
       setLeads(leadResult.data ?? [])
       setIsLoading(false)

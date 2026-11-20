@@ -506,6 +506,17 @@ export function DealerCompanyProfilePage({
     return { ...dealer, ...(data as DealerAccount), ...assets }
   }
 
+  async function saveLogoWebsite(slot: 'primary' | 'secondary', url: string | null) {
+    const rpc = slot === 'primary' ? 'update_my_dealer_logo_website_url' : 'update_my_dealer_secondary_logo_website_url'
+    const { data, error: saveError } = await supabase.rpc(rpc, {
+      p_dealer_id: dealer.id,
+      ...(slot === 'primary' ? { p_logo_website_url: url ?? '' } : { p_logo_secondary_website_url: url ?? '' }),
+    }).single()
+    if (saveError) throw saveError
+    const column = slot === 'primary' ? 'logo_website_url' : 'logo_secondary_website_url'
+    return { ...dealer, ...(data as DealerAccount), [column]: url }
+  }
+
   async function saveLogoPlacement(placement: DealerLogoPlacement) {
     const { data, error: saveError } = await supabase
       .rpc('update_my_dealer_logo_placement', {
@@ -672,6 +683,7 @@ export function DealerCompanyProfilePage({
         <DealerLogoVariantSettings
           dealer={dealer}
           onSave={saveLogoVariants}
+          onSaveWebsite={saveLogoWebsite}
           onUpdated={onDealerUpdated}
           onHydrated={onDealerUpdated}
         />
