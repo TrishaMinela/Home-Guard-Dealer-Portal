@@ -59,7 +59,8 @@ export function AppearanceColorControl({ id, label, value, brand, open, onOpenCh
   const pickerHex = resolved ?? brand.primary
   const [hexDraft, setHexDraft] = useState(resolved ?? '')
   const [hexError, setHexError] = useState('')
-  const [position, setPosition] = useState({ top: 8, left: 8 })
+  const [position, setPosition] = useState({ top: 0, left: 0 })
+  const [placed, setPlaced] = useState(false)
   const choice = choiceForValue(value)
 
   useEffect(() => {
@@ -73,7 +74,9 @@ export function AppearanceColorControl({ id, label, value, brand, open, onOpenCh
     const place = () => {
       if (!buttonRef.current || !popoverRef.current) return
       const box = popoverRef.current.getBoundingClientRect()
+      if (box.height < 40) return
       setPosition(placePopover(buttonRef.current.getBoundingClientRect(), box.width, box.height))
+      setPlaced(true)
     }
     place()
     window.addEventListener('resize', place)
@@ -82,7 +85,9 @@ export function AppearanceColorControl({ id, label, value, brand, open, onOpenCh
       window.removeEventListener('resize', place)
       window.removeEventListener('scroll', place, true)
     }
-  }, [open, value])
+  }, [open])
+
+  if (!open && placed) setPlaced(false)
 
   useEffect(() => {
     if (!open) return
@@ -126,6 +131,7 @@ export function AppearanceColorControl({ id, label, value, brand, open, onOpenCh
       ref={popoverRef}
       id={dialogId}
       className="appearance-popover"
+      data-placed={placed ? 'true' : 'false'}
       role="dialog"
       aria-label={`${label} color`}
       style={{ top: position.top, left: position.left }}

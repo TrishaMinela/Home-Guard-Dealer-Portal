@@ -25,6 +25,7 @@ import { generatedLightLogoMessage, lightLogoEyebrow, logoVariantSavePlan, type 
 
 type DealerCompanyProfilePageProps = {
   dealer: DealerAccount
+  canEditAppearance?: boolean
   onDealerUpdated: (dealer: DealerAccount) => void
 }
 
@@ -54,6 +55,7 @@ const logoExtensions: Record<string, string> = {
 
 export function DealerCompanyProfilePage({
   dealer,
+  canEditAppearance = false,
   onDealerUpdated,
 }: DealerCompanyProfilePageProps) {
   const [form, setForm] = useState(() => dealerToForm(dealer))
@@ -698,7 +700,7 @@ export function DealerCompanyProfilePage({
         />
         <DealerLogoPlacementSettings dealer={dealer} onSave={saveLogoPlacement} onUpdated={onDealerUpdated} />
       </section>
-      <DoorBuilderAppearanceSettings dealer={dealer} mode="dealer" onSave={saveAppearance} />
+      {canEditAppearance && <DoorBuilderAppearanceSettings dealer={dealer} mode="dealer" canEdit onSave={saveAppearance} />}
 
       <section id="colors-and-typography">
         <div className="content-card dealer-form">

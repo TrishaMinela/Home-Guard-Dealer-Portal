@@ -76,7 +76,21 @@
   background: var(--db-card-background);
 }
 
+.dealer-cobranded[style*="--db-card-background"] .configuration-step .builder-options-scroll :is(
+  .door-style-catalog-grid > .door-catalog-card,
+  .door-style-product-grid > .door-catalog-card,
+  .sidelite-catalog-grid > .sidelite-catalog-card,
+  .door-configuration-grid > .door-configuration-card
+) {
+  background: var(--db-card-background);
+}
+
 .dealer-cobranded[style*="--db-card-title"] :is(.option-card, .glass-choice-card, .hardware-option-card, .find-door-choice, .find-door-pick) :is(strong, h3) {
+  color: var(--db-card-title);
+}
+
+.dealer-cobranded[style*="--db-card-title"] .configuration-step .builder-options-scroll :is(.door-catalog-card, .sidelite-catalog-card, .door-configuration-card, .door-image-card) .option-copy :is(strong, h3),
+.dealer-cobranded[style*="--db-card-title"] .configuration-step .builder-options-scroll .door-image-card .door-details-trigger {
   color: var(--db-card-title);
 }
 
@@ -88,13 +102,43 @@
   border-color: var(--db-card-border);
 }
 
+.dealer-cobranded[style*="--db-card-border"] .configuration-step .builder-options-scroll .door-style-catalog-grid > .door-catalog-card,
+.dealer-cobranded[style*="--db-card-border"] .configuration-step .builder-options-scroll .door-style-product-grid > .door-catalog-card,
+.dealer-cobranded[style*="--db-card-border"] .configuration-step .builder-options-scroll .sidelite-catalog-grid > .sidelite-catalog-card,
+.dealer-cobranded[style*="--db-card-border"] .configuration-step .builder-options-scroll .door-configuration-grid > .door-configuration-card {
+  border-top-color: var(--db-card-border);
+  border-right-color: var(--db-card-border);
+  border-bottom-color: var(--db-card-border);
+  border-left-color: var(--db-card-border);
+}
+
 .dealer-cobranded[style*="--db-card-selected"] :is(.option-card.selected, .glass-choice-card.selected, .hardware-option-card.selected, .find-door-choice.is-selected, .find-door-pick.is-selected) {
   border-color: var(--db-card-selected);
   outline-color: var(--db-card-selected);
 }
 
-.dealer-cobranded[style*="--db-card-hover"] :is(.option-card, .glass-choice-card, .hardware-option-card, .find-door-choice, .find-door-pick):hover {
-  border-color: var(--db-card-hover);
+.dealer-cobranded[style*="--db-card-selected"] .configuration-step .builder-options-scroll .door-style-catalog-grid > .door-catalog-card.selected,
+.dealer-cobranded[style*="--db-card-selected"] .configuration-step .builder-options-scroll .door-style-product-grid > .door-catalog-card.selected,
+.dealer-cobranded[style*="--db-card-selected"] .configuration-step .builder-options-scroll .sidelite-catalog-grid > .sidelite-catalog-card.selected,
+.dealer-cobranded[style*="--db-card-selected"] .configuration-step .builder-options-scroll .door-configuration-grid > .door-configuration-card.selected {
+  border-top-color: var(--db-card-selected);
+  border-right-color: var(--db-card-selected);
+  border-bottom-color: var(--db-card-selected);
+  border-left-color: var(--db-card-selected);
+  outline: 2px solid var(--db-card-selected);
+}
+
+.dealer-cobranded[style*="--db-card-hover"] :is(.option-card, .glass-choice-card, .hardware-option-card, .find-door-choice, .find-door-pick):hover,
+.dealer-cobranded[style*="--db-card-hover"] .configuration-step .builder-options-scroll .door-style-catalog-grid > .door-catalog-card:hover,
+.dealer-cobranded[style*="--db-card-hover"] .configuration-step .builder-options-scroll .door-style-product-grid > .door-catalog-card:hover,
+.dealer-cobranded[style*="--db-card-hover"] .configuration-step .builder-options-scroll .sidelite-catalog-grid > .sidelite-catalog-card:hover,
+.dealer-cobranded[style*="--db-card-hover"] .configuration-step .builder-options-scroll .door-configuration-grid > .door-configuration-card:hover {
+  border-top-color: var(--db-card-hover);
+  border-right-color: var(--db-card-hover);
+  border-bottom-color: var(--db-card-hover);
+  border-left-color: var(--db-card-hover);
+  outline: 2px solid var(--db-card-hover);
+  box-shadow: inset 0 0 0 2px var(--db-card-hover);
 }
 
 .dealer-cobranded[style*="--db-preview-background"] :is(aside, .find-door-stage, .db-preview-panel) {
@@ -167,7 +211,9 @@
   background: var(--db-footer-background);
 }
 
-.dealer-cobranded[style*="--db-footer-text"] > .shared-site-footer.site-footer {
+.dealer-cobranded[style*="--db-footer-text"] > .shared-site-footer.site-footer,
+.dealer-cobranded[style*="--db-footer-text"] > .shared-site-footer .site-footer-feedback small,
+.dealer-cobranded[style*="--db-footer-text"] > .shared-site-footer .site-footer-feedback small :is(a, span) {
   color: var(--db-footer-text);
 }
 

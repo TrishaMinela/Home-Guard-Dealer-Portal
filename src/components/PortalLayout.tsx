@@ -21,6 +21,7 @@ const navigation = [
 
 type PortalLayoutProps = {
   dealer: DealerAccount
+  dealerRole: 'dealer_admin' | 'member'
   email: string
   signOutError: string
   onSignOut: () => Promise<void>
@@ -29,6 +30,7 @@ type PortalLayoutProps = {
 
 export function PortalLayout({
   dealer,
+  dealerRole,
   email,
   signOutError,
   onSignOut,
@@ -148,6 +150,7 @@ export function PortalLayout({
             element={
               <DealerCompanyProfilePage
                 dealer={dealer}
+                canEditAppearance={dealerRole === 'dealer_admin'}
                 onDealerUpdated={onDealerUpdated}
               />
             }

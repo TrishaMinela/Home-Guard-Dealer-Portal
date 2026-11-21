@@ -151,6 +151,7 @@ function App() {
     <BrowserRouter>
       <PortalLayout
         dealer={access.dealer}
+        dealerRole={access.dealerRole}
         email={user.email ?? ''}
         signOutError={error}
         onSignOut={handleSignOut}

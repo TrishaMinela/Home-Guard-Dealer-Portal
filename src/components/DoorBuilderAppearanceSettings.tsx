@@ -22,6 +22,7 @@ import '../styles/appearanceControls.css'
 type Props = {
   dealer: AdminDealer
   mode: 'admin' | 'dealer'
+  canEdit?: boolean
   loadFromServer?: boolean
   initialAppearance?: DoorBuilderAppearance | null
   onSave: (value: DoorBuilderAppearance | null) => Promise<void>
@@ -41,6 +42,7 @@ const GROUPS = [...new Set(APPEARANCE_FIELDS.map((field) => field.group))]
 export function DoorBuilderAppearanceSettings({
   dealer,
   mode,
+  canEdit = mode === 'admin',
   loadFromServer = true,
   initialAppearance = null,
   onSave,
@@ -96,6 +98,8 @@ export function DoorBuilderAppearanceSettings({
     window.addEventListener('beforeunload', onBeforeUnload)
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
   }, [dirty])
+
+  if (!canEdit) return null
 
   const setToken = (key: AppearanceToken, value: AppearanceValue | null) => {
     setMessage('')
