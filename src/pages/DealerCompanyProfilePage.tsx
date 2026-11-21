@@ -554,7 +554,7 @@ export function DealerCompanyProfilePage({
         <a href="#company-details">Company Details</a>
         <a href="#logos">Logos</a>
         <a href="#door-builder-branding">Door Builder Branding</a>
-        <a href="#door-builder-appearance">Door Builder Appearance</a>
+        {canEditAppearance && <a href="#door-builder-appearance">Door Builder Appearance</a>}
         <a href="#colors-and-typography">Colors and Typography</a>
         <a href="#website-address">Website Address</a>
       </nav>

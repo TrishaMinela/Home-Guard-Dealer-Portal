@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { AdminDealer } from './types/admin'
 import { DoorBuilderAppearanceSettings } from './components/DoorBuilderAppearanceSettings'
+import { DealerCompanyProfilePage } from './pages/DealerCompanyProfilePage'
 import type { DoorBuilderAppearance } from './utils/doorBuilderAppearance'
 
 const squareLogo = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="500" height="518"><rect width="500" height="518" fill="none"/><rect x="40" y="36" width="420" height="420" rx="24" fill="#235176"/><text x="250" y="270" text-anchor="middle" fill="#fff" font-size="64" font-family="Arial">DER</text></svg>')}`
@@ -55,5 +56,15 @@ export function AppearanceHarness() {
       />
       <button type="button" onClick={() => setReloadKey((value) => value + 1)}>Reload appearance</button>
     </main>
+  )
+}
+
+export function ProfileNavHarness({ canEditAppearance }: { canEditAppearance: boolean }) {
+  return (
+    <DealerCompanyProfilePage
+      dealer={dealer}
+      canEditAppearance={canEditAppearance}
+      onDealerUpdated={() => {}}
+    />
   )
 }
