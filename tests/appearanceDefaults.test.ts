@@ -140,6 +140,46 @@ test('a selected preview card keeps its selected border while hovered', async ()
   await page.close()
 })
 
+test('every color row stays inside its card at every checked width', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } })
+  await openHarness(page)
+  for (const width of [320, 390, 768, 1024, 1280, 1440]) {
+    await page.setViewportSize({ width, height: 900 })
+    const problems = await page.evaluate(() => {
+      const overlaps = (a: DOMRect, b: DOMRect) => a.left < b.right - 0.5 && a.right > b.left + 0.5 && a.top < b.bottom - 0.5 && a.bottom > b.top + 0.5
+      const inside = (inner: DOMRect, outer: DOMRect) => inner.left >= outer.left - 1 && inner.right <= outer.right + 1 && inner.top >= outer.top - 1 && inner.bottom <= outer.bottom + 1 && inner.width > 8 && inner.height > 8
+      const preview = document.querySelector('.db-preview-shell')?.getBoundingClientRect()
+      const found: string[] = []
+      const rows = [...document.querySelectorAll<HTMLElement>('.appearance-color')]
+      rows.forEach((row, index) => {
+        const group = row.closest('.appearance-group')
+        if (!group) {
+          found.push(`${index} missing card`)
+          return
+        }
+        const card = group.getBoundingClientRect()
+        const parts = [row.querySelector(':scope > span'), row.querySelector('.appearance-color__trigger'), row.querySelector('.appearance-color__default')].map((element) => element?.getBoundingClientRect())
+        if (parts.some((box) => !box)) {
+          found.push(`${index} missing control`)
+          return
+        }
+        const [label, color, reset] = parts as DOMRect[]
+        if (!inside(label, card) || !inside(color, card) || !inside(reset, card)) found.push(`${index} escapes ${Math.round(card.width)}px card`)
+        if (overlaps(label, color) || overlaps(label, reset) || overlaps(color, reset)) found.push(`${index} controls overlap`)
+        if (preview && (overlaps(label, preview) || overlaps(color, preview) || overlaps(reset, preview))) found.push(`${index} hits the preview`)
+        for (let other = index + 1; other < rows.length; other += 1) {
+          const neighbour = rows[other].getBoundingClientRect()
+          if (overlaps(color, neighbour) || overlaps(reset, neighbour) || overlaps(label, neighbour)) found.push(`${index} hits row ${other}`)
+        }
+      })
+      return { count: rows.length, found }
+    })
+    assert.equal(problems.count, 39, `${width}px row count`)
+    assert.deepEqual(problems.found, [], `${width}px ${problems.found.join('; ')}`)
+  }
+  await page.close()
+})
+
 test('the admin dealer nav scrolls to the existing appearance section', async () => {
   const page = await browser!.newPage({ viewport: { width: 1100, height: 700 } })
   await page.goto(`http://127.0.0.1:${port}/#admin-nav-harness`, { waitUntil: 'networkidle' })
