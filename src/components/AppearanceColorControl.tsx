@@ -125,6 +125,7 @@ export function AppearanceColorControl({ id, label, value, brand, open, onOpenCh
     }
   }
 
+  const inheriting = value == null
   const swatch = resolved ?? 'transparent'
   const popover = open ? createPortal(
     <div
@@ -200,8 +201,17 @@ export function AppearanceColorControl({ id, label, value, brand, open, onOpenCh
         aria-controls={open ? dialogId : undefined}
         onClick={() => onOpenChange(!open)}
       >
-        <span className={`appearance-color__swatch ${resolved ? '' : 'is-inherit'}`} style={resolved ? { background: swatch } : undefined} />
+        <span className={`appearance-color__swatch ${inheriting ? 'is-inherit' : ''}`} style={resolved ? { background: swatch } : undefined} />
         <span>{describeAppearanceValue(value, brand)}</span>
+      </button>
+      <button
+        type="button"
+        className={`appearance-color__default${inheriting ? ' is-inactive' : ''}`}
+        aria-disabled={inheriting}
+        disabled={inheriting}
+        onClick={() => onChange(null)}
+      >
+        Default
       </button>
       {popover}
     </div>

@@ -11,6 +11,7 @@ export const dealerDetailSectionScrollGap = 12
 export const dealerDetailSections: readonly DealerDetailSection[] = [
   { id: 'company-details', label: 'Company Details' },
   { id: 'branding', label: 'Branding' },
+  { id: 'door-builder-appearance', label: 'Door Builder Appearance' },
   { id: 'design', label: 'Typography & Design' },
   { id: 'door-builder-lead-webhook', label: 'Lead Webhook' },
   { id: 'marketing-tools', label: 'Marketing Tools', access: 'credentials' },

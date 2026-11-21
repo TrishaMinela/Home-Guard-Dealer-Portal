@@ -112,7 +112,8 @@
   border-left-color: var(--db-card-border);
 }
 
-.dealer-cobranded[style*="--db-card-selected"] :is(.option-card.selected, .glass-choice-card.selected, .hardware-option-card.selected, .find-door-choice.is-selected, .find-door-pick.is-selected) {
+.dealer-cobranded[style*="--db-card-selected"] :is(.option-card.selected, .glass-choice-card.selected, .hardware-option-card.selected, .find-door-choice.is-selected, .find-door-pick.is-selected),
+.dealer-cobranded[style*="--db-card-selected"] :is(.option-card.selected, .glass-choice-card.selected, .hardware-option-card.selected, .find-door-choice.is-selected, .find-door-pick.is-selected):hover {
   border-color: var(--db-card-selected);
   outline-color: var(--db-card-selected);
 }
@@ -128,11 +129,11 @@
   outline: 2px solid var(--db-card-selected);
 }
 
-.dealer-cobranded[style*="--db-card-hover"] :is(.option-card, .glass-choice-card, .hardware-option-card, .find-door-choice, .find-door-pick):hover,
-.dealer-cobranded[style*="--db-card-hover"] .configuration-step .builder-options-scroll .door-style-catalog-grid > .door-catalog-card:hover,
-.dealer-cobranded[style*="--db-card-hover"] .configuration-step .builder-options-scroll .door-style-product-grid > .door-catalog-card:hover,
-.dealer-cobranded[style*="--db-card-hover"] .configuration-step .builder-options-scroll .sidelite-catalog-grid > .sidelite-catalog-card:hover,
-.dealer-cobranded[style*="--db-card-hover"] .configuration-step .builder-options-scroll .door-configuration-grid > .door-configuration-card:hover,
+.dealer-cobranded[style*="--db-card-hover"] :is(.option-card, .glass-choice-card, .hardware-option-card, .find-door-choice, .find-door-pick):hover:not(.selected),
+.dealer-cobranded[style*="--db-card-hover"] .configuration-step .builder-options-scroll .door-style-catalog-grid > .door-catalog-card:hover:not(.selected),
+.dealer-cobranded[style*="--db-card-hover"] .configuration-step .builder-options-scroll .door-style-product-grid > .door-catalog-card:hover:not(.selected),
+.dealer-cobranded[style*="--db-card-hover"] .configuration-step .builder-options-scroll .sidelite-catalog-grid > .sidelite-catalog-card:hover:not(.selected),
+.dealer-cobranded[style*="--db-card-hover"] .configuration-step .builder-options-scroll .door-configuration-grid > .door-configuration-card:hover:not(.selected),
 .dealer-cobranded[style*="--db-card-hover"] .configuration-step .builder-options-scroll [data-equal-product-grid] > :is(.option-card, .glass-choice-card, .hardware-option-card):hover:not(.selected) {
   border-top-color: var(--db-card-hover);
   border-right-color: var(--db-card-hover);

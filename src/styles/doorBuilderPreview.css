@@ -20,13 +20,13 @@
 .db-appearance-preview .section-heading h1:after, .db-appearance-preview .find-my-door-main h1:after { content: ""; display: block; width: 42px; height: 4px; margin-top: 8px; background: #f8d30e; }
 .db-appearance-preview .section-heading p, .db-appearance-preview .find-my-door-main p { margin: 8px 0 0; font-size: 12px; line-height: 1.45; }
 .db-appearance-preview .option-card { display: grid; gap: 4px; margin-top: 10px; padding: 12px; border: 1px solid var(--db-card-border, #dfe3e8); border-radius: 8px; background: var(--db-card-background, #fff); }
-.db-appearance-preview .option-card.selected { border-color: var(--db-card-selected, var(--dealer-primary, #0d666c)); outline: 2px solid var(--db-card-selected, var(--dealer-primary, #0d666c)); }
 .db-appearance-preview .option-card:hover:not(.selected),
 .db-appearance-preview .hardware-option-card:hover:not(.selected) { border-color: var(--db-card-hover, var(--db-card-border, #dfe3e8)); }
 .db-appearance-preview .hardware-option-card { border: 1px solid var(--db-card-border, #dfe3e8); background: var(--db-card-background, #fff); }
-.db-appearance-preview .hardware-option-card.selected,
-.db-appearance-preview .hardware-option-card.selected:hover,
-.db-appearance-preview .option-card.selected:hover { border-color: var(--db-card-selected, var(--dealer-primary, #0d666c)); outline: 2px solid var(--db-card-selected, var(--dealer-primary, #0d666c)); }
+.db-appearance-preview.dealer-cobranded .option-card.selected,
+.db-appearance-preview.dealer-cobranded .option-card.selected:hover,
+.db-appearance-preview.dealer-cobranded .hardware-option-card.selected,
+.db-appearance-preview.dealer-cobranded .hardware-option-card.selected:hover { border-color: var(--db-card-selected, var(--dealer-primary, #0d666c)); outline: 2px solid var(--db-card-selected, var(--dealer-primary, #0d666c)); }
 .db-appearance-preview .option-card strong { font-size: 13px; color: var(--db-card-title, #05040b); }
 .db-appearance-preview .option-copy span { color: #596267; font-size: 11px; }
 .db-appearance-preview .option-visual { height: 36px; border-radius: 4px; background: #e4ebe8; }
