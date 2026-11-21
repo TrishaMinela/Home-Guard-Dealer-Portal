@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { AdminDealer } from '../types/admin'
 import { AppearanceColorControl } from './AppearanceColorControl'
@@ -55,6 +55,7 @@ export function DoorBuilderAppearanceSettings({
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const resetDialogRef = useRef<HTMLDialogElement>(null)
   const brand = resolvedBrandColors({ primaryColor: dealer.primary_color, secondaryColor: dealer.secondary_color })
   const ready = !loadFromServer || loadedFor === dealer.id
   const shownDraft = ready ? draft : null
@@ -184,9 +185,17 @@ export function DoorBuilderAppearanceSettings({
       </div>
       <div className="dealer-form__actions appearance-toolbar">
         <button className="button button--outline" type="button" disabled={!dirty || saving} onClick={() => { setDraft(saved); setOpenKey(null); setError(''); setMessage('') }}>Cancel Changes</button>
-        <button className="button button--outline" type="button" disabled={saving || appearanceEquals(draft, null)} onClick={() => { setDraft(null); setOpenKey(null); setError(''); setMessage('') }}>Reset to Default</button>
+        <button className="button button--outline" type="button" disabled={saving || appearanceEquals(draft, null)} onClick={() => resetDialogRef.current?.showModal()}>Reset All Colors to Default</button>
         <button className="button button--primary" type="button" disabled={!dirty || saving || !ready} onClick={() => void save()}>{saving ? 'Saving...' : 'Save Appearance'}</button>
       </div>
+      <dialog ref={resetDialogRef} className="appearance-confirm" role="alertdialog" aria-labelledby="reset-all-colors-title" aria-describedby="reset-all-colors-body">
+        <h3 id="reset-all-colors-title">Reset all colors to default?</h3>
+        <p id="reset-all-colors-body">This clears every Door Builder color override in this draft. Brand colors, logos, logo links, and typography stay as they are. Nothing is saved until you save appearance.</p>
+        <div className="appearance-confirm__actions">
+          <button className="button button--outline" type="button" onClick={() => resetDialogRef.current?.close()}>Cancel</button>
+          <button className="button button--primary" type="button" onClick={() => { setDraft(null); setOpenKey(null); setError(''); setMessage(''); resetDialogRef.current?.close() }}>Reset All Colors to Default</button>
+        </div>
+      </dialog>
     </section>
   )
 }
