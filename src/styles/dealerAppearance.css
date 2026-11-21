@@ -132,13 +132,28 @@
 .dealer-cobranded[style*="--db-card-hover"] .configuration-step .builder-options-scroll .door-style-catalog-grid > .door-catalog-card:hover,
 .dealer-cobranded[style*="--db-card-hover"] .configuration-step .builder-options-scroll .door-style-product-grid > .door-catalog-card:hover,
 .dealer-cobranded[style*="--db-card-hover"] .configuration-step .builder-options-scroll .sidelite-catalog-grid > .sidelite-catalog-card:hover,
-.dealer-cobranded[style*="--db-card-hover"] .configuration-step .builder-options-scroll .door-configuration-grid > .door-configuration-card:hover {
+.dealer-cobranded[style*="--db-card-hover"] .configuration-step .builder-options-scroll .door-configuration-grid > .door-configuration-card:hover,
+.dealer-cobranded[style*="--db-card-hover"] .configuration-step .builder-options-scroll [data-equal-product-grid] > :is(.option-card, .glass-choice-card, .hardware-option-card):hover:not(.selected) {
   border-top-color: var(--db-card-hover);
   border-right-color: var(--db-card-hover);
   border-bottom-color: var(--db-card-hover);
   border-left-color: var(--db-card-hover);
-  outline: 2px solid var(--db-card-hover);
-  box-shadow: inset 0 0 0 2px var(--db-card-hover);
+}
+
+.dealer-cobranded[style*="--db-card-border"] .configuration-step .builder-options-scroll [data-equal-product-grid] > :is(.option-card, .glass-choice-card, .hardware-option-card) {
+  border-top-color: var(--db-card-border);
+  border-right-color: var(--db-card-border);
+  border-bottom-color: var(--db-card-border);
+  border-left-color: var(--db-card-border);
+}
+
+.dealer-cobranded[style*="--db-card-selected"] .configuration-step .builder-options-scroll [data-equal-product-grid] > :is(.option-card, .glass-choice-card, .hardware-option-card).selected,
+.dealer-cobranded[style*="--db-card-selected"] .configuration-step .builder-options-scroll [data-equal-product-grid] > :is(.option-card, .glass-choice-card, .hardware-option-card).selected:hover {
+  border-top-color: var(--db-card-selected);
+  border-right-color: var(--db-card-selected);
+  border-bottom-color: var(--db-card-selected);
+  border-left-color: var(--db-card-selected);
+  outline-color: var(--db-card-selected);
 }
 
 .dealer-cobranded[style*="--db-preview-background"] :is(aside, .find-door-stage, .db-preview-panel) {
