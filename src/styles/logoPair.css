@@ -119,15 +119,41 @@
 @media (max-width: 560px) {
   .dealer-cobranded > header .logo-pair,
   .find-my-door-app > header .logo-pair {
-    --logo-pair-max-height: 40px;
+    --logo-pair-max-height: 32px;
+    --logo-pair-gap: 8px;
+    width: max-content;
+    max-width: 100%;
+  }
+  .dealer-header-brand:has(.logo-pair),
+  .dealer-brand-home:has(.logo-pair) {
+    width: 100%;
+    min-width: 0;
   }
   .dealer-brand-mark.dealer-brand-mark--pair.logo-pair > .dealer-logo-link,
   .dealer-brand-mark.dealer-brand-mark--pair.logo-pair > img {
-    max-width: min(140px, 46%);
+    flex: 0 1 auto;
+    max-width: 150px;
+    min-width: 0;
   }
   .dealer-hero-logo .logo-pair,
   .home-app.dealer-logo-in-hero .dealer-hero-logo .logo-pair {
     --logo-pair-max-height: 72px;
+  }
+}
+
+@media (max-width: 400px) {
+  .dealer-cobranded > header:has(.logo-pair) .dealer-website-link {
+    width: 36px;
+    max-width: 36px;
+    min-height: 36px;
+    padding: 0;
+    justify-content: center;
+    gap: 0;
+    font-size: 0;
+  }
+  .dealer-cobranded > header:has(.logo-pair) .dealer-website-link svg {
+    width: 15px;
+    height: 15px;
   }
 }
 

@@ -13,6 +13,7 @@
 .appearance-color__swatch.is-inherit { background: repeating-conic-gradient(#d5dbdc 0 25%, #fff 0 50%) 0 0 / 8px 8px; }
 .appearance-color__trigger > span:last-child { min-width: 0; overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .appearance-popover { position: fixed; z-index: 4000; display: grid; gap: 10px; width: min(300px, calc(100vw - 16px)); padding: 12px; border: 1px solid #d5dfdc; border-radius: 12px; background: #fff; box-shadow: 0 18px 40px rgba(16, 33, 36, .18); }
+.appearance-popover[data-placed="false"] { visibility: hidden; pointer-events: none; }
 .appearance-popover__choices { display: flex; flex-wrap: wrap; gap: 6px; }
 .appearance-popover__choices button { min-height: 32px; border: 1px solid #c5d0cc; border-radius: 999px; padding: 0 10px; background: #fff; font-size: 11px; font-weight: 700; }
 .appearance-popover__choices button.is-selected { border-color: var(--color-teal, #0d666c); background: rgba(13, 102, 108, .08); }

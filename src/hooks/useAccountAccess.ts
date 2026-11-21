@@ -66,7 +66,7 @@ export function useAccountAccess(user: User | null) {
 
       const { data: memberships, error: membershipError } = await supabase
         .from('dealer_users')
-        .select('dealer_id')
+        .select('dealer_id, role')
         .eq('user_id', authenticatedUser.id)
 
       if (!isCurrent) return
@@ -135,6 +135,7 @@ export function useAccountAccess(user: User | null) {
         userId: authenticatedUser.id,
         type: 'dealer',
         dealer: dealerWithSavedLogos(dealerRecord, lightLogos, blackLogos, secondaryLogos, logoWebsites),
+        dealerRole: membership.role === 'dealer_admin' ? 'dealer_admin' : 'member',
         message: '',
       })
     }
