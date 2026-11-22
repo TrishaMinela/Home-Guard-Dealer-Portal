@@ -701,13 +701,22 @@ select:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,10
   display: flex; justify-content: flex-end; gap: 10px; margin-top: 28px; padding: 20px 28px;
   border-top: 1px solid var(--color-border); background: rgba(223,228,227,.2);
 }
-.disable-confirmation {
-  display: flex; align-items: center; justify-content: space-between; gap: 24px;
-  margin-bottom: 20px; padding: 20px 22px; border: 1px solid rgba(165,42,42,.2);
-  border-radius: var(--radius-card); background: var(--color-white); box-shadow: var(--shadow-card);
+.disable-dealer-modal {
+  position: fixed; inset: 0; z-index: 240; display: grid; place-items: center;
+  padding: 16px; background: rgba(5, 4, 11, .58); overflow: auto;
 }
-.disable-confirmation h2 { font-size: 17px; }
-.disable-confirmation p { margin-top: 6px; color: var(--color-muted); font-size: 12px; line-height: 1.55; }
+.disable-dealer-modal__dialog {
+  width: min(480px, 100%); max-height: calc(100dvh - 32px); overflow: auto; margin: auto;
+  padding: 22px; border: 1px solid rgba(165,42,42,.2); border-radius: var(--radius-card);
+  background: var(--color-white); box-shadow: 0 24px 80px rgba(5, 4, 11, .3);
+}
+.disable-dealer-modal__dialog h2 { margin: 0; font-size: 22px; }
+.disable-dealer-modal__dialog p { margin: 8px 0 0; color: var(--color-muted); font-size: 14px; line-height: 1.55; }
+.disable-dealer-modal__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+@media (max-width: 480px) {
+  .disable-dealer-modal__actions { align-items: stretch; flex-direction: column; }
+  .disable-dealer-modal__actions .button { width: 100%; }
+}
 .dealer-detail { overflow: hidden; }
 .dealer-detail__heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .dealer-detail__grid {
@@ -1273,7 +1282,6 @@ select:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,10
   .form-field--wide { grid-column: auto; }
   .dealer-form__error { margin: 0 18px; }
   .dealer-form__actions { padding: 18px; }
-  .disable-confirmation { align-items: stretch; flex-direction: column; padding: 18px; }
   .dealer-detail__grid { grid-template-columns: 1fr; padding: 6px 18px 20px; }
   .dealer-detail__item:nth-child(odd), .dealer-detail__item:nth-child(even) {
     padding: 16px 0; border-left: 0;

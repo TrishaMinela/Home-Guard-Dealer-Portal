@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent, type ReactNode } from 'react'
+import { useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { AdminDealer } from '../types/admin'
@@ -19,6 +19,7 @@ import { DealerDetailSectionNav } from '../components/DealerDetailSectionNav'
 import { DealerCrmIntegrations } from '../components/DealerCrmIntegrations'
 import { DoorBuilderLeadWebhook } from '../components/DoorBuilderLeadWebhook'
 import { DealerSetupChecklist } from '../components/DealerSetupChecklist'
+import { DisableDealerDialog } from '../components/DisableDealerDialog'
 
 const logoExtensions: Record<string, string> = {
   'image/png': 'png',
@@ -71,6 +72,7 @@ export function DealerDetailPage({
 }: DealerDetailPageProps) {
   const { dealerId } = useParams()
   const [isConfirmingDisable, setIsConfirmingDisable] = useState(false)
+  const disableButtonRef = useRef<HTMLButtonElement>(null)
   const [actionError, setActionError] = useState('')
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [isReviewingSlug, setIsReviewingSlug] = useState(false)
@@ -481,6 +483,7 @@ export function DealerDetailPage({
         <div className="page-actions">
           {dealer.is_active ? (
             <button
+              ref={disableButtonRef}
               className="button button--danger-outline"
               type="button"
               onClick={() => setIsConfirmingDisable(true)}
@@ -516,12 +519,14 @@ export function DealerDetailPage({
 
       <DealerSetupChecklist dealer={dealer} dealerId={dealer.id} />
 
-      {isConfirmingDisable && (
-        <section className="disable-confirmation" role="alertdialog" aria-labelledby="disable-title">
-          <div><h2 id="disable-title">Disable {dealer.company_name}?</h2><p>This dealer will remain in Home Guard records, but will be marked inactive.</p></div>
-          <div className="page-actions"><button className="button button--outline" type="button" onClick={() => setIsConfirmingDisable(false)}>Cancel</button><button className="button button--danger" type="button" disabled={isUpdatingStatus} onClick={() => void updateStatus(false)}>{isUpdatingStatus ? 'Disabling...' : 'Disable'}</button></div>
-        </section>
-      )}
+      <DisableDealerDialog
+        open={isConfirmingDisable}
+        companyName={dealer.company_name}
+        isUpdating={isUpdatingStatus}
+        onCancel={() => setIsConfirmingDisable(false)}
+        onConfirm={() => void updateStatus(false)}
+        returnFocusRef={disableButtonRef}
+      />
 
       <div className="dealer-detail-page__sections">
       <section id="company-details" className="content-card dealer-management-card dealer-detail" aria-labelledby="company-details-heading">
