@@ -209,6 +209,13 @@ export function appearanceUsesLegacyMapping(config: DoorBuilderAppearance | null
   return false
 }
 
+/** Present only for a six-key document. Older JSON omits it so the original CSS applies. */
+export function appearanceMode(config: DoorBuilderAppearance | null | undefined): 'simple' | undefined {
+  if (!config || appearanceUsesLegacyMapping(config)) return undefined
+  const hasSetting = SIMPLIFIED_APPEARANCE_FIELDS.some((field) => config[field.key])
+  return hasSetting ? 'simple' : undefined
+}
+
 /** Save payload: only the six editor settings. Non black/white text and every other key are dropped. */
 export function appearanceEditorPayload(config: DoorBuilderAppearance | null | undefined): DoorBuilderAppearance | null {
   if (!config) return null

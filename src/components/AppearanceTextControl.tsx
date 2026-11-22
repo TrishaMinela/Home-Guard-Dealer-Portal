@@ -8,16 +8,14 @@ type Props = {
   onChange: (value: AppearanceValue | null) => void
 }
 
-const CHOICES: Array<{ id: 'black' | 'white' | 'default'; label: string; value: AppearanceValue | null }> = [
+const CHOICES: Array<{ id: 'black' | 'white'; label: string; value: AppearanceValue }> = [
   { id: 'black', label: 'Black', value: APPEARANCE_BLACK },
   { id: 'white', label: 'White', value: APPEARANCE_WHITE },
-  { id: 'default', label: 'Default', value: null },
 ]
 
 function selectedChoice(value: AppearanceValue | null) {
   if (value === APPEARANCE_BLACK) return 'black'
   if (value === APPEARANCE_WHITE) return 'white'
-  if (value == null) return 'default'
   return null
 }
 

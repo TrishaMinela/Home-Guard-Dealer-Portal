@@ -12,6 +12,7 @@ import {
   appearanceFromStorage,
   appearanceRpcArgs,
   appearanceUpdate,
+  appearanceMode,
   appearanceUsesLegacyMapping,
   choiceForValue,
   hueFromPointer,
@@ -188,6 +189,9 @@ test('the six settings expand together and a legacy key keeps the old per-key co
   assert.equal(legacy['--db-footer-link'], '#0000ff')
   assert.equal(appearanceUsesLegacyMapping({ headerText: '#111111' }), true)
   assert.equal(appearanceUsesLegacyMapping({ headerText: '#ffffff', bodyBackground: '#abcdef' }), false)
+  assert.equal(appearanceMode(null), undefined)
+  assert.equal(appearanceMode({ headerIcon: '#123456', headerText: '#ffffff' }), undefined)
+  assert.equal(appearanceMode({ headerBackground: '#112233', bodyText: '#ffffff' }), 'simple')
   assert.deepEqual(appearanceEditorPayload({
     headerBackground: '#FFFFFF',
     headerText: '#FFFFFF',

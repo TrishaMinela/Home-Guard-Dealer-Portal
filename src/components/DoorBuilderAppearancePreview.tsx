@@ -87,7 +87,7 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
         </div>
       </div>
       <div className={`db-preview-frame ${mobile ? 'is-mobile' : 'is-desktop'}`}>
-        <div className={`dealer-cobranded db-appearance-preview ${headerIsLight ? 'dealer-secondary-light' : ''}`} style={style}>
+        <div className={`dealer-cobranded db-appearance-preview ${headerIsLight ? 'dealer-secondary-light' : ''}`} data-appearance-mode={appearanceEditorPayload(appearance) ? 'simple' : undefined} style={style}>
           <header aria-label="Homepage header">{logos(home)}<span className="home-return"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2 7.5 8 2l6 5.5V14H2Z" fill="currentColor" /></svg>Home</span></header>
           <header className="find-my-door-header" aria-label="Find My Door header">{logos(finder)}<span className="find-my-door-builder-link">Door Builder</span></header>
           <header aria-label="Builder header">{logos(builder)}<span className="home-return">Home</span></header>

@@ -50,7 +50,14 @@
 .appearance-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 @media (min-width: 1024px) {
   .appearance-layout { grid-template-columns: minmax(0, 1.05fr) minmax(280px, .95fr); }
-  .db-preview-shell { position: sticky; top: var(--dealer-section-scroll-offset, 76px); align-self: start; z-index: 1; }
+  .db-preview-shell {
+    position: sticky;
+    top: var(--dealer-section-scroll-offset, 76px);
+    align-self: start;
+    z-index: 1;
+    max-height: calc(100dvh - var(--dealer-section-scroll-offset, 76px) - 28px);
+    overflow: auto;
+  }
 }
 @media (max-width: 1023px) {
   .appearance-settings { padding: 20px 16px; }

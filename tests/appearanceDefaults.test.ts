@@ -54,7 +54,7 @@ async function setHex(page: Page, id: string, hex: string) {
   await page.locator('.appearance-popover').waitFor({ state: 'hidden' })
 }
 
-function textChoice(page: Page, id: string, name: 'Black' | 'White' | 'Default') {
+function textChoice(page: Page, id: string, name: 'Black' | 'White') {
   return page.locator('.appearance-color').filter({ has: page.locator(`#${id}`) }).getByRole('radio', { name, exact: true })
 }
 
@@ -262,18 +262,43 @@ test('legacy appearance shows the replacement note and save keeps only the six s
   const page = await browser!.newPage({ viewport: { width: 1280, height: 1000 } })
   await page.goto(`http://127.0.0.1:${port}/?legacy=1#appearance-harness`, { waitUntil: 'networkidle' })
   await page.getByText('This dealer has older advanced color settings; saving will replace them with the simplified settings.').waitFor()
+  assert.equal(await page.getByText('Appearance has unsaved changes.').count(), 0)
+  assert.equal(await page.getByRole('button', { name: 'Save Appearance' }).isDisabled(), true)
   assert.equal((await headerPaint(page)).background, 'rgb(17, 34, 51)')
   assert.equal((await paint(page, '.db-appearance-preview .db-preview-panel')).background, 'rgb(1, 2, 3)')
   assert.notEqual((await paint(page, '.db-appearance-preview .option-card')).background, 'rgb(255, 244, 214)')
+  await textChoice(page, 'appearance-footerText', 'White').click()
+  await page.getByText('Appearance has unsaved changes.').waitFor()
   await page.getByRole('button', { name: 'Save Appearance' }).click()
   await page.getByText('Door Builder appearance saved.').waitFor()
   const saved = JSON.parse(await page.getByTestId('saved-appearance').innerText())
-  assert.deepEqual(saved, { headerBackground: '#112233', bodyBackground: '#010203' })
+  assert.deepEqual(saved, { headerBackground: '#112233', bodyBackground: '#010203', footerText: '#ffffff' })
   assert.equal(await page.locator('.portal-alert', { hasText: 'older advanced color settings' }).count(), 0)
   await page.getByRole('button', { name: 'Reload appearance' }).click()
   await page.getByRole('heading', { name: 'Door Builder Appearance' }).waitFor()
   assert.equal((await headerPaint(page)).background, 'rgb(17, 34, 51)')
   assert.equal(await page.locator('.portal-alert', { hasText: 'older advanced color settings' }).count(), 0)
+  await page.close()
+})
+
+test('the preview stays on screen while the footer group is edited', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1440, height: 900 } })
+  await openHarness(page)
+  const footer = page.locator('fieldset').filter({ has: page.locator('legend', { hasText: 'Footer' }) })
+  for (const width of [1024, 1280, 1440]) {
+    await page.setViewportSize({ width, height: 900 })
+    await footer.evaluate((element) => element.scrollIntoView({ block: 'center', inline: 'nearest' }))
+    const box = await page.locator('.db-preview-shell').evaluate((element) => {
+      const rect = element.getBoundingClientRect()
+      return { top: rect.top, bottom: rect.bottom, height: rect.height }
+    })
+    const visibleTop = Math.max(box.top, 0)
+    const visibleBottom = Math.min(box.bottom, 900)
+    assert.ok(visibleBottom - visibleTop > 240, `${width}px visible preview ${visibleBottom - visibleTop}`)
+    assert.ok(box.top < 200 && box.bottom > 200, `${width}px preview ${box.top}-${box.bottom}`)
+    assert.ok(box.height < 880, `${width}px preview height ${box.height}`)
+  }
+  assert.equal(await page.locator('.appearance-text').getByRole('radio', { name: 'Default', exact: true }).count(), 0)
   await page.close()
 })
 

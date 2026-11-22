@@ -60,8 +60,7 @@ export function DoorBuilderAppearanceSettings({
   const brand = resolvedBrandColors({ primaryColor: dealer.primary_color, secondaryColor: dealer.secondary_color })
   const ready = !loadFromServer || loadedFor === dealer.id
   const shownDraft = ready ? draft : null
-  const payload = appearanceEditorPayload(shownDraft)
-  const dirty = ready && !appearanceEquals(payload, saved)
+  const dirty = ready && !appearanceEquals(draft, saved)
   const legacyNotice = ready && appearanceUsesLegacyMapping(saved)
   const warnings = useMemo(
     () => appearanceContrastWarnings(appearanceEditorPayload(draft), { primaryColor: dealer.primary_color, secondaryColor: dealer.secondary_color }),

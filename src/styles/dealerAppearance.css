@@ -2,10 +2,6 @@
    Header background, text, and accent fall back to the current brand header.
    Find My Door keeps its black and gold header until those tokens are set.
    Product artwork, door renders, and card images are not recolored.
-   Simplified settings set --db-body-background and --db-preview-background together
-   so one main background paints the configuration area and the door preview.
-   Header text also sets the icon and header-button tokens. Footer text also sets
-   the link and icon tokens. Legacy JSON still sets only the tokens it stored.
    Keep this file identical in the Portal and the Door Builder. */
 
 .app.dealer-cobranded > header,
@@ -38,11 +34,8 @@
   border-color: var(--db-header-button-border);
 }
 
-.dealer-cobranded[style*="--db-body-background"] :is(.builder-panel, .home-page, .home-hero, .find-my-door-main, .find-door-options),
-.app.dealer-cobranded[style*="--db-body-background"]:not(.home-app):not(.visualizer-app),
-.app.dealer-cobranded[style*="--db-body-background"]:not(.home-app):not(.visualizer-app) > main,
-.app.dealer-cobranded[style*="--db-body-background"]:not(.home-app):not(.visualizer-app) :is(.builder-panel, .builder-options-scroll) {
-  background-color: var(--db-body-background);
+.dealer-cobranded[style*="--db-body-background"] :is(.builder-panel, .home-page, .home-hero, .find-my-door-main, .find-door-options) {
+  background: var(--db-body-background);
 }
 
 .dealer-cobranded[style*="--db-heading-text"] :is(.builder-panel, .home-hero, .find-my-door-main) :is(h1, h2) {
@@ -50,10 +43,6 @@
 }
 
 .dealer-cobranded[style*="--db-body-text"] :is(.builder-panel, .home-hero-copy, .find-my-door-main) :is(p, .section-heading p) {
-  color: var(--db-body-text);
-}
-
-.dealer-cobranded[style*="--db-body-text"] :is(.step-label-row span, .builder-panel label, .find-my-door-main label) {
   color: var(--db-body-text);
 }
 
@@ -168,11 +157,11 @@
   outline-color: var(--db-card-selected);
 }
 
-.dealer-cobranded[style*="--db-preview-background"] :is(aside, .find-door-stage, .db-preview-panel, .mobile-live-preview) {
+.dealer-cobranded[style*="--db-preview-background"] :is(aside, .find-door-stage, .db-preview-panel) {
   background: var(--db-preview-background);
 }
 
-.dealer-cobranded[style*="--db-preview-text"] :is(aside, .find-door-stage, .db-preview-panel) :is(p, h2, .mini-summary, .mini-summary b, .mini-summary strong) {
+.dealer-cobranded[style*="--db-preview-text"] :is(aside, .find-door-stage, .db-preview-panel) :is(p, h2) {
   color: var(--db-preview-text);
 }
 
@@ -248,14 +237,77 @@
   color: var(--db-footer-link);
 }
 
-.dealer-cobranded[style*="--db-footer-icon"] > .shared-site-footer .site-footer-contact a svg {
+.dealer-cobranded[style*="--db-footer-icon"] > .shared-site-footer .site-footer-contact a svg,
+.dealer-cobranded[style*="--db-footer-icon"] > .shared-site-footer svg {
   color: var(--db-footer-icon);
-}
-
-.dealer-cobranded[style*="--db-footer-icon"] > .shared-site-footer .site-footer-actions svg {
-  color: currentColor;
 }
 
 .dealer-cobranded[style*="--db-footer-accent"] > .shared-site-footer.site-footer {
   border-top-color: var(--db-footer-accent);
+}
+
+/* Simplified six-key documents set data-appearance-mode="simple".
+   These rules do not apply to older 39-key documents. */
+.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-background"] :is(
+  .home-hero,
+  .home-hero-copy,
+  .home-page,
+  .home-preview-caption,
+  .preview-toolbar
+),
+.home-app.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-background"] :is(.home-hero, .home-hero-copy, .home-preview-caption),
+.app.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-background"]:not(.home-app):not(.visualizer-app) :is(.builder-panel, .builder-options-scroll),
+.app.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-background"]:not(.home-app):not(.visualizer-app) > main {
+  background: var(--db-body-background);
+  background-color: var(--db-body-background);
+}
+
+.dealer-cobranded[data-appearance-mode="simple"][style*="--db-preview-background"] .mobile-live-preview {
+  background: var(--db-preview-background);
+  background-color: var(--db-preview-background);
+}
+
+.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-text"] :is(
+  .step-label-row span,
+  .home-hero-copy h1,
+  .home-hero-copy h2,
+  .home-hero-copy p,
+  .home-hero-copy em,
+  .home-preview-caption,
+  .home-preview-caption p
+) {
+  color: var(--db-body-text);
+}
+
+.dealer-cobranded[data-appearance-mode="simple"][style*="--db-preview-text"] :is(.mini-summary, .mini-summary b, .mini-summary strong) {
+  color: var(--db-preview-text);
+}
+
+.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-background"] .preview-toolbar {
+  background: var(--db-body-background);
+  background-color: var(--db-body-background);
+  color: var(--db-body-text, inherit);
+  border-left-color: color-mix(in srgb, var(--db-body-text, currentColor) 28%, transparent);
+}
+
+.dealer-cobranded[data-appearance-mode="simple"] .preview-toolbar .preview-reset-design,
+.dealer-cobranded[data-appearance-mode="simple"] .preview-toolbar .preview-reset-design:hover {
+  background: transparent;
+  color: inherit;
+  border-color: color-mix(in srgb, currentColor 55%, transparent);
+}
+
+.dealer-cobranded[data-appearance-mode="simple"] .preview-toolbar .preview-view-toggle,
+.dealer-cobranded[data-appearance-mode="simple"] .preview-toolbar .preview-view-toggle button,
+.dealer-cobranded[data-appearance-mode="simple"] .preview-toolbar .preview-view-toggle button:hover {
+  background: transparent;
+  color: inherit;
+  border-color: color-mix(in srgb, currentColor 35%, transparent);
+}
+
+.dealer-cobranded[data-appearance-mode="simple"] .preview-toolbar .preview-view-toggle button.active,
+.dealer-cobranded[data-appearance-mode="simple"] .preview-toolbar .preview-view-toggle button.active:hover {
+  background: var(--db-body-text, #05040b);
+  color: var(--db-body-background, #fff);
+  border-color: transparent;
 }
