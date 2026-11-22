@@ -281,6 +281,31 @@ test('legacy appearance shows the replacement note and save keeps only the six s
   await page.close()
 })
 
+test('every appearance control stays clickable beside the sticky preview', async () => {
+  for (const role of ['admin', 'dealer'] as const) {
+    const page = await browser!.newPage({ viewport: { width: 1440, height: 900 } })
+    const query = role === 'dealer' ? '?role=dealer' : ''
+    await page.goto(`http://127.0.0.1:${port}/${query}#appearance-harness`, { waitUntil: 'networkidle' })
+    await page.getByRole('heading', { name: 'Door Builder Appearance' }).waitFor()
+    for (const width of [1024, 1280, 1440]) {
+      await page.setViewportSize({ width, height: 900 })
+      const covered = await page.evaluate(() => {
+        const rows = [...document.querySelectorAll<HTMLElement>('.appearance-color')]
+        return rows.flatMap((row, index) => {
+          row.scrollIntoView({ block: 'center', inline: 'nearest' })
+          const box = row.getBoundingClientRect()
+          const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+          return hit && row.contains(hit) ? [] : [`${index} hit ${hit?.className || 'nothing'}`]
+        })
+      })
+      assert.deepEqual(covered, [], `${role} ${width}px ${covered.join('; ')}`)
+    }
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.locator('.appearance-color').filter({ has: page.locator('#appearance-headerText') }).getByRole('radio', { name: 'White', exact: true }).click()
+    await page.close()
+  }
+})
+
 test('the preview stays on screen while the footer group is edited', async () => {
   const page = await browser!.newPage({ viewport: { width: 1440, height: 900 } })
   await openHarness(page)

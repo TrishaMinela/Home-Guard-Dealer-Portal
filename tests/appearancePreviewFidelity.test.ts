@@ -84,6 +84,26 @@ test('the preview shows the real builder layout and does not call the network', 
   assert.match(paragraph.fontFamily, /PT Sans/)
   const stepLabel = await page.locator('.db-appearance-preview .step-label-row span').evaluate((element) => getComputedStyle(element).color)
   assert.equal(stepLabel, 'rgb(83, 98, 103)')
+  const inactiveStep = await page.locator('.db-appearance-preview .stepper button:not(.active) em').first().evaluate((element) => {
+    const style = getComputedStyle(element)
+    return { size: style.fontSize, color: style.color }
+  })
+  assert.equal(inactiveStep.size, '14px')
+  assert.equal(inactiveStep.color, 'rgb(121, 131, 134)')
+  assert.equal(await page.locator('.db-appearance-preview .section-heading h1').evaluate((element) => getComputedStyle(element).fontSize), '36px')
+  assert.equal(await page.locator('.db-appearance-preview .popular-styles h2').evaluate((element) => getComputedStyle(element).fontSize), '28px')
+  const scratch = await page.locator('.popular-styles-or').evaluate((element) => {
+    const style = getComputedStyle(element)
+    return { size: style.fontSize, weight: style.fontWeight, color: style.color }
+  })
+  assert.deepEqual(scratch, { size: '16px', weight: '400', color: 'rgb(83, 88, 96)' })
+  const labelBeforeHeading = await page.evaluate(() => {
+    const label = document.querySelector('.db-appearance-preview .step-label-row')
+    const heading = document.querySelector('.db-appearance-preview .popular-styles h2')
+    if (!label || !heading) return false
+    return (label.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0 && label.getBoundingClientRect().bottom <= heading.getBoundingClientRect().top + 1
+  })
+  assert.equal(labelBeforeHeading, true)
   assert.equal(await page.locator('.db-appearance-preview .stepper button > span').first().evaluate((element) => getComputedStyle(element).display), 'none')
   assert.equal(await page.locator('.db-appearance-preview .stepper .active').evaluate((element) => getComputedStyle(element, '::before').backgroundColor), 'rgb(248, 211, 14)')
   assert.equal(await page.getByRole('button', { name: 'Dealer Mode' }).count(), 1)
@@ -103,6 +123,8 @@ test('the preview shows the real builder layout and does not call the network', 
   assert.notEqual(await page.locator('.mobile-live-preview .preview-reset-design').evaluate((element) => getComputedStyle(element).display), 'none')
   const mobileCards = await page.locator('.db-appearance-preview.is-mobile .door-configuration-grid').evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length)
   assert.equal(mobileCards, 3)
+  assert.equal(await page.locator('.db-appearance-preview .section-heading h1').evaluate((element) => getComputedStyle(element).fontSize), '28px')
+  assert.equal(await page.locator('.db-appearance-preview .popular-styles h2').evaluate((element) => getComputedStyle(element).fontSize), '24px')
   await page.locator('#appearance-headerBackground').click()
   await page.locator('#appearance-headerBackground-hex').fill('#112233')
   await page.locator('.appearance-popover__done').click()

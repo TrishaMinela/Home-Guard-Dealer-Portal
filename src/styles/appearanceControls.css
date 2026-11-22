@@ -57,8 +57,13 @@
     top: var(--dealer-section-scroll-offset, 76px);
     align-self: start;
     z-index: 1;
-    max-height: calc(100dvh - var(--dealer-section-scroll-offset, 76px) - 28px);
+    max-height: 40vh;
     overflow: auto;
+  }
+  .appearance-group,
+  .appearance-color,
+  .appearance-toolbar {
+    scroll-margin-top: calc(var(--dealer-section-scroll-offset, 76px) + 40vh + 16px);
   }
 }
 @media (max-width: 1023px) {

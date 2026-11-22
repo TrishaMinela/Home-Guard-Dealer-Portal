@@ -185,6 +185,9 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
                   <button className="preview-reset-design" type="button">Restart Build</button>
                 </div>
                 <section className="builder-panel configuration-step">
+                  <div className="section-heading step-heading">
+                    <div className="step-label-row"><span>Step 1 of 4 · Door</span></div>
+                  </div>
                   <section className="popular-styles" aria-labelledby="popular-styles-heading">
                     <h2 id="popular-styles-heading">Don&apos;t know which door to choose? Start with a popular style.</h2>
                     <div className="popular-styles-row">
@@ -198,7 +201,6 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
                     <p className="popular-styles-or">or start from scratch below</p>
                   </section>
                   <div className="section-heading step-heading">
-                    <div className="step-label-row"><span>Step 1 of 4 · Door</span></div>
                     <h1>Choose Your Door Configuration</h1>
                     <p>Start by choosing the type of entry door you want to build.</p>
                   </div>

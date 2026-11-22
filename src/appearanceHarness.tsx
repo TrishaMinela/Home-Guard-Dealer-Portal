@@ -52,7 +52,9 @@ const legacyAppearance: DoorBuilderAppearance = {
 }
 
 export function AppearanceHarness() {
-  const seeded = new URLSearchParams(window.location.search).get('legacy') === '1' ? legacyAppearance : null
+  const params = new URLSearchParams(window.location.search)
+  const seeded = params.get('legacy') === '1' ? legacyAppearance : null
+  const mode = params.get('role') === 'dealer' ? 'dealer' : 'admin'
   const [saved, setSaved] = useState<DoorBuilderAppearance | null>(seeded)
   const [reloadKey, setReloadKey] = useState(0)
   return (
@@ -61,7 +63,8 @@ export function AppearanceHarness() {
       <DoorBuilderAppearanceSettings
         key={reloadKey}
         dealer={{ ...dealer, door_builder_appearance: saved }}
-        mode="admin"
+        mode={mode}
+        canEdit
         loadFromServer={false}
         initialAppearance={saved}
         onSave={async (value) => {
