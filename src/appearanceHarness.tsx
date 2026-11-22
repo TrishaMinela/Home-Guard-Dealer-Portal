@@ -38,8 +38,22 @@ const dealer = {
   slug_requested_at: null,
 } satisfies AdminDealer
 
+const legacyAppearance: DoorBuilderAppearance = {
+  headerBackground: '#112233',
+  headerText: '#abcdef',
+  headerIcon: '#445566',
+  bodyBackground: '#010203',
+  previewBackground: '#222222',
+  cardBackground: '#fff4d6',
+  cardTitle: '#7a1f1f',
+  footerText: '#ffd24a',
+  footerLink: '#00ff00',
+  primaryButtonBackground: '#123456',
+}
+
 export function AppearanceHarness() {
-  const [saved, setSaved] = useState<DoorBuilderAppearance | null>(null)
+  const seeded = new URLSearchParams(window.location.search).get('legacy') === '1' ? legacyAppearance : null
+  const [saved, setSaved] = useState<DoorBuilderAppearance | null>(seeded)
   const [reloadKey, setReloadKey] = useState(0)
   return (
     <main>

@@ -2,6 +2,10 @@
    Header background, text, and accent fall back to the current brand header.
    Find My Door keeps its black and gold header until those tokens are set.
    Product artwork, door renders, and card images are not recolored.
+   Simplified settings set --db-body-background and --db-preview-background together
+   so one main background paints the configuration area and the door preview.
+   Header text also sets the icon and header-button tokens. Footer text also sets
+   the link and icon tokens. Legacy JSON still sets only the tokens it stored.
    Keep this file identical in the Portal and the Door Builder. */
 
 .app.dealer-cobranded > header,
@@ -34,8 +38,11 @@
   border-color: var(--db-header-button-border);
 }
 
-.dealer-cobranded[style*="--db-body-background"] :is(.builder-panel, .home-page, .home-hero, .find-my-door-main, .find-door-options) {
-  background: var(--db-body-background);
+.dealer-cobranded[style*="--db-body-background"] :is(.builder-panel, .home-page, .home-hero, .find-my-door-main, .find-door-options),
+.app.dealer-cobranded[style*="--db-body-background"]:not(.home-app):not(.visualizer-app),
+.app.dealer-cobranded[style*="--db-body-background"]:not(.home-app):not(.visualizer-app) > main,
+.app.dealer-cobranded[style*="--db-body-background"]:not(.home-app):not(.visualizer-app) :is(.builder-panel, .builder-options-scroll) {
+  background-color: var(--db-body-background);
 }
 
 .dealer-cobranded[style*="--db-heading-text"] :is(.builder-panel, .home-hero, .find-my-door-main) :is(h1, h2) {
@@ -43,6 +50,10 @@
 }
 
 .dealer-cobranded[style*="--db-body-text"] :is(.builder-panel, .home-hero-copy, .find-my-door-main) :is(p, .section-heading p) {
+  color: var(--db-body-text);
+}
+
+.dealer-cobranded[style*="--db-body-text"] :is(.step-label-row span, .builder-panel label, .find-my-door-main label) {
   color: var(--db-body-text);
 }
 
@@ -157,11 +168,11 @@
   outline-color: var(--db-card-selected);
 }
 
-.dealer-cobranded[style*="--db-preview-background"] :is(aside, .find-door-stage, .db-preview-panel) {
+.dealer-cobranded[style*="--db-preview-background"] :is(aside, .find-door-stage, .db-preview-panel, .mobile-live-preview) {
   background: var(--db-preview-background);
 }
 
-.dealer-cobranded[style*="--db-preview-text"] :is(aside, .find-door-stage, .db-preview-panel) :is(p, h2) {
+.dealer-cobranded[style*="--db-preview-text"] :is(aside, .find-door-stage, .db-preview-panel) :is(p, h2, .mini-summary, .mini-summary b, .mini-summary strong) {
   color: var(--db-preview-text);
 }
 
@@ -237,9 +248,12 @@
   color: var(--db-footer-link);
 }
 
-.dealer-cobranded[style*="--db-footer-icon"] > .shared-site-footer .site-footer-contact a svg,
-.dealer-cobranded[style*="--db-footer-icon"] > .shared-site-footer svg {
+.dealer-cobranded[style*="--db-footer-icon"] > .shared-site-footer .site-footer-contact a svg {
   color: var(--db-footer-icon);
+}
+
+.dealer-cobranded[style*="--db-footer-icon"] > .shared-site-footer .site-footer-actions svg {
+  color: currentColor;
 }
 
 .dealer-cobranded[style*="--db-footer-accent"] > .shared-site-footer.site-footer {

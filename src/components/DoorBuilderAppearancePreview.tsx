@@ -4,6 +4,7 @@ import { doorBuilderLogoPreview, isLightBrandColor } from '../utils/dealerLogoVa
 import { logoWebsiteHref } from '../utils/logoWebsiteUrl'
 import {
   appearanceCssVars,
+  appearanceEditorPayload,
   inkFor,
   resolveAppearanceValue,
   resolvedBrandColors,
@@ -58,7 +59,7 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
     '--dealer-primary-foreground': inkFor(brand.primary),
     '--dealer-secondary': brand.secondary,
     '--dealer-secondary-foreground': inkFor(brand.secondary),
-    ...appearanceCssVars(appearance, brand),
+    ...appearanceCssVars(appearanceEditorPayload(appearance), brand),
   } as CSSProperties
   const home = dealer.logo_placement === 'header' ? doorBuilderLogoPreview(dealer, 'home-header') : null
   const builder = doorBuilderLogoPreview(dealer, 'page-header')
@@ -128,9 +129,9 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
             </aside>
           </div>
           <footer className="site-footer shared-site-footer">
-            <span>Powered by Home Guard</span>
-            <a href="https://homeguardindustries.com">homeguardindustries.com</a>
-            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="currentColor" /></svg>
+            <span className="hgi-attribution"><span>Door Builder & Visualizer provided by</span></span>
+            <span className="site-footer-contact"><a href="https://homeguardindustries.com">homeguardindustries.com<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="currentColor" /></svg></a></span>
+            <div className="site-footer-feedback"><small>Built with <span aria-hidden="true">♥</span> by <a href="https://schoolradius.co/">School Radius</a></small></div>
           </footer>
         </div>
       </div>

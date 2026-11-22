@@ -3,18 +3,22 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import {
   APPEARANCE_FIELDS,
+  SIMPLIFIED_APPEARANCE_FIELDS,
   appearanceContrastWarnings,
   appearanceCssVars,
+  appearanceEditorPayload,
   appearanceEquals,
   appearanceForStorage,
   appearanceFromStorage,
   appearanceRpcArgs,
   appearanceUpdate,
+  appearanceUsesLegacyMapping,
   choiceForValue,
   hueFromPointer,
   nudgePickerHex,
   parseHexInput,
   resolvedBrandColors,
+  simplifiedAppearanceCssVars,
   svFromPointer,
   valueForChoice,
 } from '../src/utils/doorBuilderAppearance.ts'
@@ -118,6 +122,86 @@ test('picker accepts typed HEX, presets, drag math, and arrow keys', () => {
   assert.notEqual(hue, '#ff0000')
   const brighter = nudgePickerHex('#808080', 'sv', 'ArrowUp')
   assert.notEqual(brighter, '#808080')
+})
+
+test('the six settings expand together and a legacy key keeps the old per-key colors', () => {
+  const simplified = appearanceCssVars({
+    headerBackground: 'secondary',
+    headerText: '#ffffff',
+    bodyBackground: 'primary',
+    bodyText: '#000000',
+    footerBackground: '#112233',
+    footerText: '#ffffff',
+  }, resolved)
+  assert.equal(simplified['--db-header-background'], '#8ebb53')
+  assert.equal(simplified['--db-header-text'], '#ffffff')
+  assert.equal(simplified['--db-header-icon'], '#ffffff')
+  assert.equal(simplified['--db-header-button-text'], '#ffffff')
+  assert.equal(simplified['--db-header-button-border'], '#ffffff')
+  assert.equal(simplified['--db-header-button-background'], 'transparent')
+  assert.equal(simplified['--db-body-background'], '#235176')
+  assert.equal(simplified['--db-preview-background'], '#235176')
+  assert.equal(simplified['--db-step-background'], '#235176')
+  assert.equal(simplified['--db-heading-text'], '#000000')
+  assert.equal(simplified['--db-body-text'], '#000000')
+  assert.equal(simplified['--db-step-text'], '#000000')
+  assert.equal(simplified['--db-preview-text'], '#000000')
+  assert.equal(simplified['--db-preview-label'], '#000000')
+  assert.equal(simplified['--db-footer-background'], '#112233')
+  assert.equal(simplified['--db-footer-text'], '#ffffff')
+  assert.equal(simplified['--db-footer-link'], '#ffffff')
+  assert.equal(simplified['--db-footer-icon'], '#ffffff')
+  assert.equal(simplified['--db-card-background'], undefined)
+  assert.equal(simplified['--db-primary-button-background'], undefined)
+  assert.deepEqual(simplified, simplifiedAppearanceCssVars({
+    headerBackground: 'secondary',
+    headerText: '#ffffff',
+    bodyBackground: 'primary',
+    bodyText: '#000000',
+    footerBackground: '#112233',
+    footerText: '#ffffff',
+  }, resolved))
+
+  const legacy = appearanceCssVars({
+    headerText: '#ffffff',
+    headerIcon: '#123456',
+    bodyBackground: '#abcdef',
+    previewBackground: '#654321',
+    cardBackground: '#fff4d6',
+    footerText: '#00ff00',
+    footerLink: '#0000ff',
+  }, resolved)
+  assert.equal(appearanceUsesLegacyMapping({
+    headerText: '#ffffff',
+    headerIcon: '#123456',
+    bodyBackground: '#abcdef',
+    previewBackground: '#654321',
+    cardBackground: '#fff4d6',
+    footerText: '#00ff00',
+    footerLink: '#0000ff',
+  }), true)
+  assert.equal(legacy['--db-header-icon'], '#123456')
+  assert.equal(legacy['--db-header-button-text'], undefined)
+  assert.equal(legacy['--db-preview-background'], '#654321')
+  assert.equal(legacy['--db-body-background'], '#abcdef')
+  assert.equal(legacy['--db-card-background'], '#fff4d6')
+  assert.equal(legacy['--db-footer-link'], '#0000ff')
+  assert.equal(appearanceUsesLegacyMapping({ headerText: '#111111' }), true)
+  assert.equal(appearanceUsesLegacyMapping({ headerText: '#ffffff', bodyBackground: '#abcdef' }), false)
+  assert.deepEqual(appearanceEditorPayload({
+    headerBackground: '#FFFFFF',
+    headerText: '#FFFFFF',
+    bodyText: 'primary',
+    cardTitle: '#111111',
+    footerText: '#000000',
+    previewBackground: '#222222',
+  }), {
+    headerBackground: '#ffffff',
+    headerText: '#ffffff',
+    footerText: '#000000',
+  })
+  assert.equal(appearanceEditorPayload(null), null)
+  assert.equal(SIMPLIFIED_APPEARANCE_FIELDS.length, 6)
 })
 
 test('migration, save paths, and public payload stay limited to appearance colors', () => {

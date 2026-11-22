@@ -54,6 +54,17 @@ async function setHex(page: Page, id: string, hex: string) {
   await page.locator('.appearance-popover').waitFor({ state: 'hidden' })
 }
 
+function textChoice(page: Page, id: string, name: 'Black' | 'White' | 'Default') {
+  return page.locator('.appearance-color').filter({ has: page.locator(`#${id}`) }).getByRole('radio', { name, exact: true })
+}
+
+async function paint(page: Page, selector: string) {
+  return page.locator(selector).first().evaluate((element) => {
+    const style = getComputedStyle(element)
+    return { background: style.backgroundColor, color: style.color }
+  })
+}
+
 async function headerPaint(page: Page) {
   return page.locator('header[aria-label="Homepage header"]').evaluate((element) => {
     const style = getComputedStyle(element)
@@ -69,14 +80,14 @@ test('Default clears one color, updates the preview, and leaves the other colors
   const backgroundDefault = defaultButton(page, 'appearance-headerBackground')
   assert.equal(await backgroundDefault.getAttribute('aria-disabled'), 'true')
   await setHex(page, 'appearance-headerBackground', '#ff0000')
-  await setHex(page, 'appearance-headerText', '#111111')
+  await textChoice(page, 'appearance-headerText', 'Black').click()
   const custom = await headerPaint(page)
   assert.equal(custom.background, 'rgb(255, 0, 0)')
-  assert.equal(custom.color, 'rgb(17, 17, 17)')
+  assert.equal(custom.color, 'rgb(0, 0, 0)')
   assert.equal(await backgroundDefault.isDisabled(), false)
   await backgroundDefault.click()
   const cleared = await headerPaint(page)
-  assert.deepEqual(cleared, { background: original.background, color: 'rgb(17, 17, 17)' })
+  assert.deepEqual(cleared, { background: original.background, color: 'rgb(0, 0, 0)' })
   assert.equal(await backgroundDefault.getAttribute('aria-disabled'), 'true')
   assert.notEqual(await page.getByTestId('saved-appearance').textContent(), expectSaved('#ff0000'))
   await page.close()
@@ -126,17 +137,28 @@ test('Reset All asks for confirmation and clears only the appearance draft', asy
   await page.close()
 })
 
-test('a selected preview card keeps its selected border while hovered', async () => {
+test('main colors do not repaint selection cards, and both panels share the main background', async () => {
   const page = await browser!.newPage({ viewport: { width: 1280, height: 1100 } })
   await openHarness(page)
-  await setHex(page, 'appearance-cardSelectedBorder', '#0b6b2a')
-  await setHex(page, 'appearance-cardHoverAccent', '#123a8a')
-  const selected = page.locator('.db-appearance-preview .option-card.selected')
-  const plain = page.locator('.db-appearance-preview .option-card:not(.selected)')
-  await selected.hover()
-  assert.equal(await selected.evaluate((element) => getComputedStyle(element).borderTopColor), 'rgb(11, 107, 42)')
-  await plain.hover()
-  assert.equal(await plain.evaluate((element) => getComputedStyle(element).borderTopColor), 'rgb(18, 58, 138)')
+  const card = page.locator('.db-appearance-preview .option-card.selected')
+  const before = await card.evaluate((element) => {
+    const style = getComputedStyle(element)
+    const title = getComputedStyle(element.querySelector('strong')!)
+    return { background: style.backgroundColor, border: style.borderTopColor, title: title.color }
+  })
+  await setHex(page, 'appearance-bodyBackground', '#203040')
+  await textChoice(page, 'appearance-bodyText', 'White').click()
+  const left = await paint(page, '.db-appearance-preview .builder-panel')
+  const right = await paint(page, '.db-appearance-preview .db-preview-panel')
+  assert.equal(left.background, 'rgb(32, 48, 64)')
+  assert.equal(right.background, 'rgb(32, 48, 64)')
+  assert.equal((await paint(page, '.db-appearance-preview .section-heading h1')).color, 'rgb(255, 255, 255)')
+  const after = await card.evaluate((element) => {
+    const style = getComputedStyle(element)
+    const title = getComputedStyle(element.querySelector('strong')!)
+    return { background: style.backgroundColor, border: style.borderTopColor, title: title.color }
+  })
+  assert.deepEqual(after, before)
   await page.close()
 })
 
@@ -158,7 +180,7 @@ test('every color row stays inside its card at every checked width', async () =>
           return
         }
         const card = group.getBoundingClientRect()
-        const parts = [row.querySelector(':scope > span'), row.querySelector('.appearance-color__trigger'), row.querySelector('.appearance-color__default')].map((element) => element?.getBoundingClientRect())
+        const parts = [row.querySelector(':scope > span'), row.querySelector('.appearance-color__trigger, .appearance-text'), row.querySelector('.appearance-color__default')].map((element) => element?.getBoundingClientRect())
         if (parts.some((box) => !box)) {
           found.push(`${index} missing control`)
           return
@@ -174,8 +196,10 @@ test('every color row stays inside its card at every checked width', async () =>
       })
       return { count: rows.length, found }
     })
-    assert.equal(problems.count, 39, `${width}px row count`)
+    assert.equal(problems.count, 6, `${width}px row count`)
     assert.deepEqual(problems.found, [], `${width}px ${problems.found.join('; ')}`)
+    const sticky = await page.locator('.db-preview-shell').evaluate((element) => getComputedStyle(element).position)
+    assert.equal(sticky, width >= 1024 ? 'sticky' : 'static', `${width}px preview position`)
   }
   await page.close()
 })
@@ -188,6 +212,68 @@ test('the admin dealer nav scrolls to the existing appearance section', async ()
     const section = document.getElementById('door-builder-appearance')
     return window.location.hash === '#door-builder-appearance' && !!section && section.getBoundingClientRect().top < 180
   })
+  await page.close()
+})
+
+test('each background is independent and brand references resolve in the preview', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1280, height: 1000 } })
+  await openHarness(page)
+  const originalHeader = await headerPaint(page)
+  const originalMain = await paint(page, '.db-appearance-preview .builder-panel')
+  const originalFooter = await paint(page, '.db-appearance-preview .shared-site-footer')
+  await setHex(page, 'appearance-headerBackground', '#ff0000')
+  assert.equal((await headerPaint(page)).background, 'rgb(255, 0, 0)')
+  assert.equal((await paint(page, '.db-appearance-preview .builder-panel')).background, originalMain.background)
+  assert.equal((await paint(page, '.db-appearance-preview .shared-site-footer')).background, originalFooter.background)
+  await defaultButton(page, 'appearance-headerBackground').click()
+  await page.locator('#appearance-bodyBackground').click()
+  await page.getByRole('radio', { name: 'Primary', exact: true }).click()
+  await page.locator('.appearance-popover__done').click()
+  assert.equal((await paint(page, '.db-appearance-preview .builder-panel')).background, 'rgb(35, 81, 118)')
+  assert.equal((await paint(page, '.db-appearance-preview .db-preview-panel')).background, 'rgb(35, 81, 118)')
+  assert.equal((await headerPaint(page)).background, originalHeader.background)
+  await page.locator('#appearance-footerBackground').click()
+  await page.getByRole('radio', { name: 'Secondary', exact: true }).click()
+  await page.locator('.appearance-popover__done').click()
+  assert.equal((await paint(page, '.db-appearance-preview .shared-site-footer')).background, 'rgb(142, 187, 83)')
+  assert.equal((await paint(page, '.db-appearance-preview .builder-panel')).background, 'rgb(35, 81, 118)')
+  await page.close()
+})
+
+test('black and white text color the header, main copy, and footer together', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1280, height: 1000 } })
+  await openHarness(page)
+  await textChoice(page, 'appearance-headerText', 'White').click()
+  await textChoice(page, 'appearance-bodyText', 'Black').click()
+  await textChoice(page, 'appearance-footerText', 'White').click()
+  assert.equal((await headerPaint(page)).color, 'rgb(255, 255, 255)')
+  assert.equal((await paint(page, '.db-appearance-preview header svg')).color, 'rgb(255, 255, 255)')
+  assert.equal((await paint(page, '.db-appearance-preview .home-return')).color, 'rgb(255, 255, 255)')
+  assert.equal((await paint(page, '.db-appearance-preview .section-heading h1')).color, 'rgb(0, 0, 0)')
+  assert.equal((await paint(page, '.db-appearance-preview .shared-site-footer')).color, 'rgb(255, 255, 255)')
+  assert.equal((await paint(page, '.db-appearance-preview .site-footer-feedback small')).color, 'rgb(255, 255, 255)')
+  assert.equal(await page.getByRole('button', { name: 'Icon' }).count(), 0)
+  assert.equal(await page.locator('legend', { hasText: 'Door selection cards' }).count(), 0)
+  assert.equal(await page.locator('.appearance-color__trigger').count(), 3)
+  await page.close()
+})
+
+test('legacy appearance shows the replacement note and save keeps only the six settings', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1280, height: 1000 } })
+  await page.goto(`http://127.0.0.1:${port}/?legacy=1#appearance-harness`, { waitUntil: 'networkidle' })
+  await page.getByText('This dealer has older advanced color settings; saving will replace them with the simplified settings.').waitFor()
+  assert.equal((await headerPaint(page)).background, 'rgb(17, 34, 51)')
+  assert.equal((await paint(page, '.db-appearance-preview .db-preview-panel')).background, 'rgb(1, 2, 3)')
+  assert.notEqual((await paint(page, '.db-appearance-preview .option-card')).background, 'rgb(255, 244, 214)')
+  await page.getByRole('button', { name: 'Save Appearance' }).click()
+  await page.getByText('Door Builder appearance saved.').waitFor()
+  const saved = JSON.parse(await page.getByTestId('saved-appearance').innerText())
+  assert.deepEqual(saved, { headerBackground: '#112233', bodyBackground: '#010203' })
+  assert.equal(await page.locator('.portal-alert', { hasText: 'older advanced color settings' }).count(), 0)
+  await page.getByRole('button', { name: 'Reload appearance' }).click()
+  await page.getByRole('heading', { name: 'Door Builder Appearance' }).waitFor()
+  assert.equal((await headerPaint(page)).background, 'rgb(17, 34, 51)')
+  assert.equal(await page.locator('.portal-alert', { hasText: 'older advanced color settings' }).count(), 0)
   await page.close()
 })
 

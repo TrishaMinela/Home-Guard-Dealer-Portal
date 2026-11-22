@@ -1,7 +1,16 @@
 /** Door Builder appearance. Null and omitted keys inherit today's styling.
  * 'primary' and 'secondary' follow the brand colors. HEX is a fixed custom color.
  * The same module is copied into the Door Builder so both sides resolve colors the same way.
+ *
+ * The editor writes six keys: headerBackground, headerText, bodyBackground, bodyText,
+ * footerBackground, footerText. Text is #000000 or #ffffff. Those six expand to the
+ * header (including icons and header buttons), both main panels, and the footer.
+ * Any other stored key, or a text value that is not black or white, keeps the previous
+ * per-key mapping so an older JSON document does not change until it is saved again.
+ * No database migration is required. The existing CHECK accepts these keys and values.
  */
+
+export const LEGACY_APPEARANCE_NOTICE = 'This dealer has older advanced color settings; saving will replace them with the simplified settings.'
 
 export const DOOR_BUILDER_PRIMARY_FALLBACK = '#0d666c'
 export const DOOR_BUILDER_SECONDARY_FALLBACK = '#05040b'
@@ -64,6 +73,28 @@ export const APPEARANCE_GROUP_LABELS: Record<AppearanceGroupId, string> = {
   buttons: 'Buttons',
   footer: 'Footer',
 }
+
+/** The six settings the editor shows. Keys stay inside the existing CHECK allow-list. */
+export const SIMPLIFIED_APPEARANCE_FIELDS = [
+  { group: 'header', key: 'headerBackground', role: 'background', cssVar: '--db-header-background', label: 'Background' },
+  { group: 'header', key: 'headerText', role: 'text', cssVar: '--db-header-text', label: 'Text' },
+  { group: 'main', key: 'bodyBackground', role: 'background', cssVar: '--db-body-background', label: 'Background' },
+  { group: 'main', key: 'bodyText', role: 'text', cssVar: '--db-body-text', label: 'Text' },
+  { group: 'footer', key: 'footerBackground', role: 'background', cssVar: '--db-footer-background', label: 'Background' },
+  { group: 'footer', key: 'footerText', role: 'text', cssVar: '--db-footer-text', label: 'Text' },
+] as const
+
+export type SimplifiedAppearanceGroup = (typeof SIMPLIFIED_APPEARANCE_FIELDS)[number]['group']
+export type SimplifiedAppearanceKey = (typeof SIMPLIFIED_APPEARANCE_FIELDS)[number]['key']
+
+export const SIMPLIFIED_GROUP_LABELS: Record<SimplifiedAppearanceGroup, string> = {
+  header: 'Header',
+  main: 'Main section',
+  footer: 'Footer',
+}
+
+const SIMPLIFIED_KEYS = new Set<string>(SIMPLIFIED_APPEARANCE_FIELDS.map((field) => field.key))
+const SIMPLIFIED_TEXT_KEYS = new Set<string>(SIMPLIFIED_APPEARANCE_FIELDS.filter((field) => field.role === 'text').map((field) => field.key))
 
 const FIELD_KEYS = new Set<string>(APPEARANCE_FIELDS.map((field) => field.key))
 const HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i
@@ -163,14 +194,88 @@ export function resolveAppearanceValue(value: AppearanceValue | null | undefined
   return null
 }
 
-export function appearanceCssVars(config: DoorBuilderAppearance | null | undefined, brand: { primary: string; secondary: string }) {
+export function isSimplifiedTextColor(value: AppearanceValue | null | undefined) {
+  return value === APPEARANCE_BLACK || value === APPEARANCE_WHITE
+}
+
+/** Older JSON keeps one variable per key. Simplified JSON expands the six settings. */
+export function appearanceUsesLegacyMapping(config: DoorBuilderAppearance | null | undefined) {
+  if (!config) return false
+  for (const [key, value] of Object.entries(config)) {
+    if (!value) continue
+    if (!SIMPLIFIED_KEYS.has(key)) return true
+    if (SIMPLIFIED_TEXT_KEYS.has(key) && !isSimplifiedTextColor(value)) return true
+  }
+  return false
+}
+
+/** Save payload: only the six editor settings. Non black/white text and every other key are dropped. */
+export function appearanceEditorPayload(config: DoorBuilderAppearance | null | undefined): DoorBuilderAppearance | null {
+  if (!config) return null
+  const next: DoorBuilderAppearance = {}
+  for (const field of SIMPLIFIED_APPEARANCE_FIELDS) {
+    const value = config[field.key]
+    if (!value) continue
+    const normalized = normalizeAppearanceValue(value)
+    if (!normalized) continue
+    if (field.role === 'text' && !isSimplifiedTextColor(normalized)) continue
+    next[field.key] = normalized
+  }
+  return orderedAppearance(next)
+}
+
+function explicitAppearanceCssVars(config: DoorBuilderAppearance, brand: { primary: string; secondary: string }) {
   const style: Record<string, string> = {}
-  if (!config) return style
   for (const field of APPEARANCE_FIELDS) {
     const resolved = resolveAppearanceValue(config[field.key], brand)
     if (resolved) style[field.cssVar] = resolved
   }
   return style
+}
+
+/** Header, both main panels, and footer. Icons, header buttons, links, and step text are derived. */
+export function simplifiedAppearanceCssVars(config: DoorBuilderAppearance | null | undefined, brand: { primary: string; secondary: string }) {
+  const style: Record<string, string> = {}
+  if (!config) return style
+  const headerBackground = resolveAppearanceValue(config.headerBackground, brand)
+  const headerText = resolveAppearanceValue(config.headerText, brand)
+  const bodyBackground = resolveAppearanceValue(config.bodyBackground, brand)
+  const bodyText = resolveAppearanceValue(config.bodyText, brand)
+  const footerBackground = resolveAppearanceValue(config.footerBackground, brand)
+  const footerText = resolveAppearanceValue(config.footerText, brand)
+  if (headerBackground) style['--db-header-background'] = headerBackground
+  if (headerText) {
+    style['--db-header-text'] = headerText
+    style['--db-header-icon'] = headerText
+    style['--db-header-button-text'] = headerText
+    style['--db-header-button-border'] = headerText
+    style['--db-header-button-background'] = 'transparent'
+  }
+  if (bodyBackground) {
+    style['--db-body-background'] = bodyBackground
+    style['--db-preview-background'] = bodyBackground
+    style['--db-step-background'] = bodyBackground
+  }
+  if (bodyText) {
+    style['--db-body-text'] = bodyText
+    style['--db-heading-text'] = bodyText
+    style['--db-step-text'] = bodyText
+    style['--db-preview-text'] = bodyText
+    style['--db-preview-label'] = bodyText
+  }
+  if (footerBackground) style['--db-footer-background'] = footerBackground
+  if (footerText) {
+    style['--db-footer-text'] = footerText
+    style['--db-footer-link'] = footerText
+    style['--db-footer-icon'] = footerText
+  }
+  return style
+}
+
+export function appearanceCssVars(config: DoorBuilderAppearance | null | undefined, brand: { primary: string; secondary: string }) {
+  if (!config) return {}
+  if (appearanceUsesLegacyMapping(config)) return explicitAppearanceCssVars(config, brand)
+  return simplifiedAppearanceCssVars(config, brand)
 }
 
 function channelLuminance(hex: string, start: number) {
@@ -210,19 +315,8 @@ type ContrastPair = {
 
 const CONTRAST_PAIRS: ContrastPair[] = [
   { id: 'header', background: 'headerBackground', foreground: 'headerText', minimum: 4.5, label: 'Header text on the header background' },
-  { id: 'header-button', background: 'headerButtonBackground', foreground: 'headerButtonText', minimum: 4.5, label: 'Header button text on the header button' },
-  { id: 'body-heading', background: 'bodyBackground', foreground: 'headingText', minimum: 4.5, label: 'Headings on the main background' },
-  { id: 'body-text', background: 'bodyBackground', foreground: 'bodyText', minimum: 4.5, label: 'Body text on the main background' },
-  { id: 'steps', background: 'stepNavBackground', foreground: 'stepNavText', minimum: 4.5, label: 'Step labels on the step nav' },
-  { id: 'active-step', background: 'activeStep', foreground: null, fallbackForeground: '#ffffff', minimum: 3, label: 'The step number on the active indicator' },
-  { id: 'card-title', background: 'cardBackground', foreground: 'cardTitle', minimum: 4.5, label: 'Card titles on the card background' },
-  { id: 'card-description', background: 'cardBackground', foreground: 'cardDescription', minimum: 4.5, label: 'Card descriptions on the card background' },
-  { id: 'preview', background: 'previewBackground', foreground: 'previewText', minimum: 4.5, label: 'Preview text on the preview panel' },
-  { id: 'preview-controls', background: 'previewControlsBackground', foreground: 'previewControlsText', minimum: 4.5, label: 'Preview controls text on the controls' },
-  { id: 'primary-button', background: 'primaryButtonBackground', foreground: 'primaryButtonText', minimum: 4.5, label: 'Primary button text on the primary button' },
-  { id: 'secondary-button', background: 'secondaryButtonBackground', foreground: 'secondaryButtonText', minimum: 4.5, label: 'Secondary button text on the secondary button' },
+  { id: 'main', background: 'bodyBackground', foreground: 'bodyText', minimum: 4.5, label: 'Main text on the main background' },
   { id: 'footer', background: 'footerBackground', foreground: 'footerText', minimum: 4.5, label: 'Footer text on the footer background' },
-  { id: 'footer-link', background: 'footerBackground', foreground: 'footerLink', minimum: 4.5, label: 'Footer links on the footer background' },
 ]
 
 function establishedColors(brand: { primary: string; secondary: string }): Record<AppearanceToken, string> {
