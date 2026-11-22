@@ -35,7 +35,8 @@
 .appearance-popover__stage { display: grid; grid-template-columns: minmax(0, 1fr) 54px; gap: 10px; align-items: stretch; }
 .appearance-popover .react-colorful { width: 100%; height: 168px; touch-action: none; }
 .appearance-popover .react-colorful__saturation, .appearance-popover .react-colorful__hue { touch-action: none; }
-.appearance-popover .react-colorful__saturation { border-bottom-width: 0; }
+.appearance-popover .react-colorful__saturation { position: relative; z-index: 2; border-bottom-width: 0; }
+.appearance-popover .react-colorful__saturation .react-colorful__interactive { bottom: -2px; }
 .appearance-popover .react-colorful__pointer { pointer-events: none; }
 .appearance-popover__preview { border: 1px solid rgba(5, 4, 11, .12); border-radius: 8px; }
 .appearance-popover__hex { display: grid; gap: 4px; font-size: 11px; font-weight: 800; }
@@ -49,7 +50,8 @@
 .appearance-layout > * { min-width: 0; }
 .appearance-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 @media (min-width: 1024px) {
-  .appearance-layout { grid-template-columns: minmax(0, 1.05fr) minmax(280px, .95fr); }
+  .appearance-layout { grid-template-columns: minmax(0, 1fr); }
+  .appearance-layout > .db-preview-shell { order: -1; }
   .db-preview-shell {
     position: sticky;
     top: var(--dealer-section-scroll-offset, 76px);

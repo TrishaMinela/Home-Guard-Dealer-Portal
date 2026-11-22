@@ -28,6 +28,14 @@ const CONFIGURATIONS = [
   { name: 'Savannah Door', description: 'Double-door appearance with one fixed panel.', image: '/appearance-preview/savannah-door.webp', selected: false },
 ]
 
+const POPULAR = [
+  { name: 'Modern Farmhouse', detail: 'Black 3/4 lite', image: '/appearance-preview/popular/01-modern-farmhouse.png' },
+  { name: 'Craftsman', detail: 'Fir with nutmeg stain', image: '/appearance-preview/popular/02-craftsman.png' },
+  { name: 'Farmhouse with Sidelites', detail: 'Forest, two sidelites', image: '/appearance-preview/popular/03-farmhouse-sidelites.png' },
+  { name: 'French Double Door', detail: 'Black, locks on both doors', image: '/appearance-preview/popular/04-french-double.png' },
+  { name: 'Stacked 3 Lite', detail: 'Black, clear low-E', image: '/appearance-preview/popular/05-stacked-3-lite.png' },
+]
+
 const SUMMARY = [
   ['Door Style', 'Not selected'],
   ['Finish', 'Not selected'],
@@ -157,7 +165,7 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
                   />
                 </div>
                 <div className="dealer-header-actions">
-                  <button className="home-return" type="button"><HomeIcon /> Home</button>
+                  <button className="home-return" type="button" aria-label="Home"><HomeIcon /><span>Home</span></button>
                   {dealer.website && <a className="dealer-website-link" href={dealer.website} onClick={stop}><span>Visit Our Website</span> <ExternalIcon /></a>}
                 </div>
               </header>
@@ -174,8 +182,21 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
               <main>
                 <div className="mobile-live-preview" aria-hidden={mobile ? undefined : true}>
                   <img src="/appearance-preview/single-door.webp" alt="" />
+                  <button className="preview-reset-design" type="button">Restart Build</button>
                 </div>
                 <section className="builder-panel configuration-step">
+                  <section className="popular-styles" aria-labelledby="popular-styles-heading">
+                    <h2 id="popular-styles-heading">Don&apos;t know which door to choose? Start with a popular style.</h2>
+                    <div className="popular-styles-row">
+                      {POPULAR.map((item) => (
+                        <button key={item.name} type="button">
+                          <span className="popular-styles-visual"><img src={item.image} alt="" /></span>
+                          <span className="popular-styles-copy"><strong>{item.name}</strong><span>{item.detail}</span></span>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="popular-styles-or">or start from scratch below</p>
+                  </section>
                   <div className="section-heading step-heading">
                     <div className="step-label-row"><span>Step 1 of 4 · Door</span></div>
                     <h1>Choose Your Door Configuration</h1>
@@ -207,7 +228,10 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
               </main>
               <footer className="site-footer shared-site-footer">
                 <div className="site-footer-feedback">
-                  <button className="site-feedback-trigger" type="button">Feedback</button>
+                  <div className="site-footer-actions">
+                    <button className="site-feedback-trigger" type="button">Feedback</button>
+                    <button className="dealer-mode-access" type="button">Dealer Mode</button>
+                  </div>
                   <small>Built with <span aria-hidden="true">♥</span> by <a href="https://schoolradius.co/" onClick={stop}>School Radius</a></small>
                 </div>
                 <div className="site-footer-branding">
