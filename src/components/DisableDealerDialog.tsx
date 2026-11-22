@@ -71,7 +71,9 @@ export function DisableDealerDialog({ open, companyName, isUpdating, onCancel, o
       } else {
         window.scrollTo(0, scrollTop)
       }
-      trigger?.focus({ preventScroll: true })
+      const restoreFocus = () => trigger?.focus({ preventScroll: true })
+      restoreFocus()
+      window.requestAnimationFrame(restoreFocus)
     }
   }, [open, returnFocusRef])
 
@@ -81,6 +83,10 @@ export function DisableDealerDialog({ open, companyName, isUpdating, onCancel, o
     <div
       className="disable-dealer-modal"
       onMouseDown={(event) => {
+        if (event.target !== event.currentTarget) return
+        event.preventDefault()
+      }}
+      onClick={(event) => {
         if (isUpdating || event.target !== event.currentTarget) return
         onCancel()
       }}

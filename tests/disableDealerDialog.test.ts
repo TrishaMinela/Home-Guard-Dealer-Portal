@@ -107,6 +107,16 @@ test('the disable confirmation stays above the page at every width and scroll po
   await dialog.waitFor({ state: 'hidden' })
   assert.equal(updates.length, 0)
 
+  await page.getByRole('button', { name: 'Disable Dealer' }).evaluate((button: HTMLButtonElement) => button.click())
+  const backdropDialog = page.getByRole('dialog')
+  await backdropDialog.waitFor()
+  await backdropDialog.locator('h2').click()
+  assert.equal(await backdropDialog.isVisible(), true)
+  await page.mouse.click(8, 8)
+  await backdropDialog.waitFor({ state: 'hidden' })
+  await page.waitForFunction(() => document.activeElement?.textContent === 'Disable Dealer')
+  assert.equal(updates.length, 0)
+
   await page.getByRole('button', { name: 'Disable Dealer' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Disable' }).click()
   await page.waitForTimeout(300)
