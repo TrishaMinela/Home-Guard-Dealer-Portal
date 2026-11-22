@@ -4,47 +4,82 @@
 .db-preview-shell__toggle { display: flex; gap: 4px; }
 .db-preview-shell__toggle button { min-height: 32px; border: 1px solid #c5d0cc; border-radius: 999px; padding: 0 10px; background: #fff; font-size: 11px; font-weight: 700; }
 .db-preview-shell__toggle button.is-selected { border-color: #0d666c; background: rgba(13, 102, 108, .08); }
-.db-preview-frame { width: 100%; max-width: 100%; margin: 0; overflow: hidden; border: 1px solid rgba(5, 4, 11, .12); border-radius: 10px; background: #eef2f1; }
+.db-preview-frame { width: 100%; max-width: 100%; margin: 0; overflow: hidden; border: 1px solid rgba(5, 4, 11, .12); border-radius: 10px; background: #e7eceb; }
 .db-preview-frame.is-mobile { width: min(390px, 100%); }
-.db-appearance-preview { color: #05040b; background: #f7faff; font-family: Montserrat, Arial, sans-serif; }
-.db-appearance-preview.dealer-cobranded > header { display: flex; min-height: 52px; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 12px; background: var(--db-header-background, var(--dealer-secondary, #05040b)); color: var(--db-header-text, var(--dealer-secondary-foreground, #fff)); border-bottom: 4px solid var(--db-header-accent, var(--dealer-primary, #0d666c)); }
-.db-appearance-preview.dealer-cobranded > header.find-my-door-header { background: var(--db-header-background, #05040b); color: var(--db-header-text, #fff); border-bottom-color: var(--db-header-accent, #f8d30e); }
-.db-appearance-preview.dealer-cobranded > header svg { color: var(--db-header-icon, currentColor); }
-.db-appearance-preview .home-return, .db-appearance-preview .find-my-door-builder-link { display: inline-flex; min-height: 34px; align-items: center; gap: 6px; border: 1px solid var(--db-header-button-border, currentColor); border-radius: 4px; padding: 0 10px; background: var(--db-header-button-background, transparent); color: var(--db-header-button-text, inherit); font-size: 10px; font-weight: 700; text-decoration: none; }
-.db-appearance-preview .stepper, .db-appearance-preview .find-door-steps { display: flex; gap: 12px; min-height: 48px; align-items: center; margin: 0; padding: 0 16px; list-style: none; background: #fff; }
-.db-appearance-preview .stepper button, .db-appearance-preview .find-door-steps span { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: #929a95; font-size: 11px; font-weight: 700; }
-.db-appearance-preview .stepper .active span, .db-appearance-preview .find-door-steps .current i { display: grid; width: 22px; height: 22px; place-items: center; border-radius: 50%; background: var(--dealer-primary, #0d666c); color: #fff; }
-.db-preview-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(140px, .8fr); min-width: 0; }
-.db-preview-frame.is-desktop .db-preview-layout { grid-template-columns: minmax(0, 1.15fr) minmax(120px, .7fr); }
-.db-appearance-preview .builder-panel, .db-appearance-preview .find-my-door-main { min-width: 0; padding: 16px; background: #f7faff; }
-.db-appearance-preview .section-heading h1, .db-appearance-preview .find-my-door-main h1 { margin: 0 0 8px; font-size: 22px; }
-.db-appearance-preview .section-heading h1:after, .db-appearance-preview .find-my-door-main h1:after { content: ""; display: block; width: 42px; height: 4px; margin-top: 8px; background: #f8d30e; }
-.db-appearance-preview .section-heading p, .db-appearance-preview .find-my-door-main p { margin: 8px 0 0; font-size: 12px; line-height: 1.45; }
-.db-appearance-preview .option-card { display: grid; gap: 4px; margin-top: 10px; padding: 12px; border: 1px solid var(--db-card-border, #dfe3e8); border-radius: 8px; background: var(--db-card-background, #fff); }
-.db-appearance-preview .option-card:hover:not(.selected),
-.db-appearance-preview .hardware-option-card:hover:not(.selected) { border-color: var(--db-card-hover, var(--db-card-border, #dfe3e8)); }
-.db-appearance-preview .hardware-option-card { border: 1px solid var(--db-card-border, #dfe3e8); background: var(--db-card-background, #fff); }
-.db-appearance-preview.dealer-cobranded .option-card.selected,
-.db-appearance-preview.dealer-cobranded .option-card.selected:hover,
-.db-appearance-preview.dealer-cobranded .hardware-option-card.selected,
-.db-appearance-preview.dealer-cobranded .hardware-option-card.selected:hover { border-color: var(--db-card-selected, var(--dealer-primary, #0d666c)); outline: 2px solid var(--db-card-selected, var(--dealer-primary, #0d666c)); }
-.db-appearance-preview .option-card strong { font-size: 13px; color: var(--db-card-title, #05040b); }
-.db-appearance-preview .option-copy span { color: #596267; font-size: 11px; }
-.db-appearance-preview .option-visual { height: 36px; border-radius: 4px; background: #e4ebe8; }
-.db-appearance-preview .builder-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-.db-appearance-preview .next, .db-appearance-preview .back, .db-appearance-preview .preview-reset-design { min-height: 36px; border: 0; border-radius: 4px; padding: 0 12px; font-size: 12px; font-weight: 700; }
-.db-appearance-preview .next { background: var(--dealer-primary, #0d666c); color: var(--dealer-primary-foreground, #fff); }
-.db-appearance-preview .back, .db-appearance-preview .preview-reset-design { background: #05040b; color: #fff; }
-.db-appearance-preview .next:disabled, .db-appearance-preview .back:disabled { opacity: .45; cursor: not-allowed; }
-.db-preview-panel { display: grid; align-content: start; gap: 8px; min-width: 0; padding: 12px; background: #e9f0f1; }
-.db-preview-controls { display: flex; gap: 4px; padding: 4px; border-radius: 6px; background: #05040b; }
-.db-preview-controls button { min-height: 28px; border: 0; border-radius: 4px; background: transparent; color: #fff; font-size: 10px; font-weight: 700; }
-.db-preview-door { height: 72px; border-radius: 6px; background: linear-gradient(#8d6b45, #c2a076 40%, #f3efe6 41%, #d7d2c8); }
-.db-preview-panel p, .db-preview-label { margin: 0; color: #243034; font-size: 11px; }
-.db-appearance-preview .shared-site-footer { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; padding: 14px 16px; background: var(--dealer-secondary, #05040b); color: var(--dealer-secondary-foreground, #fff); border-top: 3px solid var(--dealer-primary, #0d666c); font-size: 11px; }
-.db-appearance-preview .shared-site-footer a { color: inherit; }
+.db-preview-sizer { position: relative; width: 100%; overflow: hidden; }
+.db-preview-scale { position: absolute; top: 0; left: 0; transform-origin: top left; }
 .db-preview-caption { margin: 0; color: var(--color-muted); font-size: 11px; line-height: 1.4; }
-@container (max-width: 720px) {
-  .db-preview-layout { grid-template-columns: 1fr; }
-  .db-appearance-preview header { min-height: 72px; padding: 0 12px; }
-}
+
+/* Scaled copy of the live Door Builder. Sizes match the visualizer at 1280 and 390. */
+.db-appearance-preview { color: #05040b; background: #f5f7f7; font-family: Montserrat, "Segoe UI", sans-serif; }
+.db-appearance-preview.dealer-cobranded > header { display: flex; height: 94px; min-height: 94px; align-items: center; justify-content: space-between; gap: 16px; padding: 0 28px; background: var(--db-header-background, var(--dealer-secondary, #05040b)); color: var(--db-header-text, var(--dealer-secondary-foreground, #fff)); border-bottom: 4px solid var(--db-header-accent, var(--dealer-primary, #0d666c)); }
+.db-appearance-preview .dealer-header-brand { min-width: 0; }
+.db-appearance-preview .dealer-header-actions { display: flex; flex: none; align-items: center; gap: 10px; }
+.db-appearance-preview.dealer-cobranded > header svg { color: var(--db-header-icon, currentColor); }
+.db-appearance-preview .home-return { display: inline-flex; height: 34px; align-items: center; gap: 6px; border: 1px solid var(--db-header-button-border, currentColor); border-radius: 4px; padding: 0 13px; background: var(--db-header-button-background, transparent); color: var(--db-header-button-text, inherit); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; }
+.db-appearance-preview .dealer-website-link { display: inline-flex; min-height: 44px; align-items: center; gap: 8px; border: 1px solid var(--db-header-button-border, currentColor); border-radius: 6px; padding: 10px 16px; background: var(--db-header-button-background, var(--dealer-secondary-foreground, #fff)); color: var(--db-header-button-text, var(--dealer-secondary, #05040b)); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-decoration: none; text-transform: uppercase; }
+.db-appearance-preview .builder-toolbar { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(390px, .75fr); min-height: 70px; background: var(--db-step-background, #fff); box-shadow: 0 5px 22px #05040b0d; }
+.db-appearance-preview .stepper { display: flex; height: 70px; align-items: center; gap: 0; margin: 0; padding: 0 8px; list-style: none; background: var(--db-step-background, #fff); }
+.db-appearance-preview .stepper button { display: flex; flex: 1; align-items: center; justify-content: center; gap: 8px; border: 0; background: transparent; color: var(--db-step-text, #798386); font-size: 11px; font-weight: 700; letter-spacing: .04em; }
+.db-appearance-preview .stepper .active { color: var(--db-step-active, var(--dealer-primary, #0d666c)); }
+.db-appearance-preview .stepper button span { display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid #d5dadd; border-radius: 50%; background: #fff; color: #929a95; font-size: 12px; }
+.db-appearance-preview .stepper .active span { border-color: var(--db-step-active, var(--dealer-primary, #0d666c)); background: var(--db-step-active, var(--dealer-primary, #0d666c)); color: #fff; box-shadow: 0 0 0 3px #f8d30e55; }
+.db-appearance-preview .preview-toolbar { display: flex; align-items: center; justify-content: flex-end; padding: 0 28px; background: var(--db-body-background, #e9f0f1); color: var(--db-body-text, #0d666c); border-left: 1px solid #d8e1e3; }
+.db-appearance-preview .preview-reset-design { display: inline-flex; height: 34px; align-items: center; gap: 8px; border: 1px solid color-mix(in srgb, currentColor 55%, transparent); border-radius: 4px; padding: 0 12px; background: transparent; color: inherit; font-size: 12px; font-weight: 700; }
+.db-appearance-preview main { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(390px, .75fr); min-height: 560px; background: var(--db-body-background, #f5f7f7); }
+.db-appearance-preview .builder-panel { min-width: 0; padding: 28px 32px 32px; background: var(--db-body-background, #f5f7f7); color: var(--db-body-text, #05040b); }
+.db-appearance-preview .step-label-row span { color: var(--db-body-text, #798386); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.db-appearance-preview .section-heading h1 { margin: 8px 0 8px; color: var(--db-heading-text, var(--db-body-text, #05040b)); font-size: 40px; line-height: 1.05; letter-spacing: -.03em; }
+.db-appearance-preview .section-heading h1:after { content: ""; display: block; width: 54px; height: 4px; margin-top: 12px; background: #f8d30e; }
+.db-appearance-preview .section-heading p { margin: 0 0 18px; color: var(--db-body-text, #05040b); font-size: 14px; line-height: 1.5; }
+.db-appearance-preview .door-configuration-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.db-appearance-preview .option-card { display: flex; flex-direction: column; min-height: 240px; margin: 0; padding: 0; border: 1px solid var(--db-card-border, #dfe3e8); border-radius: 7px; background: var(--db-card-background, #fff); color: var(--db-card-title, #05040b); text-align: left; }
+.db-appearance-preview .option-card:hover:not(.selected) { border-color: var(--db-card-hover, var(--db-card-border, #dfe3e8)); }
+.db-appearance-preview.dealer-cobranded .option-card.selected,
+.db-appearance-preview.dealer-cobranded .option-card.selected:hover { border-color: var(--db-card-selected, var(--dealer-primary, #0d666c)); outline: 2px solid var(--db-card-selected, var(--dealer-primary, #0d666c)); }
+.db-appearance-preview .option-visual { display: grid; height: 150px; place-items: center; background: #f4f7f8; }
+.db-appearance-preview .option-visual img,
+.db-appearance-preview .stage-door,
+.db-appearance-preview .mobile-live-preview img { display: block; max-width: 100%; max-height: 138px; object-fit: contain; }
+.db-appearance-preview .option-copy { display: grid; gap: 4px; padding: 12px 12px 14px; }
+.db-appearance-preview .option-copy small { color: var(--dealer-primary, #0d666c); font-size: 8px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.db-appearance-preview .option-card strong { color: var(--db-card-title, #05040b); font-size: 16px; }
+.db-appearance-preview .option-copy span { color: #555b61; font-size: 12px; line-height: 1.4; }
+.db-appearance-preview .builder-actions { display: flex; gap: 10px; margin-top: 18px; }
+.db-appearance-preview .next,
+.db-appearance-preview .back { min-height: 44px; border: 0; border-radius: 4px; padding: 0 16px; font-size: 13px; font-weight: 700; }
+.db-appearance-preview .next { background: var(--dealer-primary, #0d666c); color: var(--dealer-primary-foreground, #fff); }
+.db-appearance-preview .back { background: #05040b; color: #fff; }
+.db-appearance-preview .back:disabled,
+.db-appearance-preview .next:disabled { opacity: .45; cursor: not-allowed; }
+.db-appearance-preview aside,
+.db-appearance-preview .db-preview-panel { display: flex; flex-direction: column; align-items: center; min-width: 0; padding: 24px 28px; background: var(--db-preview-background, #e9f0f1); color: var(--db-preview-text, #243034); }
+.db-appearance-preview .stage-door { max-height: 340px; }
+.db-appearance-preview .mini-summary { display: grid; gap: 8px; width: 100%; margin-top: 16px; }
+.db-appearance-preview .mini-summary span { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; }
+.db-appearance-preview .mini-summary b { color: var(--db-preview-label, inherit); font-weight: 700; }
+.db-appearance-preview .mobile-live-preview { display: none; }
+.db-appearance-preview .shared-site-footer { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, .7fr) minmax(0, 1fr); gap: 24px; align-items: center; min-height: 150px; padding: 24px 28px; background: var(--db-footer-background, var(--dealer-secondary, #05040b)); color: var(--db-footer-text, var(--dealer-secondary-foreground, #fff)); border-top: 3px solid var(--dealer-primary, #0d666c); font-size: 13px; }
+.db-appearance-preview .shared-site-footer a { color: var(--db-footer-link, inherit); text-decoration: none; }
+.db-appearance-preview .hgi-attribution { display: grid; justify-items: center; gap: 8px; text-align: center; }
+.db-appearance-preview .hgi-attribution span { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+.db-appearance-preview .hgi-attribution img { display: block; width: auto; max-width: 190px; max-height: 58px; object-fit: contain; }
+.db-appearance-preview .site-footer-feedback { display: grid; justify-items: start; gap: 10px; }
+.db-appearance-preview .site-feedback-trigger { display: inline-flex; min-height: 40px; align-items: center; border: 0; border-radius: 8px; padding: 0 14px; background: var(--dealer-primary, #0d666c); color: var(--dealer-primary-foreground, #fff); font-weight: 700; }
+.db-appearance-preview .site-footer-feedback small { color: var(--db-footer-text, inherit); font-size: 11px; }
+.db-appearance-preview .site-footer-contact { display: grid; justify-items: end; gap: 10px; }
+.db-appearance-preview .site-footer-contact a { display: inline-flex; align-items: center; gap: 8px; }
+.db-appearance-preview .site-footer-contact svg { color: var(--db-footer-icon, currentColor); }
+
+.db-appearance-preview.is-mobile .builder-toolbar,
+.db-appearance-preview.is-mobile main { grid-template-columns: 1fr; }
+.db-appearance-preview.is-mobile .preview-toolbar,
+.db-appearance-preview.is-mobile aside { display: none; }
+.db-appearance-preview.is-mobile .mobile-live-preview { display: grid; height: 220px; place-items: center; background: var(--db-preview-background, var(--db-body-background, #e9f0f1)); }
+.db-appearance-preview.is-mobile .door-configuration-grid { grid-template-columns: 1fr; }
+.db-appearance-preview.is-mobile > header { height: auto; min-height: 94px; padding: 10px 16px; }
+.db-appearance-preview.is-mobile .dealer-website-link { width: 36px; min-height: 36px; padding: 0; justify-content: center; font-size: 0; }
+.db-appearance-preview.is-mobile .shared-site-footer { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+.db-appearance-preview.is-mobile .site-footer-feedback,
+.db-appearance-preview.is-mobile .site-footer-contact { justify-items: center; }
+.db-appearance-preview.is-mobile .section-heading h1 { font-size: 32px; }

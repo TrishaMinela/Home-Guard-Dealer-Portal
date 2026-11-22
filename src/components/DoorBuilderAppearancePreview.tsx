@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react'
 import type { AdminDealer } from '../types/admin'
 import { doorBuilderLogoPreview, isLightBrandColor } from '../utils/dealerLogoVariants'
 import { logoWebsiteHref } from '../utils/logoWebsiteUrl'
@@ -19,6 +19,24 @@ type Props = {
   appearance: DoorBuilderAppearance | null
 }
 
+const DESKTOP_WIDTH = 1280
+const MOBILE_WIDTH = 390
+
+const CONFIGURATIONS = [
+  { name: 'Single Door', description: 'One standard entry door.', image: '/appearance-preview/single-door.webp', selected: true },
+  { name: 'French Door', description: 'Two operating door panels.', image: '/appearance-preview/french-door.webp', selected: false },
+  { name: 'Savannah Door', description: 'Double-door appearance with one fixed panel.', image: '/appearance-preview/savannah-door.webp', selected: false },
+]
+
+const SUMMARY = [
+  ['Door Style', 'Not selected'],
+  ['Finish', 'Not selected'],
+  ['Glass', 'Not applicable'],
+  ['Sidelites', 'None'],
+  ['Hardware', 'Not selected'],
+  ['Door Swing', 'Not selected'],
+]
+
 function LogoPair({
   primaryUrl,
   secondaryUrl,
@@ -37,10 +55,10 @@ function LogoPair({
   const linkedPrimary = primaryHref
     ? <a className="dealer-logo-link logo-pair__link" href={primaryHref} target="_blank" rel="noopener noreferrer" aria-label={`${companyName} website (opens in a new tab)`}>{image}</a>
     : image
-  if (!secondaryUrl) return linkedPrimary
+  if (!secondaryUrl) return <span className="dealer-brand-mark">{linkedPrimary}</span>
   const second = <img src={secondaryUrl} alt={secondaryHref ? '' : `${companyName} partner logo`} />
   return (
-    <span className="logo-pair">
+    <span className="dealer-brand-mark dealer-brand-mark--pair logo-pair">
       {linkedPrimary}
       <span className="logo-pair__rule" aria-hidden="true" />
       {secondaryHref
@@ -50,32 +68,66 @@ function LogoPair({
   )
 }
 
+function HomeIcon() {
+  return <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20H4Z" fill="none" stroke="currentColor" strokeWidth="1.8" /></svg>
+}
+
+function ExternalIcon() {
+  return <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M14 5h5v5M19 5l-9 9M10 6H6v12h12v-4" fill="none" stroke="currentColor" strokeWidth="1.8" /></svg>
+}
+
+function PhoneIcon() {
+  return <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M8 4h3l1 4-2 1a12 12 0 0 0 5 5l1-2 4 1v3c0 1-1 2-2 2A15 15 0 0 1 6 6c0-1 1-2 2-2Z" fill="none" stroke="currentColor" strokeWidth="1.6" /></svg>
+}
+
+function GlobeIcon() {
+  return <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="1.6" /><path d="M4 12h16M12 4c2.5 2.4 2.5 13.6 0 16M12 4c-2.5 2.4-2.5 13.6 0 16" fill="none" stroke="currentColor" strokeWidth="1.6" /></svg>
+}
+
 export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
-  const [mobile, setMobile] = useState(false)
+  const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 900px)').matches)
+  const frameRef = useRef<HTMLDivElement>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(1)
+  const [scaledHeight, setScaledHeight] = useState(640)
   const brand = resolvedBrandColors({ primaryColor: dealer.primary_color, secondaryColor: dealer.secondary_color })
-  const headerBackground = resolveAppearanceValue(appearance?.headerBackground, brand) ?? brand.secondary
+  const shown = appearanceEditorPayload(appearance)
+  const headerBackground = resolveAppearanceValue(shown?.headerBackground, brand) ?? brand.secondary
+  const footerBackground = resolveAppearanceValue(shown?.footerBackground, brand) ?? brand.secondary
   const style = {
     '--dealer-primary': brand.primary,
     '--dealer-primary-foreground': inkFor(brand.primary),
     '--dealer-secondary': brand.secondary,
     '--dealer-secondary-foreground': inkFor(brand.secondary),
-    ...appearanceCssVars(appearanceEditorPayload(appearance), brand),
+    '--peacock': brand.primary,
+    '--gold': '#f8d30e',
+    ...appearanceCssVars(shown, brand),
   } as CSSProperties
-  const home = dealer.logo_placement === 'header' ? doorBuilderLogoPreview(dealer, 'home-header') : null
-  const builder = doorBuilderLogoPreview(dealer, 'page-header')
-  const finder = doorBuilderLogoPreview(dealer, 'find-my-door')
+  const logos = doorBuilderLogoPreview(dealer, 'page-header')
   const primaryHref = logoWebsiteHref(dealer.logo_website_url, dealer.website)
   const secondaryHref = logoWebsiteHref(dealer.logo_secondary_website_url)
-  const logos = (preview: ReturnType<typeof doorBuilderLogoPreview>) => (
-    <LogoPair
-      primaryUrl={preview?.primaryUrl ?? null}
-      secondaryUrl={preview?.showPair ? preview.secondaryUrl : null}
-      primaryHref={primaryHref}
-      secondaryHref={secondaryHref}
-      companyName={dealer.company_name}
-    />
-  )
   const headerIsLight = isLightBrandColor(headerBackground)
+  const footerIsLight = isLightBrandColor(footerBackground)
+  const designWidth = mobile ? MOBILE_WIDTH : DESKTOP_WIDTH
+
+  useLayoutEffect(() => {
+    const frame = frameRef.current
+    const stage = stageRef.current
+    if (!frame || !stage) return
+    const measure = () => {
+      const available = frame.clientWidth
+      const nextScale = available > 0 ? available / designWidth : 1
+      setScale(nextScale)
+      setScaledHeight(Math.ceil(stage.offsetHeight * nextScale))
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(frame)
+    observer.observe(stage)
+    return () => observer.disconnect()
+  }, [designWidth, appearance, dealer, mobile])
+
+  const stop = (event: MouseEvent<HTMLAnchorElement>) => event.preventDefault()
 
   return (
     <div className="db-preview-shell">
@@ -86,56 +138,94 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
           <button type="button" className={mobile ? 'is-selected' : ''} aria-pressed={mobile} onClick={() => setMobile(true)}>Mobile</button>
         </div>
       </div>
-      <div className={`db-preview-frame ${mobile ? 'is-mobile' : 'is-desktop'}`}>
-        <div className={`dealer-cobranded db-appearance-preview ${headerIsLight ? 'dealer-secondary-light' : ''}`} data-appearance-mode={appearanceEditorPayload(appearance) ? 'simple' : undefined} style={style}>
-          <header aria-label="Homepage header">{logos(home)}<span className="home-return"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2 7.5 8 2l6 5.5V14H2Z" fill="currentColor" /></svg>Home</span></header>
-          <header className="find-my-door-header" aria-label="Find My Door header">{logos(finder)}<span className="find-my-door-builder-link">Door Builder</span></header>
-          <header aria-label="Builder header">{logos(builder)}<span className="home-return">Home</span></header>
-          <ol className="stepper find-door-steps" aria-label="Step navigation">
-            <li><span>Size</span></li>
-            <li className="active current"><span><i>2</i></span> Style</li>
-            <li><span>Glass</span></li>
-          </ol>
-          <div className="db-preview-layout">
-            <div className="builder-panel find-my-door-main">
-              <div className="section-heading">
-                <h1>Choose a door</h1>
-                <p>Main body text stays independent of the header and footer.</p>
+      <div className={`db-preview-frame ${mobile ? 'is-mobile' : 'is-desktop'}`} ref={frameRef}>
+        <div className="db-preview-sizer" style={{ height: scaledHeight }}>
+          <div className="db-preview-scale" ref={stageRef} style={{ width: designWidth, transform: `scale(${scale})` }}>
+            <div
+              className={`dealer-cobranded db-appearance-preview ${mobile ? 'is-mobile' : 'is-desktop'} ${headerIsLight ? 'dealer-secondary-light' : ''}`}
+              data-appearance-mode={shown ? 'simple' : undefined}
+              style={style}
+            >
+              <header aria-label="Door Builder header">
+                <div className="dealer-header-brand">
+                  <LogoPair
+                    primaryUrl={logos?.primaryUrl ?? null}
+                    secondaryUrl={logos?.showPair ? logos.secondaryUrl : null}
+                    primaryHref={primaryHref}
+                    secondaryHref={secondaryHref}
+                    companyName={dealer.company_name}
+                  />
+                </div>
+                <div className="dealer-header-actions">
+                  <button className="home-return" type="button"><HomeIcon /> Home</button>
+                  {dealer.website && <a className="dealer-website-link" href={dealer.website} onClick={stop}><span>Visit Our Website</span> <ExternalIcon /></a>}
+                </div>
+              </header>
+              <div className="builder-toolbar">
+                <nav className="stepper" aria-label="Configuration progress">
+                  {['Door', 'Finish', 'Glass', 'Hardware'].map((label, index) => (
+                    <button key={label} type="button" className={index === 0 ? 'active' : ''} aria-current={index === 0 ? 'step' : undefined}><span>{index + 1}</span><em>{label}</em></button>
+                  ))}
+                </nav>
+                <div className="preview-toolbar">
+                  <button className="preview-reset-design" type="button">Restart Build</button>
+                </div>
               </div>
-              <article className="option-card selected">
-                <div className="option-visual" aria-hidden="true" />
-                <strong>Craftsman</strong>
-                <span className="option-copy"><span>Selected card description.</span></span>
-              </article>
-              <article className="option-card">
-                <div className="option-visual" aria-hidden="true" />
-                <strong>Full lite</strong>
-                <span className="option-copy"><span>Another door choice.</span></span>
-              </article>
-              <div className="builder-actions find-door-actions">
-                <button type="button" className="back" disabled>Previous</button>
-                <button type="button" className="next">Next</button>
-                <button type="button" className="preview-reset-design">Restart Build</button>
-              </div>
+              <main>
+                <div className="mobile-live-preview" aria-hidden={mobile ? undefined : true}>
+                  <img src="/appearance-preview/single-door.webp" alt="" />
+                </div>
+                <section className="builder-panel configuration-step">
+                  <div className="section-heading step-heading">
+                    <div className="step-label-row"><span>Step 1 of 4 · Door</span></div>
+                    <h1>Choose Your Door Configuration</h1>
+                    <p>Start by choosing the type of entry door you want to build.</p>
+                  </div>
+                  <div className="door-configuration-grid">
+                    {CONFIGURATIONS.map((item) => (
+                      <article key={item.name} className={`option-card door-catalog-card door-configuration-card${item.selected ? ' selected' : ''}`}>
+                        <span className="option-visual"><img src={item.image} alt="" /></span>
+                        <span className="option-copy">
+                          <small>Entry configuration</small>
+                          <strong>{item.name}</strong>
+                          <span>{item.description}</span>
+                        </span>
+                      </article>
+                    ))}
+                  </div>
+                  <div className="builder-actions">
+                    <button className="back" type="button" disabled>Previous</button>
+                    <button className="next" type="button">Next</button>
+                  </div>
+                </section>
+                <aside className="db-preview-panel" aria-label="Door preview panel">
+                  <img className="stage-door" src="/appearance-preview/single-door.webp" alt="Single door preview" />
+                  <div className="mini-summary">
+                    {SUMMARY.map(([label, value]) => <span key={label}><b>{label}</b><strong>{value}</strong></span>)}
+                  </div>
+                </aside>
+              </main>
+              <footer className="site-footer shared-site-footer">
+                <div className="site-footer-feedback">
+                  <button className="site-feedback-trigger" type="button">Feedback</button>
+                  <small>Built with <span aria-hidden="true">♥</span> by <a href="https://schoolradius.co/" onClick={stop}>School Radius</a></small>
+                </div>
+                <div className="site-footer-branding">
+                  <div className="hgi-attribution">
+                    <span>Door Builder & Visualizer provided by</span>
+                    <img src={footerIsLight ? '/appearance-preview/hgi-logo-black.webp' : '/appearance-preview/hgi-logo-white.png'} alt="Home Guard Industries" />
+                  </div>
+                </div>
+                <div className="site-footer-contact">
+                  <a href="tel:+18005251885" onClick={stop}><PhoneIcon /><span>1-800-525-1885</span></a>
+                  <a href="https://homeguardindustries.com" onClick={stop}><GlobeIcon /><span>homeguardindustries.com</span></a>
+                </div>
+              </footer>
             </div>
-            <aside className="db-preview-panel" aria-label="Door preview panel">
-              <div className="preview-view-toggle db-preview-controls">
-                <button type="button">Outside</button>
-                <button type="button">Inside</button>
-              </div>
-              <div className="door-frame"><div className="db-preview-door" data-door-art="untinted" /></div>
-              <p>Preview info stays on the panel, not on the door.</p>
-              <p className="db-preview-label">Swing</p>
-            </aside>
           </div>
-          <footer className="site-footer shared-site-footer">
-            <span className="hgi-attribution"><span>Door Builder & Visualizer provided by</span></span>
-            <span className="site-footer-contact"><a href="https://homeguardindustries.com">homeguardindustries.com<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="currentColor" /></svg></a></span>
-            <div className="site-footer-feedback"><small>Built with <span aria-hidden="true">♥</span> by <a href="https://schoolradius.co/">School Radius</a></small></div>
-          </footer>
         </div>
       </div>
-      <p className="db-preview-caption">This preview uses the same color tokens as the Door Builder. The door art keeps its own colors. Logo links open each logo’s website.</p>
+      <p className="db-preview-caption">This preview uses the Door Builder layout and color tokens. It does not save a configuration or send a lead.</p>
     </div>
   )
 }

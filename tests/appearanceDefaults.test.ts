@@ -66,7 +66,7 @@ async function paint(page: Page, selector: string) {
 }
 
 async function headerPaint(page: Page) {
-  return page.locator('header[aria-label="Homepage header"]').evaluate((element) => {
+  return page.locator('header[aria-label="Door Builder header"]').evaluate((element) => {
     const style = getComputedStyle(element)
     return { background: style.backgroundColor, color: style.color }
   })
