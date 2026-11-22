@@ -2,20 +2,24 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { AdminDealer } from '../types/admin'
 import { AppearanceColorControl } from './AppearanceColorControl'
+import { AppearanceTextControl } from './AppearanceTextControl'
 import { DoorBuilderAppearancePreview } from './DoorBuilderAppearancePreview'
 import {
-  APPEARANCE_FIELDS,
-  APPEARANCE_GROUP_LABELS,
+  LEGACY_APPEARANCE_NOTICE,
+  SIMPLIFIED_APPEARANCE_FIELDS,
+  SIMPLIFIED_GROUP_LABELS,
   appearanceContrastWarnings,
+  appearanceEditorPayload,
   appearanceEquals,
   appearanceForStorage,
   appearanceFromStorage,
+  appearanceUsesLegacyMapping,
   missingAppearanceColumn,
   resolvedBrandColors,
-  type AppearanceGroupId,
   type AppearanceToken,
   type AppearanceValue,
   type DoorBuilderAppearance,
+  type SimplifiedAppearanceGroup,
 } from '../utils/doorBuilderAppearance'
 import '../styles/appearanceControls.css'
 
@@ -28,16 +32,13 @@ type Props = {
   onSave: (value: DoorBuilderAppearance | null) => Promise<void>
 }
 
-const GROUP_NOTES: Record<AppearanceGroupId, string> = {
-  header: 'Includes a fully white header. Home and the website button use the header button colors.',
-  body: 'Independent of the header and the footer.',
-  cards: 'Images, layout, and selection stay as they are. Colors change the card chrome only.',
-  preview: 'The door rendering and product photos keep their own colors.',
-  buttons: 'Next uses primary. Previous and Restart Build use secondary. Disabled buttons stay faded.',
-  footer: 'Home Guard attribution, feedback, and links stay in place.',
+const GROUP_NOTES: Record<SimplifiedAppearanceGroup, string> = {
+  header: 'Background covers the builder header, the homepage header, and the Find My Door header. Text colors navigation labels, icons, and header buttons. Logos, logo links, and logo sizing stay as they are.',
+  main: 'One background covers the configuration area and the door preview on Door, Finish, Glass, and Hardware, plus Find My Door. Text colors headings, labels, and step text. Cards, door images, glass, finishes, hardware, and photos keep their own colors.',
+  footer: 'Text colors footer copy, links, the Built with ♥ by School Radius credit, and icons. Home Guard branding, feedback, and links stay in place.',
 }
 
-const GROUPS = [...new Set(APPEARANCE_FIELDS.map((field) => field.group))]
+const GROUPS: SimplifiedAppearanceGroup[] = ['header', 'main', 'footer']
 
 export function DoorBuilderAppearanceSettings({
   dealer,
@@ -60,8 +61,9 @@ export function DoorBuilderAppearanceSettings({
   const ready = !loadFromServer || loadedFor === dealer.id
   const shownDraft = ready ? draft : null
   const dirty = ready && !appearanceEquals(draft, saved)
+  const legacyNotice = ready && appearanceUsesLegacyMapping(saved)
   const warnings = useMemo(
-    () => appearanceContrastWarnings(draft, { primaryColor: dealer.primary_color, secondaryColor: dealer.secondary_color }),
+    () => appearanceContrastWarnings(appearanceEditorPayload(draft), { primaryColor: dealer.primary_color, secondaryColor: dealer.secondary_color }),
     [draft, dealer.primary_color, dealer.secondary_color],
   )
 
@@ -115,7 +117,7 @@ export function DoorBuilderAppearanceSettings({
   }
 
   const save = async () => {
-    const parsed = appearanceForStorage(draft)
+    const parsed = appearanceForStorage(appearanceEditorPayload(draft) ?? {})
     if (!parsed.ok) {
       setError(parsed.error)
       return
@@ -144,10 +146,11 @@ export function DoorBuilderAppearanceSettings({
         <p className="eyebrow">Door Builder</p>
         <h2 id="door-builder-appearance-heading">Door Builder Appearance</h2>
         <p className="appearance-settings__intro">
-          Primary and secondary stay the brand colors. Each choice can inherit the current styling, follow a brand color, or use its own HEX value. Nothing is stored until you save appearance.
+          Six settings cover the header, the main section, and the footer. A background can inherit the current styling, follow a brand color, or use its own HEX value. Text is black, white, or the current styling. Nothing is stored until you save appearance.
           {mode === 'dealer' ? ' This saves only your Door Builder appearance.' : ' This saves only this dealer’s Door Builder appearance.'}
         </p>
       </div>
+      {legacyNotice && <div className="portal-alert" role="status">{LEGACY_APPEARANCE_NOTICE}</div>}
       {migrationNeeded && <div className="portal-alert" role="status">Appearance choices can be previewed now. They can be saved after the Door Builder appearance migration is applied.</div>}
       {dirty && <div className="portal-alert" role="status">Appearance has unsaved changes.</div>}
       {message && <div className="portal-alert portal-alert--success" role="status">{message}</div>}
@@ -162,20 +165,30 @@ export function DoorBuilderAppearanceSettings({
         <div className="appearance-settings__groups">
           {GROUPS.map((group) => (
             <fieldset key={group} className="appearance-group">
-              <legend>{APPEARANCE_GROUP_LABELS[group]}</legend>
+              <legend>{SIMPLIFIED_GROUP_LABELS[group]}</legend>
               <p>{GROUP_NOTES[group]}</p>
               <div className="appearance-group__fields">
-                {APPEARANCE_FIELDS.filter((field) => field.group === group).map((field) => (
-                  <AppearanceColorControl
-                    key={field.key}
-                    id={`appearance-${field.key}`}
-                    label={field.label}
-                    value={shownDraft?.[field.key] ?? null}
-                    brand={brand}
-                    open={openKey === field.key}
-                    onOpenChange={(next) => setOpenKey(next ? field.key : null)}
-                    onChange={(value) => setToken(field.key, value)}
-                  />
+                {SIMPLIFIED_APPEARANCE_FIELDS.filter((field) => field.group === group).map((field) => (
+                  field.role === 'text' ? (
+                    <AppearanceTextControl
+                      key={field.key}
+                      id={`appearance-${field.key}`}
+                      label={field.label}
+                      value={shownDraft?.[field.key] ?? null}
+                      onChange={(value) => setToken(field.key, value)}
+                    />
+                  ) : (
+                    <AppearanceColorControl
+                      key={field.key}
+                      id={`appearance-${field.key}`}
+                      label={field.label}
+                      value={shownDraft?.[field.key] ?? null}
+                      brand={brand}
+                      open={openKey === field.key}
+                      onOpenChange={(next) => setOpenKey(next ? field.key : null)}
+                      onChange={(value) => setToken(field.key, value)}
+                    />
+                  )
                 ))}
               </div>
             </fieldset>
@@ -190,7 +203,7 @@ export function DoorBuilderAppearanceSettings({
       </div>
       <dialog ref={resetDialogRef} className="appearance-confirm" role="alertdialog" aria-labelledby="reset-all-colors-title" aria-describedby="reset-all-colors-body">
         <h3 id="reset-all-colors-title">Reset all colors to default?</h3>
-        <p id="reset-all-colors-body">This clears every Door Builder color override in this draft. Brand colors, logos, logo links, and typography stay as they are. Nothing is saved until you save appearance.</p>
+        <p id="reset-all-colors-body">This clears every Door Builder color override in this draft, including older advanced color settings. Brand colors, logos, logo links, and typography stay as they are. Nothing is saved until you save appearance.</p>
         <div className="appearance-confirm__actions">
           <button className="button button--outline" type="button" onClick={() => resetDialogRef.current?.close()}>Cancel</button>
           <button className="button button--primary" type="button" onClick={() => { setDraft(null); setOpenKey(null); setError(''); setMessage(''); resetDialogRef.current?.close() }}>Reset All Colors to Default</button>

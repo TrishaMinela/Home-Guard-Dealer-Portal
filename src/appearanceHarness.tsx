@@ -38,8 +38,24 @@ const dealer = {
   slug_requested_at: null,
 } satisfies AdminDealer
 
+const legacyAppearance: DoorBuilderAppearance = {
+  headerBackground: '#112233',
+  headerText: '#abcdef',
+  headerIcon: '#445566',
+  bodyBackground: '#010203',
+  previewBackground: '#222222',
+  cardBackground: '#fff4d6',
+  cardTitle: '#7a1f1f',
+  footerText: '#ffd24a',
+  footerLink: '#00ff00',
+  primaryButtonBackground: '#123456',
+}
+
 export function AppearanceHarness() {
-  const [saved, setSaved] = useState<DoorBuilderAppearance | null>(null)
+  const params = new URLSearchParams(window.location.search)
+  const seeded = params.get('legacy') === '1' ? legacyAppearance : null
+  const mode = params.get('role') === 'dealer' ? 'dealer' : 'admin'
+  const [saved, setSaved] = useState<DoorBuilderAppearance | null>(seeded)
   const [reloadKey, setReloadKey] = useState(0)
   return (
     <main>
@@ -47,7 +63,8 @@ export function AppearanceHarness() {
       <DoorBuilderAppearanceSettings
         key={reloadKey}
         dealer={{ ...dealer, door_builder_appearance: saved }}
-        mode="admin"
+        mode={mode}
+        canEdit
         loadFromServer={false}
         initialAppearance={saved}
         onSave={async (value) => {
