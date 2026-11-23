@@ -79,12 +79,16 @@ export function AppearanceHarness() {
 }
 
 export function ProfileNavHarness({ canEditAppearance }: { canEditAppearance: boolean }) {
-  const [current, setCurrent] = useState<AdminDealer>(dealer)
+  const params = new URLSearchParams(window.location.search)
+  const single = params.get('logos') === 'single'
+  const initial: AdminDealer = single ? { ...dealer, logo_display: 'single', logo_secondary_url: null } : dealer
+  const [current, setCurrent] = useState<AdminDealer>(initial)
+  const mode = params.get('studio') === 'admin' ? 'admin' : 'dealer'
   return (
     <MemoryRouter initialEntries={['/company']}>
       <Routes>
         <Route path="/company" element={<DealerCompanyProfilePage dealer={current} canEditAppearance={canEditAppearance} onDealerUpdated={setCurrent} />} />
-        <Route path="/company/branding" element={<BrandingStudioPage mode="dealer" dealer={current} canEditAppearance={canEditAppearance} backTo="/company" onDealerUpdated={setCurrent} />} />
+        <Route path="/company/branding" element={<BrandingStudioPage mode={mode} dealer={current} canEditAppearance={mode === 'admin' || canEditAppearance} backTo="/company" onDealerUpdated={setCurrent} />} />
       </Routes>
     </MemoryRouter>
   )

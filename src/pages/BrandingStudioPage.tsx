@@ -13,6 +13,7 @@ import { supabase } from '../lib/supabase'
 import '../styles/brandingStudio.css'
 import type { AdminDealer } from '../types/admin'
 import { appearanceEquals, appearanceRpcArgs, appearanceUpdate, type DoorBuilderAppearance } from '../utils/doorBuilderAppearance'
+import { normalizeLogoWebsiteUrl } from '../utils/logoWebsiteUrl'
 import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
 import { generatedLightLogoMessage, logoVariantSavePlan, normalizeLogoDisplay, type DealerLogoDisplay, type DealerLogoVariant } from '../utils/dealerLogoVariants'
 import { dealerTypographyValues, typographyPayload, type DealerTypographyValues } from '../utils/dealerTypography'
@@ -62,28 +63,37 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
   const [params, setParams] = useSearchParams()
   const requested = studioSectionFromValue(params.get('section')) ?? studioSectionFromValue(window.location.hash) ?? 'logos'
   const section: StudioSectionId = requested === 'colors' && mode === 'dealer' && !canEditAppearance ? 'logos' : requested
-  const [panel, setPanel] = useState<'list' | StudioSectionId>(params.get('section') ? section : 'list')
-  const [logoView, setLogoView] = useState<'cards' | 'variants'>('cards')
+  const [panel, setPanel] = useState<StudioSectionId>(section)
+  const [logoView, setLogoView] = useState<'cards' | 'primary-variants' | 'secondary-variants'>('cards')
   const [editing, setEditing] = useState(false)
-  const [surface, setSurface] = useState<'homepage' | 'builder' | 'find'>('homepage')
+  const [surface, setSurface] = useState<'homepage' | 'builder' | 'find'>('builder')
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches)
   const [placementDraft, setPlacementDraft] = useState<DealerLogoPlacement | null>(null)
   const [displayDraft, setDisplayDraft] = useState<DealerLogoDisplay | null>(null)
   const [variantDraft, setVariantDraft] = useState<Partial<AdminDealer> | null>(null)
   const [typographyDraft, setTypographyDraft] = useState<DealerTypographyValues | null>(null)
   const [appearanceDraft, setAppearanceDraft] = useState<DoorBuilderAppearance | null | undefined>(undefined)
+  const [brandDraft, setBrandDraft] = useState<{ primary: string; secondary: string } | null>(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [removal, setRemoval] = useState<{ file: File; originalUrl: string; removedUrl: string; reason: string; png: Blob } | null>(null)
   const [removalNotice, setRemovalNotice] = useState('')
   const [uploading, setUploading] = useState(false)
+  const [primaryLinkDraft, setPrimaryLinkDraft] = useState<string | null>(null)
+  const [secondaryLinkDraft, setSecondaryLinkDraft] = useState<string | null>(null)
+  const [logoSize, setLogoSize] = useState<Record<string, string>>({})
+  const primaryLink = primaryLinkDraft ?? dealer.logo_website_url ?? ''
+  const secondaryLink = secondaryLinkDraft ?? dealer.logo_secondary_website_url ?? ''
 
   const savedPlacement: DealerLogoPlacement = dealer.logo_placement === 'header' ? 'header' : 'hero'
   const placement = placementDraft ?? savedPlacement
   const display = displayDraft ?? normalizeLogoDisplay(dealer.logo_display)
+  const brand = brandDraft ?? { primary: dealer.primary_color ?? '', secondary: dealer.secondary_color ?? '' }
   const previewDealer = useMemo(() => ({
     ...dealer,
+    primary_color: brand.primary || null,
+    secondary_color: brand.secondary || null,
     logo_placement: placement,
     logo_display: display,
     ...(variantDraft ?? {}),
@@ -95,7 +105,7 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
       body_font_weight: typographyDraft.bodyFontWeight ? Number(typographyDraft.bodyFontWeight) : null,
       body_font_size: typographyDraft.bodyFontSize ? Number(typographyDraft.bodyFontSize) : null,
     } : {}),
-  }), [dealer, display, placement, typographyDraft, variantDraft])
+  }), [brand.primary, brand.secondary, dealer, display, placement, typographyDraft, variantDraft])
   const appearance = appearanceDraft === undefined ? dealer.door_builder_appearance ?? null : appearanceDraft
   const dirty = (placementDraft != null && placementDraft !== savedPlacement)
     || (displayDraft != null && displayDraft !== normalizeLogoDisplay(dealer.logo_display))
@@ -107,17 +117,7 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
     ))
     || (typographyDraft != null && JSON.stringify(typographyDraft) !== JSON.stringify(dealerTypographyValues(dealer)))
     || (canEditAppearance && appearanceDraft !== undefined && !appearanceEquals(appearanceDraft, dealer.door_builder_appearance ?? null))
-
-  useEffect(() => {
-    const place = () => {
-      const toolbar = document.querySelector('.branding-studio__toolbar')
-      const bottom = toolbar ? Math.ceil(toolbar.getBoundingClientRect().bottom) : 72
-      document.documentElement.style.setProperty('--studio-sheet-top', `${bottom}px`)
-    }
-    place()
-    window.addEventListener('resize', place)
-    return () => window.removeEventListener('resize', place)
-  }, [editing, panel])
+    || (brandDraft != null && (brandDraft.primary !== (dealer.primary_color ?? '') || brandDraft.secondary !== (dealer.secondary_color ?? '')))
 
   useEffect(() => {
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -151,6 +151,34 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
     setParams({ section: next })
   }
 
+  async function saveBrand(current: AdminDealer, colors: { primary: string; secondary: string }) {
+    const primary = colors.primary.trim() || null
+    const secondary = colors.secondary.trim() || null
+    if (mode === 'admin') {
+      const { error: updateError } = await supabase.from('dealers').update({ primary_color: primary, secondary_color: secondary }).eq('id', current.id)
+      if (updateError) throw updateError
+      return { ...current, primary_color: primary, secondary_color: secondary }
+    }
+    const { error: saveError } = await supabase.rpc('update_my_dealer_profile', {
+      p_dealer_id: current.id,
+      p_company_name: current.company_name,
+      p_primary_contact_name: current.primary_contact_name ?? '',
+      p_email: current.email ?? '',
+      p_phone: current.phone ?? '',
+      p_website: current.website ?? '',
+      p_address: current.address ?? '',
+      p_city: current.city ?? '',
+      p_state: current.state ?? '',
+      p_zip: current.zip ?? '',
+      p_primary_color: primary ?? '',
+      p_secondary_color: secondary ?? '',
+      p_logo_url: current.logo_url ?? '',
+      p_logo_light_url: current.logo_light_url ?? '',
+    })
+    if (saveError) throw saveError
+    return { ...current, primary_color: primary, secondary_color: secondary }
+  }
+
   function discard() {
     if (dirty && !window.confirm('Discard unsaved branding changes?')) return
     setPlacementDraft(null)
@@ -158,6 +186,7 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
     setVariantDraft(null)
     setTypographyDraft(null)
     setAppearanceDraft(undefined)
+    setBrandDraft(null)
     setMessage('Draft discarded.')
     setError('')
   }
@@ -184,6 +213,9 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
     if (typographyDraft && JSON.stringify(typographyDraft) !== JSON.stringify(dealerTypographyValues(dealer))) {
       tasks.push({ id: 'typography', label: 'Typography', run: async () => { current = await saveTypography(current, typographyDraft) } })
     }
+    if (brandDraft && (brandDraft.primary !== (dealer.primary_color ?? '') || brandDraft.secondary !== (dealer.secondary_color ?? ''))) {
+      tasks.push({ id: 'brand', label: 'Brand colors', run: async () => { current = await saveBrand(current, brandDraft) } })
+    }
     const result = await runBrandingSave(tasks)
     onDealerUpdated(current)
     if (result.failed.length === 0) {
@@ -192,6 +224,7 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
       setVariantDraft(null)
       setTypographyDraft(null)
       setAppearanceDraft(undefined)
+      setBrandDraft(null)
       setMessage('Changes saved.')
     } else {
       setError(`Saved ${result.saved.join(', ') || 'nothing'}. Could not save ${result.failed.map((item) => `${item.label}: ${item.message}`).join(' ')}`)
@@ -494,93 +527,223 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
     setUploading(false)
   }
 
+  async function saveSecondary(assets: { logo_secondary_url: string | null; logo_secondary_source_url: string | null; logo_secondary_light_url: string | null; logo_secondary_black_url: string | null }) {
+    if (mode === 'admin') {
+      const { error: updateError } = await supabase.from('dealers').update(assets).eq('id', dealer.id)
+      if (updateError) throw updateError
+    } else {
+      const { error: saveError } = await supabase.rpc('update_my_dealer_secondary_logo_assets', {
+        p_dealer_id: dealer.id,
+        p_logo_secondary_url: assets.logo_secondary_url ?? '',
+        p_logo_secondary_source_url: assets.logo_secondary_source_url ?? '',
+        p_logo_secondary_light_url: assets.logo_secondary_light_url ?? '',
+        p_logo_secondary_black_url: assets.logo_secondary_black_url ?? '',
+      })
+      if (saveError) throw saveError
+    }
+    const next = { ...dealer, ...assets }
+    onDealerUpdated(next)
+    return next
+  }
+
+  async function uploadSecondary(event: ChangeEvent<HTMLInputElement>, kind: 'primary' | 'light' | 'black') {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    const extension = logoExtensions[file.type]
+    if (!extension || extension === 'svg' || file.size > 5 * 1024 * 1024) {
+      setError('Second logos use a PNG, JPEG, or WebP no larger than 5 MB.')
+      return
+    }
+    setUploading(true)
+    setError('')
+    const filename = kind === 'primary' ? 'logo-secondary' : kind === 'black' ? 'logo-secondary-black' : 'logo-secondary-light'
+    const objectPath = `${dealer.id}/${filename}.${extension}`
+    const { error: uploadError } = await supabase.storage.from('dealer-logos').upload(objectPath, file, { contentType: file.type, upsert: true })
+    if (uploadError) { setError('We could not upload the second logo. Please try again.'); setUploading(false); return }
+    const publicUrl = `${supabase.storage.from('dealer-logos').getPublicUrl(objectPath).data.publicUrl}?v=${Date.now()}`
+    try {
+      let next = await saveSecondary({
+        logo_secondary_url: kind === 'primary' ? publicUrl : dealer.logo_secondary_url ?? null,
+        logo_secondary_source_url: dealer.logo_secondary_source_url ?? null,
+        logo_secondary_light_url: kind === 'light' ? publicUrl : dealer.logo_secondary_light_url ?? null,
+        logo_secondary_black_url: kind === 'black' ? publicUrl : dealer.logo_secondary_black_url ?? null,
+      })
+      if (kind === 'primary') {
+        const generated = await generateDefaultDealerLightLogo(dealer.id, 'white', 'secondary')
+        if (generated.generatedLightLogoUrl) {
+          next = { ...next, logo_secondary_generated_light_url: generated.generatedLightLogoUrl, logo_secondary_generated_light_usable: generated.generatedLightUsable }
+          onDealerUpdated(next)
+        }
+      }
+      setMessage('Second logo saved immediately.')
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'The file uploaded, but it could not be saved.')
+    }
+    setUploading(false)
+  }
+
+  async function generateSecondary(tone: 'white' | 'black') {
+    setUploading(true)
+    setError('')
+    const result = await generateDefaultDealerLightLogo(dealer.id, tone, 'secondary')
+    setUploading(false)
+    if (result.error || !result.generatedLogoUrl) { setError(result.error ?? 'We could not generate the second logo.'); return }
+    onDealerUpdated({
+      ...dealer,
+      ...(tone === 'white'
+        ? { logo_secondary_generated_light_url: result.generatedLogoUrl, logo_secondary_generated_light_usable: result.generatedLogoUsable }
+        : { logo_secondary_generated_black_url: result.generatedLogoUrl, logo_secondary_generated_black_usable: result.generatedLogoUsable }),
+    })
+    setMessage('Second logo variant saved immediately.')
+  }
+
+  async function generateBlackLogo() {
+    setUploading(true)
+    setError('')
+    const result = await generateDefaultDealerLightLogo(dealer.id, 'black')
+    setUploading(false)
+    if (result.error || !result.generatedLogoUrl) { setError(result.error ?? 'We could not generate the black logo.'); return }
+    onDealerUpdated({ ...dealer, logo_generated_black_url: result.generatedLogoUrl, logo_generated_black_usable: result.generatedLogoUsable })
+    setMessage('Black logo saved immediately.')
+  }
+
   function leave(event: MouseEvent<HTMLAnchorElement>) {
     if (dirty && !window.confirm('You have unsaved branding changes. Leave without saving?')) event.preventDefault()
   }
 
-  const settings = (
+  const sectionMeta = {
+    logos: ['Logos', 'Upload both logos, generate variants, and set each website link.'],
+    placement: ['Logo Display & Placement', 'Choose one or two logos, then where the homepage shows them.'],
+    colors: ['Colors', 'Brand colors are separate from the six Door Builder overrides.'],
+    typography: ['Typography', 'Headings and body type update the preview immediately.'],
+  } as const
+  const active = sectionMeta[panel]
+
+  function logoName(url: string | null | undefined) {
+    if (!url) return 'No file yet'
+    if (url.startsWith('data:')) return 'Current logo'
+    const path = url.split('?')[0] ?? url
+    return decodeURIComponent(path.split('/').pop() || 'logo')
+  }
+
+  async function commitLink(slot: 'primary' | 'secondary', value: string) {
+    const parsed = normalizeLogoWebsiteUrl(value)
+    if (parsed.error) { setError(parsed.error); return }
+    setError('')
+    try {
+      await saveWebsite(slot, parsed.url)
+      setMessage('Website link saved immediately.')
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'The website link could not be saved.')
+    }
+  }
+
+  const editor = (
     <>
       <div className="branding-studio__sheet-bar">
-        <strong>{panel === 'list' ? 'Settings' : STUDIO_SECTIONS.find((item) => item.id === panel)?.label}</strong>
+        <strong>{active[0]}</strong>
         <button type="button" onClick={() => setEditing(false)}>Close</button>
       </div>
-      {panel !== 'list' && <button type="button" className="branding-studio__back-section" onClick={() => { setPanel('list'); setLogoView('cards') }}>Back</button>}
-      {panel === 'list' && (
-        <ul className="branding-studio__menu">
-          {STUDIO_SECTIONS.filter((item) => item.id !== 'colors' || canEditAppearance || mode === 'admin').map((item) => (
-            <li key={item.id}><button type="button" onClick={() => choose(item.id)}><strong>{item.label}</strong><span aria-hidden="true">Edit this part of the Door Builder</span></button></li>
-          ))}
-        </ul>
-      )}
+      <div className="branding-studio__editor-head">
+        <h2>{logoView === 'cards' ? active[0] : 'Manage Variants'}</h2>
+        <p>{logoView === 'cards' ? active[1] : 'Original, white, and black choices for this logo. Files save immediately.'}</p>
+      </div>
+      {logoView !== 'cards' && <button type="button" className="branding-studio__back-section" onClick={() => setLogoView('cards')}>Back</button>}
       {panel === 'logos' && logoView === 'cards' && (
         <div className="branding-studio__cards">
-          <p className="branding-studio__note">Logo files, generated variants, and website links save immediately. Other choices stay in the draft until you save.</p>
-          <article className="branding-studio__card" id="logo-original">
-            <strong>Logo 1 · Primary</strong>
-            {dealer.logo_url ? <img src={dealer.logo_url} alt="" /> : <p>No primary logo yet.</p>}
-            <label className="button button--outline">{uploading ? 'Uploading...' : 'Replace Logo'}<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onChange={(event) => void uploadLogo(event, 'primary')} /></label>
-            <button type="button" className="button button--outline" onClick={() => setLogoView('variants')}>Manage Variants</button>
+          <p className="branding-studio__note">Logo files, generated variants, and website links save immediately.</p>
+          <article className="studio-logo" id="logo-original">
+            <strong>Logo 1 · Active</strong>
+            <div className="studio-logo__row">
+              <div className="studio-logo__thumb">{dealer.logo_url ? <img src={dealer.logo_url} alt="" onLoad={(event) => { const size = `${event.currentTarget.naturalWidth} × ${event.currentTarget.naturalHeight}`; setLogoSize((current) => ({ ...current, primary: size })) }} /> : <span>Add</span>}</div>
+              <div className="studio-logo__actions">
+                <label className="button button--outline">Upload Original<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onChange={(event) => void uploadLogo(event, 'primary')} /></label>
+                <span id="logo-white"><button type="button" className="button button--outline" onClick={() => void generateLightLogo()}>Generate White</button></span>
+                <span id="logo-black"><button type="button" className="button button--outline" onClick={() => void generateBlackLogo()}>Generate Black</button></span>
+              </div>
+            </div>
+            <p className="studio-logo__meta">{dealer.logo_url ? <span className="studio-logo__ok">Saved</span> : null}{logoName(dealer.logo_url)}{logoSize.primary ? ` · ${logoSize.primary}` : ''}</p>
+            {(dealer.logo_light_url || dealer.logo_generated_light_url) && <img className="studio-logo__variant" src={dealer.logo_light_url ?? dealer.logo_generated_light_url ?? ''} alt="" />}
+            <button type="button" className="button button--outline" onClick={() => setLogoView('primary-variants')}>Manage Variants</button>
+            {dealer.logo_light_url && <button type="button" className="button button--outline" onClick={() => void removeCustomLightLogo()}>Remove Custom Logo</button>}
             {dealer.logo_source_url && <button type="button" className="button button--outline" onClick={() => void restoreOriginalLogo()}>Restore Original</button>}
             {removalNotice && <p role="status">{removalNotice}</p>}
           </article>
-          <article className="branding-studio__card" id="logo-white">
-            <strong>White variant</strong>
-            {(dealer.logo_light_url || dealer.logo_generated_light_url) ? <img src={dealer.logo_light_url ?? dealer.logo_generated_light_url ?? ''} alt="" /> : <p>No white logo yet.</p>}
-            <p>Generated or uploaded. Saved immediately when you replace it.</p>
-            <label className="button button--outline">Replace white<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onChange={(event) => void uploadLogo(event, 'light')} /></label>
-            <button type="button" className="button button--outline" onClick={() => void generateLightLogo()}>{uploading ? 'Generating...' : 'Generate White'}</button>
-            {dealer.logo_light_url && <button type="button" className="button button--outline" onClick={() => void removeCustomLightLogo()}>Remove Custom Logo</button>}
+          <article className="studio-logo" id="logo-white">
+            <strong>Logo 2 · Optional</strong>
+            <div className="studio-logo__row">
+              <div className="studio-logo__thumb">{dealer.logo_secondary_url ? <img src={dealer.logo_secondary_url} alt="" onLoad={(event) => { const size = `${event.currentTarget.naturalWidth} × ${event.currentTarget.naturalHeight}`; setLogoSize((current) => ({ ...current, secondary: size })) }} /> : <span>Add</span>}</div>
+              <div className="studio-logo__actions">
+                <label className="button button--outline">Upload Original<input type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(event) => void uploadSecondary(event, 'primary')} /></label>
+                <button type="button" className="button button--outline" disabled={!dealer.logo_secondary_url} onClick={() => void generateSecondary('white')}>Generate White</button>
+                <button type="button" className="button button--outline" disabled={!dealer.logo_secondary_url} onClick={() => void generateSecondary('black')}>Generate Black</button>
+              </div>
+            </div>
+            <p className="studio-logo__meta">{dealer.logo_secondary_url ? <span className="studio-logo__ok">Saved</span> : null}{logoName(dealer.logo_secondary_url)}{logoSize.secondary ? ` · ${logoSize.secondary}` : ''}</p>
+            <button type="button" className="button button--outline" onClick={() => setLogoView('secondary-variants')}>Manage Variants</button>
           </article>
-          <article className="branding-studio__card" id="logo-black">
-            <strong>Black variant</strong>
-            <label className="button button--outline">Replace black<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onChange={(event) => void uploadLogo(event, 'black')} /></label>
-          </article>
-          <article className="branding-studio__card">
-            <strong>Logo 2 · Secondary</strong>
-            {dealer.logo_secondary_url ? <img src={dealer.logo_secondary_url} alt="" /> : <p>Add a second logo from Logo Display.</p>}
-            <button type="button" className="button button--outline" onClick={() => choose('placement')}>{dealer.logo_secondary_url ? 'Replace second logo' : 'Add Second Logo'}</button>
-            <button type="button" className="button button--outline" onClick={() => setLogoView('variants')}>Manage Variants</button>
-          </article>
+          <section className="studio-links">
+            <h3>Website links</h3>
+            <label>Logo 1 link<input value={primaryLink} onChange={(event) => setPrimaryLinkDraft(event.target.value)} onBlur={() => { setPrimaryLinkDraft(null); void commitLink('primary', primaryLink) }} placeholder="https://example.com" /></label>
+            <label>Logo 2 link <span>optional</span><input value={secondaryLink} onChange={(event) => setSecondaryLinkDraft(event.target.value)} onBlur={() => { setSecondaryLinkDraft(null); void commitLink('secondary', secondaryLink) }} placeholder="https://example.com" /></label>
+          </section>
         </div>
       )}
-      {panel === 'logos' && logoView === 'variants' && (
-        <DealerLogoVariantSettings dealer={previewDealer} embedded placement={placement} onDraftChange={setVariantDraft} onSave={async () => previewDealer} onSaveWebsite={saveWebsite} onUpdated={onDealerUpdated} />
+      {panel === 'logos' && logoView !== 'cards' && (
+        <div className="branding-studio__variants">
+          <DealerLogoVariantSettings dealer={previewDealer} embedded placement={placement} onDraftChange={setVariantDraft} onSave={async () => previewDealer} onSaveWebsite={saveWebsite} onUpdated={onDealerUpdated} />
+        </div>
       )}
       {panel === 'placement' && (
         <>
-          <p className="branding-studio__note">Marketing banners do not use these choices.</p>
-          <DealerLogoDisplaySettings dealer={dealer} embedded onDraftChange={setDisplayDraft} onSaveDisplay={async (value) => saveDisplay(dealer, value)} onSaveSecondary={async () => dealer} onUpdated={onDealerUpdated} />
+          <p className="branding-studio__note">Header and Hero are only set here. Marketing banners do not use these choices.</p>
+          <DealerLogoDisplaySettings dealer={dealer} embedded showUploads={false} onDraftChange={setDisplayDraft} onSaveDisplay={async (value) => saveDisplay(dealer, value)} onSaveSecondary={saveSecondary} onUpdated={onDealerUpdated} />
           <DealerLogoPlacementSettings dealer={dealer} onDraftChange={setPlacementDraft} onSave={async (value) => savePlacement(dealer, value)} onUpdated={onDealerUpdated} />
         </>
       )}
-      {panel === 'colors' && (canEditAppearance || mode === 'admin'
-        ? <DoorBuilderAppearanceSettings dealer={dealer} mode={mode} canEdit embedded onDraftChange={setAppearanceDraft} onSave={async (value) => { onDealerUpdated(await saveAppearance(dealer, value)) }} />
-        : <p>Appearance settings are available to dealer admins.</p>)}
+      {panel === 'colors' && (
+        <>
+          <section className="studio-brand">
+            <h3>Brand colors</h3>
+            <p>Primary and secondary stay with the dealer brand. They are not the six Door Builder overrides below.</p>
+            <label>Primary<input value={brand.primary} onChange={(event) => setBrandDraft({ primary: event.target.value, secondary: brand.secondary })} /></label>
+            <label>Secondary<input value={brand.secondary} onChange={(event) => setBrandDraft({ primary: brand.primary, secondary: event.target.value })} /></label>
+          </section>
+          {(canEditAppearance || mode === 'admin')
+            ? <DoorBuilderAppearanceSettings dealer={previewDealer} mode={mode} canEdit embedded onDraftChange={setAppearanceDraft} onSave={async (value) => { onDealerUpdated(await saveAppearance(dealer, value)) }} />
+            : <p>Appearance settings are available to dealer admins.</p>}
+        </>
+      )}
       {panel === 'typography' && (
         <DealerTypographySettings dealer={dealer} embedded onDraftChange={setTypographyDraft} onSave={async (values) => saveTypography(dealer, values)} onUpdated={onDealerUpdated} />
       )}
       {removal && <LogoBackgroundDialog originalUrl={removal.originalUrl} removedUrl={removal.removedUrl} reason={removal.reason} busy={uploading} onAccept={() => void acceptTransparentLogo()} onKeep={() => void keepOriginalLogo()} onCancel={dismissRemoval} />}
+      <div className="branding-studio__sheet-actions">
+        <button type="button" className="button button--outline" onClick={discard} disabled={!dirty || saving}>Discard Changes</button>
+        <button type="button" className="button button--primary" onClick={() => void saveAll()} disabled={!dirty || saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
+      </div>
     </>
   )
 
   return (
     <div className={`branding-studio${editing ? ' is-editing' : ''}`}>
+      <nav className="branding-studio__tabs" aria-label="Dealer sections">
+        <Link to={backTo} onClick={leave}>Company Details</Link>
+        <span aria-current="page">Branding &amp; Appearance</span>
+        {mode === 'admin' ? <Link to={`${backTo}#door-builder-lead-webhook`} onClick={leave}>Lead Webhook</Link> : <Link to="/company#website-address" onClick={leave}>Website Address</Link>}
+      </nav>
       <header className="branding-studio__toolbar">
-        <Link className="branding-studio__back" to={backTo} onClick={leave}>Back to Dealer</Link>
-        <div className="branding-studio__identity"><h1>{dealer.company_name}</h1><span>Branding Studio</span></div>
-        <a className="branding-studio__live" href={getDealerVisualizerUrl(dealer.slug)} target="_blank" rel="noreferrer">Open Live Website</a>
-        <div className="branding-studio__toggles" role="group" aria-label="Preview page">
-          {(['homepage', 'builder', 'find'] as const).map((value) => (
-            <button key={value} type="button" aria-pressed={surface === value} onClick={() => setSurface(value)}>{value === 'find' ? 'Find My Door' : value === 'builder' ? 'Door Builder' : 'Homepage'}</button>
-          ))}
+        <div className="branding-studio__identity">
+          <p className="eyebrow">{dealer.company_name}</p>
+          <h1>Branding &amp; Appearance</h1>
+          <p>Logos, placement, colors, and type for this Door Builder.</p>
         </div>
-        <div className="branding-studio__toggles" role="group" aria-label="Preview width">
-          <button type="button" aria-pressed={!mobile} onClick={() => setMobile(false)}>Desktop</button>
-          <button type="button" aria-pressed={mobile} onClick={() => setMobile(true)}>Mobile</button>
-        </div>
+        <p className="branding-studio__live-status"><span />Live preview updates instantly</p>
         <p className={`branding-studio__status${dirty ? '' : ' is-clean'}`} role="status">{dirty ? 'Unsaved changes' : 'All changes saved'}</p>
+        <a className="branding-studio__live" href={getDealerVisualizerUrl(dealer.slug)} target="_blank" rel="noreferrer">Open Live Website</a>
         <div className="branding-studio__actions">
-          <button type="button" className="button button--outline" onClick={discard} disabled={!dirty || saving}>Discard</button>
+          <button type="button" className="button button--outline" onClick={discard} disabled={!dirty || saving}>Discard Changes</button>
           <button type="button" className="button button--primary" onClick={() => void saveAll()} disabled={!dirty || saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
           <button type="button" className="branding-studio__edit" onClick={() => setEditing(true)}>Edit Settings</button>
         </div>
@@ -588,10 +751,32 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
       {message && <p className="branding-studio__message" role="status">{message}</p>}
       {error && <p className="branding-studio__message is-error" role="alert">{error}</p>}
       <div className="branding-studio__workspace">
-        <aside className="branding-studio__settings" aria-label="Branding settings">{settings}</aside>
-        <div className="branding-studio__preview">
-          <DoorBuilderAppearancePreview dealer={previewDealer} appearance={appearance} surface={surface} mobile={mobile} hideToolbar />
-        </div>
+        <nav className="branding-studio__nav" aria-label="Branding categories">
+          {STUDIO_SECTIONS.map((item) => (
+            <button key={item.id} type="button" aria-current={panel === item.id ? 'page' : undefined} onClick={() => choose(item.id)}>
+              <span aria-hidden="true">{item.id === 'logos' ? '▣' : item.id === 'placement' ? '▤' : item.id === 'colors' ? '◉' : 'Aa'}</span>
+              {item.id === 'placement' ? 'Logo Display' : item.label}
+            </button>
+          ))}
+        </nav>
+        <section className="branding-studio__preview" aria-label="Live preview">
+          <div className="branding-studio__preview-card">
+            <div className="branding-studio__preview-bar">
+              <strong>Live Preview</strong>
+              <div className="branding-studio__toggles" role="group" aria-label="Preview page">
+                {(['homepage', 'builder', 'find'] as const).map((value) => (
+                  <button key={value} type="button" aria-pressed={surface === value} onClick={() => setSurface(value)}>{value === 'find' ? 'Find My Door' : value === 'builder' ? 'Door Builder' : 'Homepage'}</button>
+                ))}
+              </div>
+              <div className="branding-studio__toggles" role="group" aria-label="Preview width">
+                <button type="button" aria-pressed={!mobile} onClick={() => setMobile(false)}>Desktop</button>
+                <button type="button" aria-pressed={mobile} onClick={() => setMobile(true)}>Mobile</button>
+              </div>
+            </div>
+            <DoorBuilderAppearancePreview dealer={previewDealer} appearance={appearance} surface={surface} mobile={mobile} hideToolbar />
+          </div>
+        </section>
+        <aside className="branding-studio__editor" aria-label="Branding settings">{editor}</aside>
       </div>
     </div>
   )
