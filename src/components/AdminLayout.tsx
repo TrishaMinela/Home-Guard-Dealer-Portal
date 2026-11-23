@@ -18,6 +18,7 @@ import { AdminDoorStylesPage } from '../pages/AdminDoorStylesPage'
 import { AdminDoorStyleDetailPage } from '../pages/AdminDoorStyleDetailPage'
 import { DealerDetailPage } from '../pages/DealerDetailPage'
 import { AdminMarketingBannersPage } from '../pages/AdminMarketingBannersPage'
+import { AdminLeadRoutingReviewPage, AdminZipRoutingPage } from '../features/lead-routing/AdminZipRoutingPage'
 import { EditDealerPage } from '../pages/EditDealerPage'
 import type { AdminDealer } from '../types/admin'
 import { adminAccountInitial, adminRoleLabel } from './adminAccount'
@@ -28,6 +29,7 @@ const navigation: Array<{ label: string; path: string; icon: string; end?: boole
   { label: 'Dashboard', path: '/admin', icon: 'grid', end: true },
   { label: 'Dealers', path: '/admin/dealers', icon: 'building' },
   { label: 'All Leads', path: '/admin/leads', icon: 'users' },
+  { label: 'ZIP Routing', path: '/admin/zip-routing', icon: 'users' },
   { label: 'Inventory', path: '/admin/inventory', icon: 'inventory' },
 ]
 
@@ -355,6 +357,8 @@ export function AdminLayout({ email, displayName = '', isInternalBillingAdmin, i
           />
           <Route path="/admin/marketing-banners" element={<AdminMarketingBannersPage dealers={adminData.dealers} />} />
           <Route path="/admin/leads/:leadId?" element={<AdminLeadsPage {...adminData} />} />
+          <Route path="/admin/zip-routing" element={<AdminZipRoutingPage />} />
+          <Route path="/admin/lead-routing/:leadId" element={<AdminLeadRoutingReviewPage />} />
           <Route path="/admin/ai-usage" element={<AdminAiUsagePage showInternalDetails={isInternalBillingAdmin} />} />
           <Route path="/admin/billing" element={isInternalBillingAdmin ? <AdminBillingPage showInternalDetails /> : <Navigate to="/admin" replace />} />
           <Route path="/admin/billing/access" element={(isBillingAccessManager || isInternalBillingAdmin) ? <BillingAccessManagementPage canManageAdministrators={isBillingAccessManager} /> : <Navigate to="/admin" replace />} />

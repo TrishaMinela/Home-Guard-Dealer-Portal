@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import type { AuthError, User } from '@supabase/supabase-js'
 import { BrowserRouter } from 'react-router-dom'
 import { adminDisplayName } from './components/adminAccount'
@@ -8,6 +8,7 @@ import { ForgotPasswordPage } from './components/ForgotPasswordPage'
 import { InviteSetupPage } from './components/InviteSetupPage'
 import { LoginPage } from './components/LoginPage'
 import { PortalLayout } from './components/PortalLayout'
+import { SalespersonLayout } from './features/lead-routing/SalespersonPages'
 import { ResetPasswordPage } from './components/ResetPasswordPage'
 import { useAccountAccess } from './hooks/useAccountAccess'
 import { supabase } from './lib/supabase'
@@ -19,7 +20,21 @@ function authenticationErrorMessage(error: AuthError): string {
   return 'We could not sign you in right now. Please try again.'
 }
 
+function LeadRoutingDevPreview() {
+  const [preview, setPreview] = useState<ReactNode>(null)
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    let cancelled = false
+    void import('./features/lead-routing/LeadRoutingPreviewApp.tsx').then((module) => {
+      if (!cancelled) setPreview(<module.LeadRoutingPreviewApp />)
+    })
+    return () => { cancelled = true }
+  }, [])
+  return preview ?? <div className="app-status">Loading lead routing preview...</div>
+}
+
 function App() {
+  const devLeadRoutingPreview = import.meta.env.DEV && window.location.pathname.startsWith('/dev/lead-routing')
   const isInviteRoute = window.location.pathname === '/auth/invite'
   const isForgotPasswordRoute = window.location.pathname === '/auth/forgot-password'
   const isResetPasswordRoute = window.location.pathname === '/auth/reset-password'
@@ -36,6 +51,7 @@ function App() {
   } = useAccountAccess(user)
 
   useEffect(() => {
+    if (devLeadRoutingPreview) return
     void supabase.auth.getSession().then(({ data }) => {
       setUser(data.session?.user ?? null)
       setIsLoadingSession(false)
@@ -49,8 +65,9 @@ function App() {
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [devLeadRoutingPreview])
 
+  if (devLeadRoutingPreview) return <LeadRoutingDevPreview />
   if (isInviteRoute) return <InviteSetupPage />
   if (isForgotPasswordRoute) return <ForgotPasswordPage />
   if (isResetPasswordRoute) return <ResetPasswordPage />
@@ -135,6 +152,14 @@ function App() {
           signOutError={error}
           onSignOut={handleSignOut}
         />
+      </BrowserRouter>
+    )
+  }
+
+  if (access.type === 'salesperson') {
+    return (
+      <BrowserRouter>
+        <SalespersonLayout email={access.salesperson.email || user.email || ''} onSignOut={handleSignOut} />
       </BrowserRouter>
     )
   }

@@ -5,6 +5,9 @@ export async function authorizedDestination(userId: string): Promise<string | nu
   if (adminError) throw new Error('Unable to verify Portal access.')
   if (admin) return '/admin'
 
+  const { data: salesperson, error: salespersonError } = await supabase.from('salespeople').select('id, is_active').eq('user_id', userId).maybeSingle()
+  if (!salespersonError && salesperson?.is_active) return '/sales'
+
   const { data: billingAccounts, error: billingError } = await supabase.rpc('list_billing_client_accounts')
   if (billingError) throw new Error('Unable to verify Portal access.')
   if (billingAccounts?.length) return '/billing'
