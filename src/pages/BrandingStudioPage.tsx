@@ -799,7 +799,7 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
           <h1 title="Branding & Appearance">Branding &amp; Appearance</h1>
           <p title={dealer.company_name}>{dealer.company_name}</p>
         </div>
-        <p className="branding-studio__live-status"><span />Live preview updates instantly</p>
+        <p className="branding-studio__live-status"><span className="branding-studio__live-dot" /><span className="branding-studio__live-copy">Live preview updates instantly</span></p>
         <p className={`branding-studio__status${dirty ? '' : ' is-clean'}`} role="status">{dirty ? 'Unsaved changes' : 'All changes saved'}</p>
         <a className="branding-studio__live" href={getDealerVisualizerUrl(dealer.slug)} target="_blank" rel="noreferrer">Open Live Website</a>
         <div className="branding-studio__actions">

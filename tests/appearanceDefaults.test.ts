@@ -689,6 +689,91 @@ test('the preview fills the studio and scrolls to Restart Build', async () => {
   await page.close()
 })
 
+test('each branding category scrolls its last control into view', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1440, height: 900 } })
+  await openStudio(page)
+  for (const size of [{ width: 1024, height: 768 }, { width: 1440, height: 900 }]) {
+    await page.setViewportSize(size)
+    for (const name of ['Logos', 'Logo Display', 'Colors', 'Typography']) {
+      await page.getByRole('button', { name, exact: true }).click()
+      const editor = page.locator('.branding-studio__editor')
+      const box = await editor.boundingBox()
+      assert.ok(box, `${name} editor box`)
+      await page.mouse.move(box.x + box.width / 2, box.y + Math.min(80, box.height / 2))
+      for (let step = 0; step < 40; step += 1) {
+        const atEnd = await editor.evaluate((element) => element.scrollTop + element.clientHeight >= element.scrollHeight - 2)
+        if (atEnd) break
+        await page.mouse.wheel(0, 500)
+      }
+      const result = await editor.evaluate((element) => {
+        const cards = [...element.querySelectorAll<HTMLElement>('.content-card, .studio-logo, .studio-brand, .studio-links')]
+        const clipped = cards
+          .filter((card) => card.scrollHeight > card.clientHeight + 1)
+          .map((card) => `${card.className} ${card.clientHeight}/${card.scrollHeight}`)
+        const controls = [...element.querySelectorAll<HTMLElement>('button, a, input, select, summary, textarea')]
+          .filter((control) => !(control instanceof HTMLInputElement && control.type === 'file'))
+          .filter((control) => control.getClientRects().length > 0 && getComputedStyle(control).visibility !== 'hidden')
+        const last = controls.at(-1)
+        if (!last) return { clipped, clickable: false, label: 'none' }
+        const rect = last.getBoundingClientRect()
+        const editorRect = element.getBoundingClientRect()
+        const visible = rect.top >= editorRect.top - 1 && rect.bottom <= editorRect.bottom + 1 && rect.width > 0 && rect.height > 0
+        const x = Math.min(Math.max(rect.left + 12, editorRect.left + 4), editorRect.right - 4)
+        const y = Math.min(Math.max(rect.top + rect.height / 2, editorRect.top + 4), editorRect.bottom - 4)
+        const target = document.elementFromPoint(x, y)
+        const clickable = !!target && (target === last || last.contains(target) || target.contains(last))
+        return { clipped, clickable: visible && clickable, label: (last.textContent || last.getAttribute('aria-label') || last.tagName).replace(/\s+/g, ' ').trim().slice(0, 60), scroll: `${element.scrollTop}/${element.scrollHeight - element.clientHeight}`, visible, top: Math.round(rect.top), bottom: Math.round(rect.bottom), editorTop: Math.round(editorRect.top), editorBottom: Math.round(editorRect.bottom), hit: target?.tagName ?? 'none' }
+      })
+      assert.deepEqual(result.clipped, [], `${size.width}x${size.height} ${name} clips ${result.clipped.join(', ')}`)
+      assert.equal(result.clickable, true, `${size.width}x${size.height} ${name} last control ${result.label} scroll ${result.scroll} visible ${result.visible} rect ${result.top}-${result.bottom} editor ${result.editorTop}-${result.editorBottom} hit ${result.hit}`)
+    }
+  }
+  await page.setViewportSize({ width: 1024, height: 768 })
+  await page.evaluate(() => {
+    const studio = document.querySelector<HTMLElement>('.branding-studio')
+    if (studio) studio.style.width = '748px'
+  })
+  const titleFit = await page.evaluate(() => {
+    const title = document.querySelector<HTMLElement>('.branding-studio__identity h1')
+    const status = document.querySelector<HTMLElement>('.branding-studio__live-status')
+    const copy = document.querySelector<HTMLElement>('.branding-studio__live-copy')
+    const hidden = !!status && getComputedStyle(status).display === 'none'
+    const ellipsized = !!copy && getComputedStyle(copy).textOverflow === 'ellipsis' && getComputedStyle(copy).overflowX === 'hidden'
+    return {
+      title: title?.textContent?.trim() ?? '',
+      fits: !!title && title.scrollWidth <= title.clientWidth + 1,
+      statusOk: hidden || ellipsized,
+    }
+  })
+  assert.equal(titleFit.title, 'Branding & Appearance')
+  assert.equal(titleFit.fits, true)
+  assert.equal(titleFit.statusOk, true)
+  await page.evaluate(() => {
+    const studio = document.querySelector<HTMLElement>('.branding-studio')
+    if (studio) studio.style.width = ''
+  })
+  await page.setViewportSize({ width: 768, height: 900 })
+  await page.evaluate(() => {
+    const bell = document.createElement('button')
+    bell.id = 'test-notification-bell'
+    bell.textContent = 'Notifications'
+    bell.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:100;width:56px;height:56px;'
+    document.body.append(bell)
+    const shell = document.querySelector<HTMLElement>('.branding-studio__preview .db-preview-shell')
+    if (shell) shell.scrollTop = shell.scrollHeight
+  })
+  const footerClear = await page.evaluate(() => {
+    const link = document.querySelector<HTMLElement>('.site-footer-contact a')
+    const bell = document.getElementById('test-notification-bell')
+    if (!link || !bell) return false
+    const linkBox = link.getBoundingClientRect()
+    const bellBox = bell.getBoundingClientRect()
+    return linkBox.bottom <= bellBox.top + 1 || linkBox.right <= bellBox.left + 1
+  })
+  assert.equal(footerClear, true)
+  await page.close()
+})
+
 test('the preview box stays the same across categories and Save stays clickable', async () => {
   const page = await browser!.newPage({ viewport: { width: 1440, height: 900 } })
   await openStudio(page)

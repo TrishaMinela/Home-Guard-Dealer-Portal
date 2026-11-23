@@ -4,7 +4,7 @@
 .branding-studio__tabs { display: flex; gap: 8px; align-items: center; min-height: 44px; padding: 0 16px; overflow: auto; background: #fff; border-bottom: 1px solid #d5dfdc; }
 .branding-studio__tabs a, .branding-studio__tabs span { color: #5d6b68; font-size: 13px; font-weight: 700; text-decoration: none; white-space: nowrap; }
 .branding-studio__tabs [aria-current="page"] { color: #0d666c; }
-.branding-studio__toolbar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; grid-template-rows: 48px 40px; flex: 0 0 88px; align-items: center; column-gap: 12px; height: 88px; padding: 0 16px; overflow: hidden; background: #fff; border-bottom: 1px solid #d5dfdc; }
+.branding-studio__toolbar { display: grid; grid-template-columns: auto minmax(220px, 1fr) minmax(0, max-content) minmax(0, max-content); grid-template-rows: 48px 40px; flex: 0 0 88px; align-items: center; column-gap: 12px; height: 88px; padding: 0 16px; overflow: hidden; background: #fff; border-bottom: 1px solid #d5dfdc; }
 .branding-studio__toolbar .branding-studio__back { grid-column: 1; grid-row: 1; }
 .branding-studio__toolbar .branding-studio__identity { grid-column: 2; grid-row: 1 / span 2; }
 .branding-studio__toolbar .branding-studio__live-status { grid-column: 3; grid-row: 1; }
@@ -20,8 +20,9 @@
 .branding-studio__live-status,
 .branding-studio__status,
 .branding-studio__live { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.branding-studio__live-status { display: inline-flex; align-items: center; gap: 8px; margin: 0; color: #146c43; font-size: 13px; font-weight: 700; }
-.branding-studio__live-status span { width: 8px; height: 8px; border-radius: 99px; background: #1f9d55; }
+.branding-studio__live-status { display: flex; align-items: center; gap: 8px; margin: 0; color: #146c43; font-size: 13px; font-weight: 700; }
+.branding-studio__live-dot { flex: none; width: 8px; height: 8px; border-radius: 99px; background: #1f9d55; }
+.branding-studio__live-copy { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .branding-studio__status { margin: 0; color: #8a5a00; font-size: 13px; font-weight: 700; }
 .branding-studio__status.is-clean { color: #5d6b68; font-weight: 600; }
 .branding-studio__live { color: #0d666c; font-size: 13px; font-weight: 700; }
@@ -39,7 +40,7 @@
 .branding-studio__preview .db-preview-frame,
 .branding-studio__preview .db-preview-sizer { width: 100%; max-width: none; }
 .branding-studio__preview .db-preview-shell { display: block; position: static; top: auto; flex: 1 1 auto; align-self: stretch; min-height: 0; height: auto; max-height: none; overflow: auto; }
-.branding-studio__preview .db-preview-frame { height: auto; max-height: none; overflow: visible; }
+.branding-studio__preview .db-preview-frame { height: auto; max-height: none; overflow: visible; box-sizing: border-box; padding-bottom: 88px; }
 .branding-studio__preview .db-preview-frame.is-mobile { width: min(390px, 100%); margin: 0 auto; }
 .branding-studio__toggles { display: flex; gap: 4px; }
 .branding-studio__toggles button, .branding-studio__edit, .branding-studio__sheet-bar button, .branding-studio__back-section { min-height: 32px; border: 1px solid #d5dfdc; border-radius: 8px; background: #fff; color: #243034; font: inherit; font-size: 12px; font-weight: 700; padding: 0 8px; cursor: pointer; }
@@ -47,6 +48,13 @@
 .branding-studio__preview .db-appearance-preview { display: flex; flex-direction: column; box-sizing: border-box; }
 .branding-studio__preview .db-appearance-preview > footer { margin-top: auto; }
 .branding-studio__editor { display: flex; flex-direction: column; min-height: 0; overflow: auto; background: #fff; border-left: 1px solid #d5dfdc; padding: 12px; padding-bottom: calc(16px + var(--notification-clearance, 96px)); }
+.branding-studio__editor > *,
+.branding-studio__editor .content-card,
+.branding-studio__editor .dealer-form { flex-shrink: 0; }
+.branding-studio__editor .content-card,
+.branding-studio__editor .dealer-management-card,
+.branding-studio__editor .dealer-typography-card,
+.branding-studio__editor .dealer-form { overflow: visible; }
 .branding-studio__preview .db-preview-shell { scroll-padding-bottom: var(--notification-clearance, 96px); }
 .branding-studio__editor-head h2 { margin: 0; font-size: 18px; }
 .branding-studio__editor-head p, .branding-studio__note { margin: 4px 0 10px; color: #5d6b68; font-size: 12px; }
@@ -76,6 +84,12 @@
   .branding-studio__identity h1 { font-size: 18px; }
   .branding-studio__live-status { max-width: 168px; font-size: 12px; }
   .branding-studio__actions .button { padding: 0 8px; font-size: 12px; }
+}
+@media (max-width: 1179px) {
+  .branding-studio__live-status { display: none; }
+  .branding-studio__toolbar { grid-template-columns: minmax(0, 132px) minmax(220px, 1fr) max-content max-content; column-gap: 8px; }
+  .branding-studio__back { white-space: normal; line-height: 1.15; }
+  .branding-studio__identity h1 { font-size: 16px; }
 }
 .branding-studio__advanced { margin-top: 12px; color: #5d6b68; font-size: 12px; }
 .branding-studio__advanced summary { cursor: pointer; font-weight: 700; color: #14201f; }
