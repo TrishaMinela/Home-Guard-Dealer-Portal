@@ -13,6 +13,21 @@ const CATEGORIES: Array<{ id: BrandingCategory; label: string }> = [
   { id: 'typography', label: 'Typography' },
 ]
 
+const HASH_CATEGORY: Record<string, BrandingCategory> = {
+  branding: 'logos',
+  'door-builder-branding': 'logos',
+  'logo-original': 'logos',
+  'homepage-logo-selection': 'logos',
+  'pages-logo-selection': 'logos',
+  'door-builder-appearance': 'colors',
+  design: 'typography',
+  'heading-font-family': 'typography',
+}
+
+function categoryForHash(hash: string) {
+  return HASH_CATEGORY[hash.replace(/^#/, '')] ?? null
+}
+
 type Props = {
   dealer: AdminDealer
   appearance: DoorBuilderAppearance | null
@@ -25,6 +40,40 @@ export function BrandingAppearanceWorkspace({ dealer, appearance, unsaved, panel
   const [category, setCategory] = useState<BrandingCategory | null>(null)
   const returnFocus = useRef<HTMLButtonElement | null>(null)
   const drawerRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    const openFromHash = () => {
+      const next = categoryForHash(window.location.hash)
+      if (!next) return
+      setCategory(next)
+      document.getElementById('branding-appearance')?.scrollIntoView({ block: 'start' })
+    }
+    const onClick = (event: MouseEvent) => {
+      const link = (event.target as Element | null)?.closest?.('a[href^="#"]')
+      if (!(link instanceof HTMLAnchorElement)) return
+      const next = categoryForHash(link.getAttribute('href') || '')
+      if (!next) return
+      event.preventDefault()
+      const href = link.getAttribute('href') || ''
+      if (window.location.hash !== href) history.pushState(null, '', href)
+      setCategory(next)
+      document.getElementById('branding-appearance')?.scrollIntoView({ block: 'start' })
+    }
+    openFromHash()
+    window.addEventListener('hashchange', openFromHash)
+    document.addEventListener('click', onClick)
+    return () => {
+      window.removeEventListener('hashchange', openFromHash)
+      document.removeEventListener('click', onClick)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!category || !window.matchMedia('(max-width: 1023px)').matches) return
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = previous }
+  }, [category])
 
   useEffect(() => {
     if (!category) return
@@ -66,7 +115,7 @@ export function BrandingAppearanceWorkspace({ dealer, appearance, unsaved, panel
         <p>One live preview for logos, placement, colors, and typography. Nothing is stored until you save that category.</p>
       </div>
       {unsaved && <p className="portal-alert branding-customizer__status" role="status">You have unsaved branding changes.</p>}
-      <div className="branding-customizer__stage">
+      <div className={`branding-customizer__stage ${category ? 'is-open' : ''}`}>
         <ul className="branding-customizer__menu">
           {CATEGORIES.map((item) => (
             <li key={item.id}>
@@ -87,20 +136,20 @@ export function BrandingAppearanceWorkspace({ dealer, appearance, unsaved, panel
         </ul>
         <div className="branding-customizer__preview">
           <DoorBuilderAppearancePreview dealer={dealer} appearance={appearance} />
-          <aside id="branding-customizer-drawer" className="branding-customizer__drawer" ref={drawerRef} role="dialog" aria-modal={category ? true : undefined} aria-labelledby="branding-customizer-drawer-title" hidden={category === null}>
-            <div className="branding-customizer__drawer-bar">
-              <h2 id="branding-customizer-drawer-title">{CATEGORIES.find((item) => item.id === category)?.label ?? 'Settings'}</h2>
-              <button type="button" onClick={() => setCategory(null)}>Close</button>
-            </div>
-            <div className="branding-customizer__drawer-body">
-              {CATEGORIES.map((item) => (
-                <div key={item.id} className="branding-customizer__panel" hidden={category !== item.id}>
-                  {panels[item.id]}
-                </div>
-              ))}
-            </div>
-          </aside>
         </div>
+        <aside id="branding-customizer-drawer" className="branding-customizer__drawer" ref={drawerRef} role="dialog" aria-modal={category ? true : undefined} aria-labelledby="branding-customizer-drawer-title" hidden={category === null}>
+          <div className="branding-customizer__drawer-bar">
+            <h2 id="branding-customizer-drawer-title">{CATEGORIES.find((item) => item.id === category)?.label ?? 'Settings'}</h2>
+            <button type="button" onClick={() => setCategory(null)}>Close</button>
+          </div>
+          <div className="branding-customizer__drawer-body">
+            {CATEGORIES.map((item) => (
+              <div key={item.id} className="branding-customizer__panel" hidden={category !== item.id}>
+                {panels[item.id]}
+              </div>
+            ))}
+          </div>
+        </aside>
       </div>
     </section>
   )

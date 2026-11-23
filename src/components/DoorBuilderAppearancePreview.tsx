@@ -176,6 +176,7 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
               data-appearance-mode={shown ? 'simple' : undefined}
               style={style}
             >
+              {surface !== 'find' && (
               <header aria-label={surface === 'homepage' ? 'Homepage header' : 'Door Builder header'}>
                 <div className="dealer-header-brand">
                   {logos && <LogoPair
@@ -187,10 +188,11 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
                   />}
                 </div>
                 <div className="dealer-header-actions">
-                  <button className="home-return" type="button" aria-label="Home"><HomeIcon /><span>Home</span></button>
+                  {surface !== 'homepage' && <button className="home-return" type="button" aria-label="Home"><HomeIcon /><span>Home</span></button>}
                   {dealer.website && <a className="dealer-website-link" href={dealer.website} onClick={stop}><span>Visit Our Website</span> <ExternalIcon /></a>}
                 </div>
               </header>
+              )}
               {surface === 'homepage' && (
                 <main className="home-page db-home">
                   <section className="home-hero">
@@ -200,23 +202,54 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
                           <LogoPair primaryUrl={heroLogos.primaryUrl} secondaryUrl={heroLogos.showPair ? heroLogos.secondaryUrl : null} primaryHref={primaryHref} secondaryHref={secondaryHref} companyName={dealer.company_name} />
                         </div>
                       )}
-                      <h1>Build a Door Made for Your Home.</h1>
-                      <p>Choose your door style, finish, glass, and hardware, then bring your vision to life.</p>
+                      <h1>Build a Door Made for <em>Your Home.</em></h1>
+                      <p>Choose your door style, finish, glass, and hardware, then bring your vision to life by seeing how your custom door looks on your own home.</p>
                       <button className="start-building" type="button">Start Building Your Door</button>
                     </div>
                     <div className="home-hero-visual">
-                      <img src="/appearance-preview/single-door.webp" alt="Door on a home entryway" />
+                      <img src="/appearance-preview/hero-entryway.webp" alt="Welcoming home entryway with a customizable door preview" />
                     </div>
                   </section>
+                  <div className="home-preview-caption"><p>Made to complement your home.</p><p>Styles. Finishes. Glass. Hardware.</p></div>
                 </main>
               )}
               {surface === 'find' && (
-                <main className="find-my-door-main db-find">
-                  <section className="find-door-options">
-                    <h1>Find My Door</h1>
-                    <p>Answer a few questions and we will suggest a starting door.</p>
-                  </section>
-                </main>
+                <div className="db-find find-my-door-app">
+                  <header className="find-my-door-header">
+                    <div className="brand">
+                      {logos ? <LogoPair primaryUrl={logos.primaryUrl} secondaryUrl={logos.showPair ? logos.secondaryUrl : null} primaryHref={primaryHref} secondaryHref={secondaryHref} companyName={dealer.company_name} /> : <strong>{dealer.company_name}</strong>}
+                      <span className="app-name"><strong>HGI Door Finder</strong></span>
+                    </div>
+                    <a className="find-my-door-builder-link" href="#builder" onClick={stop}>Door Builder</a>
+                  </header>
+                  <ol className="find-door-steps" aria-label="Progress">
+                    {['Photo', 'Style', 'Glass', 'Details', 'Door'].map((label, index) => (
+                      <li key={label}><span className={index === 0 ? 'current' : 'upcoming'}><i>{index + 1}</i>{label}</span></li>
+                    ))}
+                  </ol>
+                  <main className="find-my-door-main">
+                    <div className="find-door-open">
+                      <div>
+                        <p className="find-door-name">HGI Door Finder</p>
+                        <h1>Find the right front door for your home.</h1>
+                        <p className="find-door-lead">Upload a photo of your house. We’ll suggest Home Guard doors that fit its style, then show you one on your home.</p>
+                        <button className="next find-door-upload" type="button">Upload a photo of your home</button>
+                        <p className="find-door-hint">Best results: daylight, straight on, whole entry in frame.</p>
+                      </div>
+                      <figure className="find-door-feature">
+                        <img src="/appearance-preview/find-my-door/hero-craftsman-full-lite.webp" alt="Full lite front door on a craftsman house" />
+                      </figure>
+                    </div>
+                    <section className="find-door-gallery" aria-labelledby="find-door-gallery-title">
+                      <h2 id="find-door-gallery-title">Popular right now</h2>
+                      <div className="find-door-marquee">
+                        {['signature-f482-sidelites.webp', 'farmhouse-f482.webp', 'shaker-cottage.webp'].map((file) => (
+                          <img key={file} src={`/appearance-preview/find-my-door/${file}`} alt="" />
+                        ))}
+                      </div>
+                    </section>
+                  </main>
+                </div>
               )}
               {surface === 'builder' && <>
               <div className="builder-toolbar">

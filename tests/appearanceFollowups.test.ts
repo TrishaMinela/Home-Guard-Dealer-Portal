@@ -43,7 +43,7 @@ test('dealer appearance controls are limited to dealer admins', () => {
   assert.match(access, /select\('dealer_id, role'\)/)
   assert.match(access, /dealerRole: membership\.role === 'dealer_admin' \? 'dealer_admin' : 'member'/)
   assert.match(readFileSync('src/components/PortalLayout.tsx', 'utf8'), /canEditAppearance=\{dealerRole === 'dealer_admin'\}/)
-  assert.match(profile, /\{canEditAppearance && <DoorBuilderAppearanceSettings/)
+  assert.match(profile, /canEditAppearance \? <DoorBuilderAppearanceSettings/)
   assert.match(settings, /if \(!canEdit\) return null/)
   assert.match(readFileSync('supabase/migrations/20261120200000_add_door_builder_appearance.sql', 'utf8'), /dealer_users\.role = 'dealer_admin'/)
 })

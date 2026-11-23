@@ -142,7 +142,7 @@ test('only an admin sees the Door Builder Appearance section link', async () => 
 
   const admin = await browser!.newPage()
   await admin.goto(`http://127.0.0.1:${port}/?role=admin#profile-nav-harness`, { waitUntil: 'networkidle' })
-  await admin.getByRole('link', { name: 'Door Builder Appearance' }).waitFor()
+  await admin.getByRole('link', { name: 'Door Builder Appearance' }).click()
   await admin.getByRole('heading', { name: 'Door Builder Appearance' }).waitFor()
   await admin.close()
 })

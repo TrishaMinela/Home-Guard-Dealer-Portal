@@ -355,6 +355,39 @@ test('the branding workspace keeps the preview visible and moves the homepage lo
   await page.close()
 })
 
+test('branding hash links open the matching customizer panel', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } })
+  await page.goto(`http://127.0.0.1:${port}/?role=admin#profile-nav-harness`, { waitUntil: 'networkidle' })
+  await page.getByRole('link', { name: 'Door Builder Appearance' }).click()
+  const colors = page.locator('#branding-customizer-drawer')
+  await colors.getByRole('heading', { name: 'Door Builder Appearance' }).waitFor()
+  assert.equal(await page.evaluate(() => document.getElementById('branding-customizer-drawer')?.contains(document.activeElement) ?? false), true)
+  await page.getByRole('link', { name: 'Door Builder Branding' }).click()
+  await colors.getByText('Where each logo appears').waitFor()
+  await page.evaluate(() => { window.location.hash = 'heading-font-family' })
+  await page.locator('#heading-font-family').waitFor()
+  assert.equal(await page.locator('#branding-customizer-drawer-title').innerText(), 'Typography')
+  await page.close()
+})
+
+test('the mobile branding sheet stays above the page and can be closed', async () => {
+  const page = await browser!.newPage({ viewport: { width: 390, height: 844 } })
+  await page.goto(`http://127.0.0.1:${port}/?role=admin#profile-nav-harness`, { waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: 'Colors', exact: true }).click()
+  const close = page.getByRole('button', { name: 'Close', exact: true })
+  const hit = await close.evaluate((element) => {
+    const box = element.getBoundingClientRect()
+    const target = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+    return { top: box.top, locked: document.body.style.overflow, hit: target === element || element.contains(target) }
+  })
+  assert.equal(hit.locked, 'hidden')
+  assert.equal(hit.hit, true)
+  assert.ok(hit.top >= 0, `close button at ${hit.top}`)
+  await close.click()
+  assert.equal(await page.locator('#branding-customizer-drawer').getAttribute('hidden'), '')
+  await page.close()
+})
+
 test('a dealer member does not see the appearance link or controls', async () => {
   const page = await browser!.newPage({ viewport: { width: 1100, height: 800 } })
   await page.goto(`http://127.0.0.1:${port}/?role=member#profile-nav-harness`, { waitUntil: 'networkidle' })
