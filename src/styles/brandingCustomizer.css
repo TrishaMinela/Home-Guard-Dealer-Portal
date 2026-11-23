@@ -2,36 +2,69 @@
 .branding-customizer.dealer-management-card { overflow: visible; }
 .branding-customizer__status { margin: 0; }
 .branding-customizer__stage { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: 12px; align-items: start; min-width: 0; }
-.branding-customizer__stage.is-open { grid-template-columns: 168px minmax(280px, 1fr) minmax(360px, 380px); align-items: stretch; min-height: calc(100dvh - 120px); }
 .branding-customizer__menu { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .branding-customizer__menu button { min-height: 40px; border: 1px solid #d5dfdc; border-radius: 8px; background: #fff; color: #243034; font: inherit; font-size: 13px; font-weight: 700; text-align: left; padding: 8px 10px; }
 .branding-customizer__menu button.is-selected { border-color: #0d666c; background: rgba(13, 102, 108, .08); color: #0d666c; }
 .branding-customizer__menu button:focus-visible,
 .branding-customizer__drawer button:focus-visible { outline: 3px solid rgba(248, 211, 14, .85); outline-offset: 2px; }
 .branding-customizer__preview { min-width: 0; }
-.branding-customizer__drawer { position: sticky; top: 12px; z-index: 3; display: flex; flex-direction: column; width: auto; min-width: 0; height: calc(100dvh - 24px); max-height: calc(100dvh - 24px); overflow: hidden; border: 1px solid #d5dfdc; border-radius: 12px; background: #fff; box-shadow: 0 16px 40px rgba(16, 33, 36, .16); }
+.branding-customizer__drawer-slot { min-width: 0; }
+.branding-customizer__drawer-slot[hidden] { display: none; }
+.branding-customizer__drawer { display: flex; flex-direction: column; width: auto; min-width: 0; overflow: hidden; border: 1px solid #d5dfdc; border-radius: 12px; background: #fff; box-shadow: 0 16px 40px rgba(16, 33, 36, .16); }
 .branding-customizer__drawer[hidden] { display: none; }
 .branding-customizer__drawer-bar { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px; border-bottom: 1px solid #e4ecea; background: #fff; }
 .branding-customizer__drawer-bar h2 { margin: 0; font-size: 16px; }
-.branding-customizer__drawer-body { min-width: 0; min-height: 0; flex: 1; overflow: auto; padding: 12px; }
+.branding-customizer__drawer-body { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; padding: 12px; }
 .branding-customizer__drawer-body :is(.content-card, .dealer-management-card, .dealer-typography-card, .appearance-settings) { margin: 0; border: 0; box-shadow: none; padding: 0; }
 .branding-customizer__panel[hidden] { display: none; }
-@media (max-width: 1023px) {
-  .branding-customizer__stage,
-  .branding-customizer__stage.is-open { grid-template-columns: 1fr; min-height: 0; }
-  .branding-customizer__menu { grid-auto-flow: column; grid-auto-columns: max-content; overflow-x: auto; }
-  .branding-customizer__drawer {
-    position: fixed;
-    z-index: 40;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    width: auto;
-    height: auto;
-    max-height: none;
-    border-radius: 0;
-  }
+.branding-customizer__panel:not([hidden]) { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+.branding-customizer__panel:not([hidden]) > * { display: flex; flex: 1 1 0; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+.branding-customizer__scroll { display: contents; }
+.branding-customizer__panel .branding-customizer__scroll { display: block; flex: 1 1 auto; min-width: 0; min-height: 0; overflow: auto; }
+.branding-customizer .dealer-form__actions { display: flex; flex: none; flex-wrap: wrap; justify-content: flex-start; gap: 8px; width: auto; max-width: 100%; margin: 0; padding: 12px 0 0; background: #fff; }
+.branding-customizer .page-actions,
+.branding-customizer .logo-website-field__actions,
+.branding-customizer .appearance-confirm__actions { display: flex; flex-wrap: wrap; gap: 8px; width: auto; max-width: 100%; min-width: 0; }
+.branding-customizer .button,
+.branding-customizer .upload-button { max-width: 100%; white-space: normal; text-align: center; }
+.branding-customizer .typography-settings-grid,
+.branding-customizer .form-grid,
+.branding-customizer .profile-logo-grid,
+.branding-customizer .logo-variant-settings__grid,
+.branding-customizer .logo-placement-options { grid-template-columns: minmax(0, 1fr); }
+.branding-customizer input:not([type="radio"]):not([type="checkbox"]),
+.branding-customizer select,
+.branding-customizer textarea { max-width: 100%; min-width: 0; }
+.branding-customizer input[type="radio"],
+.branding-customizer input[type="checkbox"] { flex: none; width: 16px; min-width: 16px; height: 16px; }
+.branding-customizer[data-layout="compact"] .branding-customizer__stage,
+.branding-customizer[data-layout="sheet"] .branding-customizer__stage { grid-template-columns: minmax(0, 1fr); }
+.branding-customizer[data-layout="compact"] .branding-customizer__menu,
+.branding-customizer[data-layout="sheet"] .branding-customizer__menu { display: flex; flex-wrap: wrap; }
+.branding-customizer[data-layout="wide"] .branding-customizer__stage.is-open { grid-template-columns: 168px minmax(0, 1fr) minmax(360px, 380px); }
+.branding-customizer[data-layout="compact"] .branding-customizer__stage.is-open { grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); grid-template-rows: auto minmax(0, 1fr); }
+.branding-customizer[data-layout="compact"] .branding-customizer__stage.is-open .branding-customizer__menu { grid-column: 1; grid-row: 1; }
+.branding-customizer[data-layout="compact"] .branding-customizer__stage.is-open .branding-customizer__preview { grid-column: 1; grid-row: 2; }
+.branding-customizer[data-layout="compact"] .branding-customizer__stage.is-open .branding-customizer__drawer-slot { grid-column: 2; grid-row: 1 / span 2; }
+.branding-customizer__stage.is-open:not(.is-sheet) .branding-customizer__drawer {
+  position: fixed;
+  z-index: 4;
+  top: var(--branding-drawer-top, 12px);
+  left: var(--branding-drawer-left, 0px);
+  width: var(--branding-drawer-width, 360px);
+  height: var(--branding-drawer-span, calc(100dvh - 120px));
+  max-height: var(--branding-drawer-span, calc(100dvh - 120px));
+}
+.branding-customizer[data-layout="sheet"] .branding-customizer__stage.is-open .branding-customizer__drawer {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  left: 0;
+  top: 0;
+  width: auto;
+  height: auto;
+  max-height: none;
+  border-radius: 0;
 }
 @media (prefers-reduced-motion: no-preference) {
   .branding-customizer__drawer { transition: opacity 160ms ease; }

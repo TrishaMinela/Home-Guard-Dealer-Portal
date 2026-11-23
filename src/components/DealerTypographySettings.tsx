@@ -45,7 +45,7 @@ export function DealerTypographySettings({ dealer, onSave, onUpdated, embedded =
   }
 
   const reset=()=>void save(dealerTypographyValues({...dealer,heading_font_family:null,heading_font_weight:null,heading_font_size:null,body_font_family:null,body_font_weight:null,body_font_size:null,custom_heading_font_url:null,custom_heading_font_name:null,custom_heading_font_weight:null,custom_body_font_url:null,custom_body_font_name:null,custom_body_font_weight:null}),'Typography reset to the HGI defaults.')
-  return <section className="content-card dealer-typography-card">
+  return <section className="content-card dealer-typography-card"><div className="branding-customizer__scroll">
     {(values.customHeadingFontUrl||values.customBodyFontUrl)&&<style>{`${values.customHeadingFontUrl?`@font-face{font-family:"${headingCustom}";src:url("${values.customHeadingFontUrl}") format("woff2");font-weight:${values.customHeadingFontWeight||400};font-display:swap}`:''}${values.customBodyFontUrl?`@font-face{font-family:"${bodyCustom}";src:url("${values.customBodyFontUrl}") format("woff2");font-weight:${values.customBodyFontWeight||400};font-display:swap}`:''}`}</style>}
     <div className="dealer-form__section-heading"><p className="eyebrow">Typography</p><h2>Door Builder Typography</h2><p>Customize typography only for this dealer’s branded Door Builder.</p></div>
     {message&&<div className="portal-alert portal-alert--success" role="status">{message}</div>}{error&&<div className="portal-alert" role="alert">{error}</div>}
@@ -59,6 +59,6 @@ export function DealerTypographySettings({ dealer, onSave, onUpdated, embedded =
     </div>
     <p className="typography-license-note">Only upload fonts you are licensed or authorized to use. WOFF2 or WOFF, maximum 2 MB.</p>
     {!embedded && <div className="typography-preview" style={{'--preview-heading-font':headingFamily||'var(--font-heading)','--preview-heading-weight':values.headingFontWeight||'700','--preview-heading-size':`${values.headingFontSize||42}px`,'--preview-body-font':bodyFamily||'var(--font-body)','--preview-body-weight':values.bodyFontWeight||'400','--preview-body-size':`${values.bodyFontSize||16}px`} as React.CSSProperties}><p className="eyebrow">Typography Preview</p><h3>Build a Door Made for Your Home.</h3><p>Choose your door style, finish, glass, and hardware.</p><button type="button">Start Building Your Door</button></div>}
-    <div className="dealer-form__actions"><button type="button" className="button button--outline" disabled={saving} onClick={() => setValues(dealerTypographyValues(dealer))}>Cancel</button><button type="button" className="button button--outline" disabled={saving} onClick={reset}>Reset Typography to Default</button><button type="button" className="button button--primary" disabled={saving} onClick={()=>void save()}>{saving?'Saving...':'Save Typography'}</button></div>
+    </div><div className="dealer-form__actions"><button type="button" className="button button--outline" disabled={saving} onClick={() => setValues(dealerTypographyValues(dealer))}>Cancel</button><button type="button" className="button button--outline" disabled={saving} onClick={reset}>Reset Typography to Default</button><button type="button" className="button button--primary" disabled={saving} onClick={()=>void save()}>{saving?'Saving...':'Save Typography'}</button></div>
   </section>
 }

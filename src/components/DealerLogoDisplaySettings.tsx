@@ -216,6 +216,7 @@ export function DealerLogoDisplaySettings({ dealer, onSaveDisplay, onSaveSeconda
 
   return (
     <section className="content-card dealer-management-card logo-display-settings" aria-labelledby="logo-display-heading">
+      <div className="branding-customizer__scroll">
       <div className="dealer-form__section-heading">
         <p className="eyebrow">Door Builder logos</p>
         <h2 id="logo-display-heading">Logo Display</h2>
@@ -281,6 +282,7 @@ export function DealerLogoDisplaySettings({ dealer, onSaveDisplay, onSaveSeconda
       {secondaryMissing && <p className="logo-helper-note" role="status">The second logo is missing for a surface, so that surface shows the first logo only.</p>}
       {message && <div className="portal-alert portal-alert--success" role="status">{message}</div>}
       {error && <div className="portal-alert" role="alert">{error}</div>}
+      </div>
       <div className="dealer-form__actions">
         <button className="button button--outline" type="button" disabled={isSaving || display === saved} onClick={() => { setDisplay(saved); onDraftChange?.(saved) }}>Cancel</button>
         <button className="button button--primary" type="button" disabled={isSaving || display === saved} onClick={() => void saveDisplay()}>{isSaving ? 'Saving...' : 'Save Logo Display'}</button>

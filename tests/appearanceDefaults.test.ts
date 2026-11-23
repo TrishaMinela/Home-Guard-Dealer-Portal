@@ -388,6 +388,184 @@ test('the mobile branding sheet stays above the page and can be closed', async (
   await page.close()
 })
 
+test('the homepage and find my door previews use the live type, porch, and dealer color', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1440, height: 900 } })
+  await page.goto(`http://127.0.0.1:${port}/?role=admin#profile-nav-harness`, { waitUntil: 'networkidle' })
+  await page.getByRole('heading', { name: 'Branding & Appearance' }).waitFor()
+  await page.getByRole('button', { name: 'Homepage', exact: true }).click()
+  const home = await page.evaluate(() => {
+    const heading = document.querySelector('.db-home h1')
+    const emphasis = heading?.querySelector('em')
+    const image = document.querySelector<HTMLImageElement>('.db-home .home-entryway-image')
+    const door = document.querySelector<HTMLImageElement>('.db-home .hero-door')
+    const caption = document.querySelector('.db-home .home-preview-caption')
+    const firstCaption = caption?.querySelector('p')
+    const button = document.querySelector<HTMLElement>('.db-home .start-building')
+    const imageBox = image?.getBoundingClientRect()
+    const captionBox = caption?.getBoundingClientRect()
+    return {
+      headingStyle: heading ? getComputedStyle(heading).fontStyle : '',
+      headingWeight: heading ? getComputedStyle(heading).fontWeight : '',
+      emphasisStyle: emphasis ? getComputedStyle(emphasis).fontStyle : '',
+      emphasisWeight: emphasis ? getComputedStyle(emphasis).fontWeight : '',
+      image: image?.getAttribute('src') ?? '',
+      door: door?.getAttribute('src') ?? '',
+      captionBelow: !!imageBox && !!captionBox && captionBox.top >= imageBox.bottom - 2 && captionBox.left >= imageBox.left - 2 && captionBox.right <= imageBox.right + 2,
+      captionWeight: firstCaption ? getComputedStyle(firstCaption).fontWeight : '',
+      button: button ? getComputedStyle(button).backgroundColor : '',
+    }
+  })
+  assert.equal(home.headingStyle, 'normal')
+  assert.equal(home.headingWeight, '400')
+  assert.equal(home.emphasisStyle, 'italic')
+  assert.equal(home.emphasisWeight, '700')
+  assert.equal(home.image, '/appearance-preview/hero-entryway.webp')
+  assert.equal(home.door, '/appearance-preview/hero-ai-01-navy.webp')
+  assert.equal(home.captionBelow, true)
+  assert.equal(Number(home.captionWeight) < 600, true)
+  assert.equal(home.button, 'rgb(35, 81, 118)')
+  await page.getByRole('button', { name: 'Find My Door', exact: true }).click()
+  const find = await page.evaluate(() => {
+    const upload = document.querySelector<HTMLElement>('.find-door-upload')
+    const bar = getComputedStyle(document.querySelector('.find-door-gallery h2')!, '::after')
+    return { upload: upload ? getComputedStyle(upload).backgroundColor : '', underline: bar.backgroundColor, underlineHeight: bar.height }
+  })
+  assert.equal(find.upload, 'rgb(35, 81, 118)')
+  assert.equal(find.underline, 'rgb(248, 211, 14)')
+  assert.ok(parseFloat(find.underlineHeight) >= 3, find.underlineHeight)
+  await page.getByRole('button', { name: 'Mobile', exact: true }).click()
+  const mobile = await page.evaluate(() => {
+    const photo = document.querySelector('.find-door-feature')?.getBoundingClientRect()
+    const copy = document.querySelector('.find-door-lead')?.getBoundingClientRect()
+    const images = [...document.querySelectorAll('.find-door-marquee img')].map((image) => image.getBoundingClientRect())
+    return {
+      photoFirst: !!photo && !!copy && photo.bottom <= copy.top + 2,
+      row: images.length === 3 && images[1].left >= images[0].right - 2 && Math.abs(images[0].top - images[1].top) < 4,
+    }
+  })
+  assert.equal(mobile.photoFirst, true)
+  assert.equal(mobile.row, true)
+  await page.close()
+})
+
+test('the open drawer stays inside the portal column from 1000 to 1300', async () => {
+  for (const role of [{ name: 'dealer', rail: 276 }, { name: 'admin', rail: 252 }] as const) {
+    const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } })
+    await page.goto(`http://127.0.0.1:${port}/?role=admin#profile-nav-harness`, { waitUntil: 'networkidle' })
+    await page.addStyleTag({ content: `.page-content{margin-left:${role.rail}px !important;margin-right:0 !important;width:calc(100% - ${role.rail}px) !important;max-width:none !important;box-sizing:border-box}` })
+    await page.getByRole('button', { name: 'Colors', exact: true }).click()
+    await page.locator('#branding-customizer-drawer-title').waitFor()
+    for (let width = 1000; width <= 1300; width += 20) {
+      await page.setViewportSize({ width, height: 900 })
+      await page.waitForFunction((rail) => {
+        const menu = document.querySelector('.branding-customizer__menu')?.getBoundingClientRect()
+        const drawer = document.getElementById('branding-customizer-drawer')?.getBoundingClientRect()
+        const layout = document.querySelector('.branding-customizer')?.getAttribute('data-layout')
+        if (!menu || !drawer) return false
+        if (layout === 'sheet') return drawer.left >= -1 && drawer.right <= window.innerWidth + 1
+        return menu.left >= rail - 1 && menu.right <= drawer.left + 1 && drawer.right <= window.innerWidth + 1
+      }, role.rail)
+      const fit = await page.evaluate((rail) => {
+        const scroller = document.querySelector('.portal-main') || document.scrollingElement || document.documentElement
+        const drawer = document.getElementById('branding-customizer-drawer')?.getBoundingClientRect()
+        const close = document.querySelector<HTMLElement>('#branding-customizer-drawer .branding-customizer__drawer-bar button')?.getBoundingClientRect()
+        const menu = document.querySelector('.branding-customizer__menu')?.getBoundingClientRect()
+        const layout = document.querySelector('.branding-customizer')?.getAttribute('data-layout')
+        const drawerInside = !!drawer && drawer.left >= -1 && drawer.right <= window.innerWidth + 1 && drawer.top >= -1 && drawer.bottom <= window.innerHeight + 1 && drawer.width > 8 && drawer.height > 8
+        const closeInside = !!close && close.left >= -1 && close.right <= window.innerWidth + 1 && close.top >= -1 && close.bottom <= window.innerHeight + 1 && close.width > 8 && close.height > 8
+        return {
+          overflow: scroller.scrollWidth - scroller.clientWidth,
+          layout,
+          drawer: drawerInside,
+          close: closeInside,
+          menu: layout === 'sheet' || (!!menu && !!drawer && menu.left >= rail - 1 && menu.right <= drawer.left + 1),
+          drawerRight: drawer ? Math.round(drawer.right) : -1,
+          closeRight: close ? Math.round(close.right) : -1,
+        }
+      }, role.rail)
+      assert.ok(fit.overflow <= 1, `${role.name} ${width}px overflow ${fit.overflow}`)
+      assert.equal(fit.drawer, true, `${role.name} ${width}px drawer ends ${fit.drawerRight}`)
+      assert.equal(fit.close, true, `${role.name} ${width}px close ends ${fit.closeRight}`)
+      assert.equal(fit.menu, true, `${role.name} ${width}px menu layout ${fit.layout}`)
+    }
+    await page.close()
+  }
+})
+
+test('the drawer keeps Close and Save on screen at the top, middle, and bottom', async () => {
+  for (const viewport of [{ width: 1024, height: 768 }, { width: 1440, height: 900 }] as const) {
+    const page = await browser!.newPage({ viewport })
+    await page.goto(`http://127.0.0.1:${port}/?role=admin#profile-nav-harness`, { waitUntil: 'networkidle' })
+    await page.addStyleTag({ content: '.page-content{margin-left:276px !important;margin-right:0 !important;width:calc(100% - 276px) !important;max-width:none !important;box-sizing:border-box}' })
+    await page.getByRole('button', { name: 'Colors', exact: true }).click()
+    await page.getByRole('button', { name: 'Save Appearance' }).waitFor()
+    const stops = await page.evaluate(() => {
+      const scrolling = document.scrollingElement || document.documentElement
+      const max = Math.max(0, scrolling.scrollHeight - scrolling.clientHeight)
+      return [0, Math.round(max / 2), max]
+    })
+    for (const top of stops) {
+      await page.evaluate((next) => window.scrollTo(0, next), top)
+      const visible = await page.evaluate(() => {
+        const drawer = document.getElementById('branding-customizer-drawer')?.getBoundingClientRect()
+        const close = document.querySelector<HTMLElement>('#branding-customizer-drawer .branding-customizer__drawer-bar button')?.getBoundingClientRect()
+        const buttons = [...document.querySelectorAll<HTMLElement>('#branding-customizer-drawer button')]
+        let save: DOMRect | undefined
+        for (let index = 0; index < buttons.length; index += 1) {
+          if ((buttons[index].textContent || '').includes('Save Appearance')) save = buttons[index].getBoundingClientRect()
+        }
+        const drawerInside = !!drawer && drawer.top >= -1 && drawer.bottom <= window.innerHeight + 1 && drawer.left >= -1 && drawer.right <= window.innerWidth + 1 && drawer.width > 8
+        const closeInside = !!close && close.top >= -1 && close.bottom <= window.innerHeight + 1 && close.left >= -1 && close.right <= window.innerWidth + 1 && close.width > 8
+        const saveInside = !!save && save.top >= -1 && save.bottom <= window.innerHeight + 1 && save.left >= -1 && save.right <= window.innerWidth + 1 && save.width > 8
+        return {
+          drawer: drawerInside,
+          close: closeInside,
+          save: saveInside,
+          drawerHeight: drawer ? Math.round(drawer.height) : 0,
+          viewport: window.innerHeight,
+        }
+      })
+      assert.equal(visible.drawer, true, `${viewport.width}x${viewport.height} ${top} drawer`)
+      assert.equal(visible.close, true, `${viewport.width}x${viewport.height} ${top} close`)
+      assert.equal(visible.save, true, `${viewport.width}x${viewport.height} ${top} save`)
+      assert.ok(visible.drawerHeight < visible.viewport, `${viewport.width} drawer height ${visible.drawerHeight}`)
+    }
+    await page.close()
+  }
+})
+
+test('every drawer and sheet button stays inside the panel', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1440, height: 900 } })
+  await page.goto(`http://127.0.0.1:${port}/?role=admin#profile-nav-harness`, { waitUntil: 'networkidle' })
+  for (const width of [320, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 })
+    for (const name of ['Logo Display & Placement', 'Typography', 'Colors', 'Logos']) {
+      await page.getByRole('button', { name, exact: name !== 'Logo Display & Placement' }).click()
+      if (name === 'Logo Display & Placement') await page.getByRole('radio', { name: /2 Logos/ }).check()
+      const escaped = await page.evaluate(() => {
+        const drawer = document.getElementById('branding-customizer-drawer')
+        if (!drawer) return ['missing drawer']
+        const buttons = [...drawer.querySelectorAll('button')]
+        const found: string[] = []
+        for (let index = 0; index < buttons.length; index += 1) {
+          const button = buttons[index]
+          button.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+          const box = button.getBoundingClientRect()
+          const bounds = drawer.getBoundingClientRect()
+          if (box.width < 2 || box.height < 2) continue
+          if (box.left < bounds.left - 1 || box.right > bounds.right + 1 || box.top < bounds.top - 1 || box.bottom > bounds.bottom + 1) {
+            found.push(`${(button.textContent || '').trim()} at ${Math.round(box.left)},${Math.round(box.top)}`)
+          }
+        }
+        return found
+      })
+      assert.deepEqual(escaped, [], `${width}px ${name} ${escaped.join('; ')}`)
+      await page.getByRole('button', { name: 'Close', exact: true }).click()
+    }
+  }
+  await page.close()
+})
+
 test('a dealer member does not see the appearance link or controls', async () => {
   const page = await browser!.newPage({ viewport: { width: 1100, height: 800 } })
   await page.goto(`http://127.0.0.1:${port}/?role=member#profile-nav-harness`, { waitUntil: 'networkidle' })

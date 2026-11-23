@@ -150,6 +150,7 @@ export function DoorBuilderAppearanceSettings({
 
   return (
     <section id="door-builder-appearance" className="content-card dealer-management-card appearance-settings dealer-setup-anchor" aria-labelledby="door-builder-appearance-heading">
+      <div className="branding-customizer__scroll">
       <div className="dealer-form__section-heading">
         <p className="eyebrow">Door Builder</p>
         <h2 id="door-builder-appearance-heading">Door Builder Appearance</h2>
@@ -203,6 +204,7 @@ export function DoorBuilderAppearanceSettings({
           ))}
         </div>
         {!embedded && <DoorBuilderAppearancePreview dealer={dealer} appearance={shownDraft} />}
+      </div>
       </div>
       <div className="dealer-form__actions appearance-toolbar">
         <button className="button button--outline" type="button" disabled={!dirty || saving} onClick={() => { setDraft(saved); setOpenKey(null); setError(''); setMessage('') }}>Cancel Changes</button>

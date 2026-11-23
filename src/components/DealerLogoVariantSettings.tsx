@@ -369,6 +369,7 @@ export function DealerLogoVariantSettings({ dealer, onSave, onSaveWebsite, onWeb
 
   return (
     <section className="content-card dealer-management-card logo-variant-settings" aria-labelledby="logo-variant-heading">
+      <div className="branding-customizer__scroll">
       <div className="dealer-form__section-heading">
         <p className="eyebrow">Door Builder logos</p>
         <h2 id="logo-variant-heading">Where each logo appears</h2>
@@ -483,6 +484,7 @@ export function DealerLogoVariantSettings({ dealer, onSave, onSaveWebsite, onWeb
       </div>}
       {message && <div className="portal-alert portal-alert--success" role="status">{message}</div>}
       {error && <div className="portal-alert" role="alert">{error}</div>}
+      </div>
       <div className="dealer-form__actions">
         <button className="button button--outline" type="button" disabled={isSaving || unchanged} onClick={() => { dirtyRef.current = false; setHeader(normalizeLogoVariant(dealer.logo_header_variant)); setPages(normalizeLogoVariant(dealer.logo_pages_variant)); setSecondaryHeader(normalizeLogoVariant(dealer.logo_secondary_header_variant)); setSecondaryPages(normalizeLogoVariant(dealer.logo_secondary_pages_variant)) }}>Cancel</button>
         <button className="button button--primary" type="button" disabled={isSaving || unchanged} onClick={() => void save()}>

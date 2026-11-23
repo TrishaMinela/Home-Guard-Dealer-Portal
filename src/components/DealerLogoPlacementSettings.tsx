@@ -35,6 +35,7 @@ export function DealerLogoPlacementSettings({ dealer, onSave, onUpdated, onDraft
 
   return (
     <section className="content-card dealer-management-card logo-placement-settings">
+      <div className="branding-customizer__scroll">
       <div className="dealer-form__section-heading">
         <p className="eyebrow">Dealer branding</p>
         <h2>Dealer Logo Placement</h2>
@@ -52,6 +53,7 @@ export function DealerLogoPlacementSettings({ dealer, onSave, onUpdated, onDraft
       </div>
       {message && <div className="portal-alert portal-alert--success" role="status">{message}</div>}
       {error && <div className="portal-alert" role="alert">{error}</div>}
+      </div>
       <div className="dealer-form__actions">
         <button className="button button--outline" type="button" disabled={isSaving || placement === current} onClick={() => setPlacement(current)}>Cancel</button>
         <button className="button button--primary" type="button" disabled={isSaving || placement === current} onClick={() => void save()}>
