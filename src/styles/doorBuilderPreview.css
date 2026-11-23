@@ -121,9 +121,14 @@
 .db-appearance-preview.is-mobile .logo-pair img { height: 32px !important; max-height: 32px !important; }
 .db-appearance-preview.is-mobile .home-return { width: 36px; height: 36px; padding: 0; border-radius: 50%; justify-content: center; }
 .db-appearance-preview.is-mobile .home-return span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-.db-appearance-preview.is-mobile .dealer-website-link { width: 36px; min-height: 36px; padding: 0; justify-content: center; font-size: 0; }
-.db-appearance-preview.is-mobile .mobile-live-preview { position: relative; }
-.db-appearance-preview.is-mobile .mobile-live-preview .preview-reset-design { position: absolute; bottom: 8px; left: 8px; height: 34px; border: 1px solid #0d666c; border-radius: 4px; background: #fff; color: #0d666c; }
+.db-appearance-preview.is-mobile .dealer-website-link { width: auto; min-height: 32px; padding: 0 8px; font-size: 9px; }
+.db-appearance-preview.is-mobile .mobile-live-preview { position: relative; display: grid; grid-template-rows: auto 1fr auto; align-items: center; height: 260px; padding: 8px; }
+.db-appearance-preview.is-mobile .mobile-live-preview .preview-reset-design { position: static; justify-self: start; height: 34px; border: 1px solid #0d666c; border-radius: 4px; background: #fff; color: #0d666c; }
+.db-appearance-preview .preview-view-toggle { display: inline-flex; gap: 0; border: 1px solid #aebfc2; border-radius: 3px; padding: 2px; background: #fff; }
+.db-appearance-preview .preview-view-toggle button { min-width: 72px; border: 0; border-right: 1px solid #d6dfe1; background: transparent; color: #566367; font-size: 12px; font-weight: 700; padding: 6px 8px; }
+.db-appearance-preview .preview-view-toggle button:last-child { border-right: 0; }
+.db-appearance-preview .preview-view-toggle button.active { background: var(--peacock, #0d666c); color: #fff; }
+.db-appearance-preview.is-mobile .preview-view-toggle button { min-width: 0; padding: 6px; font-size: 11px; }
 .db-appearance-preview.is-mobile .shared-site-footer { grid-template-columns: 1fr; justify-items: center; text-align: center; }
 .db-appearance-preview.is-mobile .site-footer-feedback,
 .db-appearance-preview.is-mobile .site-footer-contact { justify-items: center; }

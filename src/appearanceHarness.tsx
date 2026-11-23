@@ -80,8 +80,12 @@ export function AppearanceHarness() {
 
 export function ProfileNavHarness({ canEditAppearance }: { canEditAppearance: boolean }) {
   const params = new URLSearchParams(window.location.search)
-  const single = params.get('logos') === 'single'
-  const initial: AdminDealer = single ? { ...dealer, logo_display: 'single', logo_secondary_url: null } : dealer
+  const logos = params.get('logos')
+  const initial: AdminDealer = logos === 'none'
+    ? { ...dealer, logo_url: null, logo_light_url: null, logo_secondary_url: null, logo_display: 'single' }
+    : logos === 'single'
+      ? { ...dealer, logo_display: 'single', logo_secondary_url: null }
+      : dealer
   const [current, setCurrent] = useState<AdminDealer>(initial)
   const mode = params.get('studio') === 'admin' ? 'admin' : 'dealer'
   return (

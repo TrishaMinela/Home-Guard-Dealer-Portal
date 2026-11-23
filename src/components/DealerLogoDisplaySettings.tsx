@@ -24,6 +24,7 @@ type Props = {
   onUpdated: (dealer: AdminDealer) => void
   embedded?: boolean
   onDraftChange?: (display: DealerLogoDisplay) => void
+  value?: DealerLogoDisplay
 }
 
 const logoExtensions: Record<string, string> = {
@@ -64,9 +65,14 @@ function LogoPair({
   )
 }
 
-export function DealerLogoDisplaySettings({ dealer, onSaveDisplay, onSaveSecondary, onUpdated, embedded = false, onDraftChange, showUploads = true }: Props & { showUploads?: boolean }) {
+export function DealerLogoDisplaySettings({ dealer, onSaveDisplay, onSaveSecondary, onUpdated, embedded = false, onDraftChange, showUploads = true, value }: Props & { showUploads?: boolean }) {
   const saved = normalizeLogoDisplay(dealer.logo_display)
-  const [display, setDisplay] = useState<DealerLogoDisplay>(saved)
+  const [uncontrolled, setUncontrolled] = useState<DealerLogoDisplay>(saved)
+  const display = value ?? uncontrolled
+  const setDisplay = (next: DealerLogoDisplay) => {
+    if (value === undefined) setUncontrolled(next)
+    onDraftChange?.(next)
+  }
   const [isSaving, setIsSaving] = useState(false)
   const [uploading, setUploading] = useState<SecondaryKind | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)

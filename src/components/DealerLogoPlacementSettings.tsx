@@ -8,11 +8,17 @@ type Props = {
   onSave: (placement: DealerLogoPlacement) => Promise<AdminDealer>
   onUpdated: (dealer: AdminDealer) => void
   onDraftChange?: (placement: DealerLogoPlacement) => void
+  value?: DealerLogoPlacement
 }
 
-export function DealerLogoPlacementSettings({ dealer, onSave, onUpdated, onDraftChange }: Props) {
+export function DealerLogoPlacementSettings({ dealer, onSave, onUpdated, onDraftChange, value }: Props) {
   const current = dealer.logo_placement === 'header' ? 'header' : 'hero'
-  const [placement, setPlacement] = useState<DealerLogoPlacement>(current)
+  const [uncontrolled, setUncontrolled] = useState<DealerLogoPlacement>(current)
+  const placement = value ?? uncontrolled
+  const setPlacement = (next: DealerLogoPlacement) => {
+    if (value === undefined) setUncontrolled(next)
+    onDraftChange?.(next)
+  }
   const [isSaving, setIsSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')

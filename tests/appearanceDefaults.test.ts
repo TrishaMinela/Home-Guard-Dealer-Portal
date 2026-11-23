@@ -350,6 +350,10 @@ test('the branding studio keeps a large preview and moves the homepage logo betw
   await page.getByRole('button', { name: 'Colors', exact: true }).click()
   await page.getByRole('button', { name: 'Typography', exact: true }).click()
   await page.locator('#heading-font-family').selectOption({ index: 1 })
+  const chosenFont = await page.locator('#heading-font-family').inputValue()
+  await page.getByRole('button', { name: 'Logos', exact: true }).click()
+  await page.getByRole('button', { name: 'Typography', exact: true }).click()
+  assert.equal(await page.locator('#heading-font-family').inputValue(), chosenFont)
   assert.equal(await page.locator('.branding-studio__status').innerText(), 'Unsaved changes')
   await page.close()
 })
@@ -491,7 +495,7 @@ test('the branding studio fits the preview and settings at every requested width
     assert.ok(fit.preview >= Math.min(280, width - 40), `${width}px preview ${fit.preview}`)
     if (width >= 1024) {
       assert.ok(fit.nav >= 90 && fit.nav <= 110, `${width}px nav ${fit.nav}`)
-      assert.ok(fit.settings >= 260 && fit.settings <= 300, `${width}px editor ${fit.settings}`)
+      assert.ok(fit.settings >= 300 && fit.settings <= 340, `${width}px editor ${fit.settings}`)
       assert.equal(fit.overlap, false, `${width}px editor overlaps the preview`)
       assert.ok(fit.uploadTop >= 0 && fit.uploadTop < 700, `${width}px upload at ${fit.uploadTop}`)
     }
@@ -533,8 +537,8 @@ test('studio drafts survive categories and discard, and a partial save names the
   await page.getByRole('button', { name: 'Save Changes' }).click()
   await page.getByRole('alert').waitFor()
   const alert = await page.getByRole('alert').innerText()
-  assert.match(alert, /placement/)
-  assert.match(alert, /Colors: colors rejected/)
+  assert.match(alert, /Saved Logo Display & Placement/)
+  assert.match(alert, /Colors failed: colors rejected/)
   page.once('dialog', (dialog) => void dialog.accept())
   await page.getByRole('button', { name: 'Discard' }).click()
   assert.equal(await page.locator('.branding-studio__status').innerText(), 'All changes saved')
@@ -572,10 +576,68 @@ test('one logo and an admin studio still show both upload actions', async () => 
   await page.goto(`http://127.0.0.1:${port}/?role=admin&studio=admin&logos=single#profile-nav-harness`, { waitUntil: 'networkidle' })
   await page.getByRole('link', { name: 'Customize Door Builder' }).click()
   await page.getByRole('heading', { name: 'Branding & Appearance' }).waitFor()
-  assert.equal(await page.getByText('Upload Original').count(), 2)
-  assert.match(await page.locator('.studio-logo').nth(1).innerText(), /No file yet/)
+  assert.equal(await page.getByText('Upload Original').count(), 1)
+  await page.getByText('Add Second Logo').waitFor()
   await page.getByRole('button', { name: 'Colors', exact: true }).click()
   await page.getByRole('heading', { name: 'Door Builder Appearance' }).waitFor()
+  await page.close()
+})
+
+test('a dealer with no logo still opens the studio and the preview', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } })
+  await page.goto(`http://127.0.0.1:${port}/?role=admin&logos=none#profile-nav-harness`, { waitUntil: 'networkidle' })
+  await page.getByRole('link', { name: 'Customize Door Builder' }).click()
+  await page.getByRole('heading', { name: 'Branding & Appearance' }).waitFor()
+  await page.getByText('Add Second Logo').waitFor()
+  assert.match(await page.locator('.db-appearance-preview header').innerText(), /Diligent Exterior Remodeling/)
+  await page.close()
+})
+
+test('the preview box stays the same across categories and Save stays clickable', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1440, height: 900 } })
+  await openStudio(page)
+  const box = () => page.evaluate(() => {
+    const preview = document.querySelector('.branding-studio__preview')?.getBoundingClientRect()
+    const toolbar = document.querySelector('.branding-studio__toolbar')?.getBoundingClientRect()
+    return {
+      preview: preview ? [Math.round(preview.x), Math.round(preview.y), Math.round(preview.width), Math.round(preview.height)] : [],
+      toolbar: toolbar ? [Math.round(toolbar.x), Math.round(toolbar.y), Math.round(toolbar.width), Math.round(toolbar.height)] : [],
+    }
+  })
+  const first = await box()
+  for (const name of ['Logo Display', 'Colors', 'Typography', 'Logos']) {
+    await page.getByRole('button', { name, exact: true }).click()
+    assert.deepEqual(await box(), first, name)
+  }
+  await page.getByRole('button', { name: 'Logo Display' }).click()
+  await page.getByRole('radio', { name: /Hero/ }).check()
+  const save = page.getByRole('button', { name: 'Save Changes' }).first()
+  const hit = await save.evaluate((element) => {
+    const rect = element.getBoundingClientRect()
+    const target = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+    return target === element || element.contains(target)
+  })
+  assert.equal(hit, true)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.getByRole('button', { name: 'Edit Settings' }).click()
+  await page.evaluate(() => {
+    const bell = document.createElement('button')
+    bell.textContent = 'Notifications'
+    bell.style.position = 'fixed'
+    bell.style.right = '18px'
+    bell.style.bottom = '18px'
+    bell.style.zIndex = '100'
+    bell.style.width = '56px'
+    bell.style.height = '56px'
+    document.body.append(bell)
+  })
+  const mobileSave = page.locator('.branding-studio__sheet-actions .button--primary')
+  const mobileHit = await mobileSave.evaluate((element) => {
+    const rect = element.getBoundingClientRect()
+    const target = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+    return target === element || element.contains(target)
+  })
+  assert.equal(mobileHit, true)
   await page.close()
 })
 

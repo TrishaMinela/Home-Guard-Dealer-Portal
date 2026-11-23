@@ -3,12 +3,12 @@ import { supabase } from '../lib/supabase'
 import type { AdminDealer } from '../types/admin'
 import { dealerFontOptions, dealerFontWeights, dealerTypographyValues, fontStacks, type DealerTypographyValues } from '../utils/dealerTypography'
 
-type Props = { dealer: AdminDealer; onSave: (values: DealerTypographyValues) => Promise<AdminDealer>; onUpdated: (dealer: AdminDealer) => void; embedded?: boolean; onDraftChange?: (values: DealerTypographyValues) => void }
+type Props = { dealer: AdminDealer; onSave: (values: DealerTypographyValues) => Promise<AdminDealer>; onUpdated: (dealer: AdminDealer) => void; embedded?: boolean; draft?: DealerTypographyValues | null; onDraftChange?: (values: DealerTypographyValues) => void }
 type FontTarget = 'heading' | 'body'
 const maxFontBytes = 2 * 1024 * 1024
 
-export function DealerTypographySettings({ dealer, onSave, onUpdated, embedded = false, onDraftChange }: Props) {
-  const [values,setValues] = useState(() => dealerTypographyValues(dealer))
+export function DealerTypographySettings({ dealer, onSave, onUpdated, embedded = false, draft = null, onDraftChange }: Props) {
+  const [values,setValues] = useState(() => draft ?? dealerTypographyValues(dealer))
   const [saving,setSaving] = useState(false)
   const [uploading,setUploading] = useState<FontTarget|null>(null)
   const [message,setMessage] = useState('')

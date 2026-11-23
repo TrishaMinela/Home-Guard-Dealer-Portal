@@ -111,6 +111,7 @@ export function DoorBuilderAppearancePreview({ dealer, appearance, surface: surf
   const surface = surfaceProp ?? surfaceState
   const frameRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
+  const [doorView, setDoorView] = useState<'Exterior' | 'Interior' | 'Both'>('Exterior')
   const [scale, setScale] = useState(1)
   const [scaledHeight, setScaledHeight] = useState(640)
   const brand = resolvedBrandColors({ primaryColor: dealer.primary_color, secondaryColor: dealer.secondary_color })
@@ -271,11 +272,26 @@ export function DoorBuilderAppearancePreview({ dealer, appearance, surface: surf
                 </nav>
                 <div className="preview-toolbar">
                   <button className="preview-reset-design" type="button">Restart Build</button>
+                  <div className="preview-view-toggle" role="group" aria-label="Preview view">
+                    {(['Exterior', 'Interior', 'Both'] as const).map((item) => (
+                      <button key={item} type="button" className={doorView === item ? 'active' : ''} aria-pressed={doorView === item} onClick={() => setDoorView(item)}>{item}</button>
+                    ))}
+                  </div>
                 </div>
               </div>
               <main>
                 <div className="mobile-live-preview" aria-hidden={mobile ? undefined : true}>
-                  <img src="/appearance-preview/single-door.webp" alt="" />
+                  <div className="preview-view-toggle mobile-preview-view-toggle" role="group" aria-label="Preview view">
+                    {(['Exterior', 'Interior', 'Both'] as const).map((item) => (
+                      <button key={item} type="button" className={doorView === item ? 'active' : ''} aria-pressed={doorView === item} onClick={() => setDoorView(item)}>{item}</button>
+                    ))}
+                  </div>
+                  {doorView === 'Both' ? (
+                    <div className="preview-comparison" aria-label="Exterior and interior door previews">
+                      <img src="/appearance-preview/single-door.webp" alt="Exterior door preview" />
+                      <img src="/appearance-preview/single-door.webp" alt="Interior door preview" />
+                    </div>
+                  ) : <img src="/appearance-preview/single-door.webp" alt={`${doorView} door preview`} />}
                   <button className="preview-reset-design" type="button">Restart Build</button>
                 </div>
                 <section className="builder-panel configuration-step">

@@ -220,6 +220,12 @@ export function DealerCompanyProfilePage({
             <div className="filter-field"><label htmlFor="profile-zip">ZIP</label><input id="profile-zip" value={form.zip} onChange={(event) => updateField('zip', event.target.value)} /></div>
           </div>
         </div>
+        <div className="dealer-form__actions">
+          <button className="button button--outline" type="button" disabled={isSaving || !profileDirty} onClick={() => setForm(dealerToForm(dealer))}>Cancel</button>
+          <button className="button button--primary" type="submit" disabled={isSaving || !profileDirty}>
+            {isSaving ? 'Saving...' : 'Save Company Details'}
+          </button>
+        </div>
       </section>
 
       <section className="content-card dealer-form" id="branding-studio">
@@ -230,27 +236,17 @@ export function DealerCompanyProfilePage({
         <Link className="button button--primary" to="/company/branding">Customize Door Builder</Link>
       </section>
 
+      </form>
+
       <section id="colors-and-typography">
         <div className="content-card dealer-form">
-          <div className="dealer-form__section">
-            <div className="dealer-form__section-heading">
-              <h2>Colors</h2>
-              <p>These colors are used in Door Builder. Marketing banner templates keep their own colors and only add your logo.</p>
-            </div>
-            <div className="form-grid">
-              <div className="filter-field"><label htmlFor="profile-primary-color">Primary Brand Color</label><input id="profile-primary-color" value={form.primaryColor} onChange={(event) => updateField('primaryColor', event.target.value)} placeholder="#0d666c" /></div>
-              <div className="filter-field"><label htmlFor="profile-secondary-color">Secondary Brand Color</label><input id="profile-secondary-color" value={form.secondaryColor} onChange={(event) => updateField('secondaryColor', event.target.value)} placeholder="#f8d30e" /></div>
-            </div>
+          <div className="dealer-form__section-heading">
+            <h2>Colors and Typography</h2>
+            <p>Brand colors, Door Builder colors, and typography are edited in the Branding Studio.</p>
           </div>
-          <div className="dealer-form__actions">
-            <button className="button button--outline" type="button" disabled={isSaving || !profileDirty} onClick={() => setForm(dealerToForm(dealer))}>Cancel</button>
-            <button className="button button--primary" type="submit" disabled={isSaving || !profileDirty}>
-              {isSaving ? 'Saving...' : 'Save details and colors'}
-            </button>
-          </div>
+          <Link className="button button--outline" to="/company/branding?section=colors">Edit colors</Link>
         </div>
       </section>
-      </form>
 
       <section className="content-card visualizer-request-card" id="website-address">
         <div className="dealer-form__section-heading">
