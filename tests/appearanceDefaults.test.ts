@@ -590,7 +590,7 @@ test('a dealer with no logo still opens the studio and the preview', async () =>
   await page.getByRole('heading', { name: 'Branding & Appearance' }).waitFor()
   await page.getByText('Add Second Logo').waitFor()
   assert.equal(await page.getByRole('button', { name: 'Generate White' }).first().isDisabled(), true)
-  assert.equal(await page.getByRole('button', { name: 'Generate Black' }).first().getAttribute('title'), 'Upload a logo first')
+  assert.match(await page.locator('#logo-original').innerText(), /Upload a logo first/)
   assert.equal(await page.getByRole('button', { name: 'Manage Variants' }).count(), 0)
   assert.doesNotMatch(await page.locator('#logo-original').innerText(), /Logo 1 · Active/)
   assert.match(await page.locator('.db-appearance-preview header').innerText(), /Diligent Exterior Remodeling/)
@@ -602,18 +602,23 @@ test('the preview fills the studio and scrolls to Restart Build', async () => {
   await openStudio(page)
   for (const width of [1024, 1280, 1440]) {
     await page.setViewportSize({ width, height: 900 })
-    const gap = await page.evaluate(() => {
-      const studio = document.querySelector('.branding-studio')?.getBoundingClientRect()
-      const card = document.querySelector('.branding-studio__preview-card')?.getBoundingClientRect()
-      return {
-        underCard: studio && card ? Math.round(studio.bottom - card.bottom) : 999,
-        underStudio: studio ? Math.round(window.innerHeight - studio.bottom) : 999,
-      }
-    })
-    assert.ok(gap.underCard < 24, `${width}px gap under the preview card ${gap.underCard}`)
-    assert.ok(gap.underStudio < 24, `${width}px gap under the studio ${gap.underStudio}`)
+    for (const name of ['Homepage', 'Door Builder', 'Find My Door']) {
+      await page.getByRole('button', { name, exact: true }).click()
+      const gap = await page.evaluate(() => {
+        const shell = document.querySelector('.branding-studio__preview .db-preview-shell')?.getBoundingClientRect()
+        const footer = document.querySelector('.db-appearance-preview footer')?.getBoundingClientRect()
+        const studio = document.querySelector('.branding-studio')?.getBoundingClientRect()
+        return {
+          underFooter: shell && footer ? Math.round(shell.bottom - footer.bottom) : 999,
+          underStudio: studio ? Math.round(window.innerHeight - studio.bottom) : 999,
+        }
+      })
+      assert.ok(gap.underFooter < 24, `${width}px ${name} gap under the preview ${gap.underFooter}`)
+      assert.ok(gap.underStudio < 24, `${width}px gap under the studio ${gap.underStudio}`)
+    }
   }
   await page.setViewportSize({ width: 1440, height: 900 })
+  await page.getByRole('button', { name: 'Door Builder', exact: true }).click()
   await page.getByRole('button', { name: 'Mobile', exact: true }).click()
   const reached = await page.evaluate(() => {
     const shell = document.querySelector<HTMLElement>('.branding-studio__preview .db-preview-shell')
@@ -633,6 +638,8 @@ test('the preview fills the studio and scrolls to Restart Build', async () => {
   assert.equal(reached, true)
   const underline = await page.locator('.section-heading h1').evaluate((element) => getComputedStyle(element, '::after').backgroundColor)
   assert.equal(underline, 'rgb(35, 81, 118)')
+  const popular = await page.locator('.popular-styles h2').evaluate((element) => getComputedStyle(element, '::after').backgroundColor)
+  assert.equal(popular, 'rgb(248, 211, 14)')
   await page.setViewportSize({ width: 1024, height: 900 })
   const overlap = await page.evaluate(() => {
     const name = document.querySelector('.branding-studio__identity p')?.getBoundingClientRect()
@@ -644,6 +651,16 @@ test('the preview fills the studio and scrolls to Restart Build', async () => {
   })
   assert.equal(overlap.nameStatus, false)
   assert.equal(overlap.titleLive, false)
+  const clipped = await page.evaluate(() => {
+    const title = document.querySelector<HTMLElement>('.branding-studio__identity h1')
+    const name = document.querySelector<HTMLElement>('.branding-studio__identity p')
+    return {
+      title: !!title && title.scrollWidth > title.clientWidth + 1,
+      name: !!name && name.scrollWidth > name.clientWidth + 1,
+    }
+  })
+  assert.equal(clipped.title, false)
+  assert.equal(clipped.name, false)
   await page.getByRole('button', { name: 'Mobile', exact: true }).click()
   const header = await page.evaluate(() => {
     const logo = document.querySelector<HTMLElement>('.db-appearance-preview.is-mobile header img')
@@ -655,7 +672,20 @@ test('the preview fills the studio and scrolls to Restart Build', async () => {
   })
   assert.equal(header?.beside, true)
   assert.equal(header?.text, true)
-  await page.getByRole('link', { name: 'Back to Company Details' }).waitFor()
+  await page.addStyleTag({ content: '.portal-shell:not(.portal-shell--billing-client) .portal-main { margin-bottom: 96px; }' })
+  const cleared = await page.evaluate(() => {
+    const studio = document.querySelector('.branding-studio')
+    if (!studio?.parentElement) return ''
+    const shell = document.createElement('div')
+    shell.className = 'portal-shell'
+    const main = document.createElement('main')
+    main.className = 'portal-main'
+    studio.parentElement.insertBefore(shell, studio)
+    shell.appendChild(main)
+    main.appendChild(studio)
+    return getComputedStyle(main).marginBottom
+  })
+  assert.equal(cleared, '0px')
   await page.close()
 })
 

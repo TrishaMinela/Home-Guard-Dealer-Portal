@@ -148,7 +148,11 @@ export function DoorBuilderAppearancePreview({ dealer, appearance, surface: surf
     if (!frame || !stage) return
     const measure = () => {
       const available = frame.clientWidth
+      const shell = frame.closest<HTMLElement>('.db-preview-shell')
+      const visible = shell?.clientHeight ?? frame.clientHeight
       const nextScale = available > 0 ? available / designWidth : 1
+      const page = stage.querySelector<HTMLElement>('.db-appearance-preview')
+      if (page && nextScale > 0 && visible > 0) page.style.minHeight = `${Math.ceil(visible / nextScale)}px`
       setScale(nextScale)
       setScaledHeight(Math.ceil(stage.offsetHeight * nextScale))
     }

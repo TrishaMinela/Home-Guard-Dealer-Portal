@@ -1,5 +1,6 @@
 .branding-studio { display: flex; flex-direction: column; height: 100dvh; max-height: 100dvh; min-height: 0; overflow: hidden; background: #f4f7f6; color: #14201f; }
 .portal-main > .branding-studio { height: 100%; max-height: 100%; }
+.portal-shell:not(.portal-shell--billing-client) .portal-main:has(> .branding-studio) { margin-bottom: 0; }
 .branding-studio__tabs { display: flex; gap: 8px; align-items: center; min-height: 44px; padding: 0 16px; overflow: auto; background: #fff; border-bottom: 1px solid #d5dfdc; }
 .branding-studio__tabs a, .branding-studio__tabs span { color: #5d6b68; font-size: 13px; font-weight: 700; text-decoration: none; white-space: nowrap; }
 .branding-studio__tabs [aria-current="page"] { color: #0d666c; }
@@ -43,7 +44,10 @@
 .branding-studio__toggles { display: flex; gap: 4px; }
 .branding-studio__toggles button, .branding-studio__edit, .branding-studio__sheet-bar button, .branding-studio__back-section { min-height: 32px; border: 1px solid #d5dfdc; border-radius: 8px; background: #fff; color: #243034; font: inherit; font-size: 12px; font-weight: 700; padding: 0 8px; cursor: pointer; }
 .branding-studio__toggles button[aria-pressed="true"] { border-color: #0d666c; background: rgba(13,102,108,.08); color: #0d666c; }
-.branding-studio__editor { display: flex; flex-direction: column; min-height: 0; overflow: auto; background: #fff; border-left: 1px solid #d5dfdc; padding: 12px; }
+.branding-studio__preview .db-appearance-preview { display: flex; flex-direction: column; box-sizing: border-box; }
+.branding-studio__preview .db-appearance-preview > footer { margin-top: auto; }
+.branding-studio__editor { display: flex; flex-direction: column; min-height: 0; overflow: auto; background: #fff; border-left: 1px solid #d5dfdc; padding: 12px; padding-bottom: calc(16px + var(--notification-clearance, 96px)); }
+.branding-studio__preview .db-preview-shell { scroll-padding-bottom: var(--notification-clearance, 96px); }
 .branding-studio__editor-head h2 { margin: 0; font-size: 18px; }
 .branding-studio__editor-head p, .branding-studio__note { margin: 4px 0 10px; color: #5d6b68; font-size: 12px; }
 .studio-logo, .studio-brand, .studio-links { display: grid; gap: 8px; margin-bottom: 12px; padding: 10px; border: 1px solid #d5dfdc; border-radius: 12px; }
@@ -53,7 +57,7 @@
 .studio-logo__actions { display: grid; gap: 4px; }
 .studio-logo__actions .button, .studio-logo > .button { min-height: 28px; padding: 0 8px; font-size: 12px; }
 .studio-logo__meta { margin: 0; color: #5d6b68; font-size: 11px; }
-.studio-logo__ok { margin-right: 4px; color: #146c43; font-weight: 700; }
+.studio-logo__hint { margin: 0; color: #5d6b68; font-size: 12px; font-weight: 600; }
 .studio-logo__variant { width: 48px; height: 24px; object-fit: contain; }
 .studio-links label, .studio-brand label { display: grid; gap: 4px; font-size: 12px; font-weight: 700; }
 .studio-links input, .studio-brand input, .branding-studio__editor select { width: 100%; min-width: 0; }
@@ -68,6 +72,11 @@
 .branding-studio__editor .typography-settings-grid label { overflow-wrap: anywhere; }
 .branding-studio__editor .content-card { width: auto; max-width: 100%; margin: 0; padding: 0; box-shadow: none; }
 .branding-studio .dealer-form__actions, .branding-studio__variants .logo-website-field, .branding-studio__sheet-actions, .branding-studio__edit, .branding-studio__sheet-bar { display: none; }
+@media (max-width: 1280px) {
+  .branding-studio__identity h1 { font-size: 18px; }
+  .branding-studio__live-status { max-width: 168px; font-size: 12px; }
+  .branding-studio__actions .button { padding: 0 8px; font-size: 12px; }
+}
 .branding-studio__advanced { margin-top: 12px; color: #5d6b68; font-size: 12px; }
 .branding-studio__advanced summary { cursor: pointer; font-weight: 700; color: #14201f; }
 @media (max-width: 1023px) {
@@ -87,6 +96,6 @@
   .branding-studio.is-editing .branding-studio__editor { display: flex; position: fixed; z-index: 180; top: 0; right: 0; bottom: 0; left: 0; width: auto; height: auto; border-left: 0; }
   .branding-studio.is-editing .branding-studio__sheet-bar, .branding-studio.is-editing .branding-studio__sheet-actions { display: flex; position: sticky; z-index: 2; justify-content: space-between; gap: 8px; background: #fff; }
   .branding-studio.is-editing .branding-studio__sheet-bar { top: 0; }
-  .branding-studio.is-editing .branding-studio__sheet-actions { bottom: 0; }
+  .branding-studio.is-editing .branding-studio__sheet-actions { bottom: var(--notification-clearance, 96px); }
   .branding-studio__preview { min-height: 0; height: 100%; }
 }

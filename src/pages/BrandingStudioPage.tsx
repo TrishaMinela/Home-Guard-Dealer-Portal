@@ -717,6 +717,7 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
             <strong>Logo 1</strong>
             <p>No file yet.</p>
             <label className="button button--outline">Upload Original<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onChange={(event) => void uploadLogo(event, 'primary')} /></label>
+            <p className="studio-logo__hint">Upload a logo first</p>
             <button type="button" className="button button--outline" disabled title="Upload a logo first">Generate White</button>
             <button type="button" className="button button--outline" disabled title="Upload a logo first">Generate Black</button>
           </article>

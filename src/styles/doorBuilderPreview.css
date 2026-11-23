@@ -48,8 +48,8 @@
 .db-appearance-preview .popular-styles h2 { margin: 8px 0 8px; color: #05040b; line-height: 1.15; letter-spacing: -.03em; }
 .db-appearance-preview .section-heading h1 { font-family: var(--db-preview-heading-font, "PT Sans", Arial, sans-serif); font-size: var(--db-preview-heading-size, 36px); font-weight: var(--db-preview-heading-weight, 700); }
 .db-appearance-preview .popular-styles h2 { font-size: 28px; }
-.db-appearance-preview .section-heading h1:after,
-.db-appearance-preview .popular-styles h2:after { content: ""; display: block; width: 40px; height: 2px; margin-top: 15px; background: var(--peacock, var(--dealer-primary, #0d666c)); }
+.db-appearance-preview .section-heading h1:after { content: ""; display: block; width: 40px; height: 2px; margin-top: 15px; background: var(--peacock, var(--dealer-primary, #0d666c)); }
+.db-appearance-preview .popular-styles h2:after { content: ""; display: block; width: 40px; height: 2px; margin-top: 15px; background: #f8d30e; }
 .db-appearance-preview .builder-panel p { margin: 0 0 18px; color: #535860; font-family: var(--db-preview-body-font, "PT Sans", Arial, sans-serif); font-size: var(--db-preview-body-size, 14px); line-height: 1.5; }
 .db-appearance-preview .popular-styles { margin: 0 0 22px; }
 .db-appearance-preview .popular-styles-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
