@@ -34,15 +34,15 @@
   border-color: var(--db-header-button-border);
 }
 
-.dealer-cobranded:not([data-appearance-mode="simple"])[style*="--db-body-background"] :is(.builder-panel, .home-page, .home-hero, .find-my-door-main, .find-door-options) {
+.dealer-cobranded[style*="--db-body-background"] :is(.builder-panel, .home-page, .home-hero, .find-my-door-main, .find-door-options) {
   background: var(--db-body-background);
 }
 
-.dealer-cobranded:not([data-appearance-mode="simple"])[style*="--db-heading-text"] :is(.builder-panel, .home-hero, .find-my-door-main) :is(h1, h2) {
+.dealer-cobranded[style*="--db-heading-text"] :is(.builder-panel, .home-hero, .find-my-door-main) :is(h1, h2) {
   color: var(--db-heading-text);
 }
 
-.dealer-cobranded:not([data-appearance-mode="simple"])[style*="--db-body-text"] :is(.builder-panel, .home-hero-copy, .find-my-door-main) :is(p, .section-heading p) {
+.dealer-cobranded[style*="--db-body-text"] :is(.builder-panel, .home-hero-copy, .find-my-door-main) :is(p, .section-heading p) {
   color: var(--db-body-text);
 }
 
@@ -253,7 +253,34 @@
   background-color: var(--db-body-background);
 }
 
+.home-app.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-background"] :is(.home-page, .home-hero, .home-hero-copy, .home-preview-caption) {
+  background: #fff;
+  background-color: #fff;
+}
+
+.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-background"] .find-my-door-main {
+  background: transparent;
+  background-color: transparent;
+}
+
+.dealer-cobranded[data-appearance-mode="simple"][style*="--db-heading-text"] .find-my-door-main :is(h1, h2) {
+  color: #05040b;
+}
+
+.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-text"] .find-my-door-main :is(p, .section-heading p) {
+  color: #535860;
+}
+
 .dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-text"] .builder-panel :is(h1, h2, p, .step-label-row span),
-.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-text"] .find-door-options :is(h1, h2, h3, p, span, label, button) {
+.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-text"] .find-door-options :is(h1, h2, h3, p, span, label, button),
+.dealer-cobranded[data-appearance-mode="simple"][style*="--db-heading-text"] .find-door-options :is(h1, h2, h3) {
   color: var(--db-body-text);
+}
+
+.home-app.dealer-cobranded[data-appearance-mode="simple"][style*="--db-heading-text"] .home-hero :is(h1, h2) {
+  color: #05040b;
+}
+
+.home-app.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-text"] .home-hero-copy > p {
+  color: #50565c;
 }
