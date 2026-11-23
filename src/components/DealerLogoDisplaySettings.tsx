@@ -22,6 +22,8 @@ type Props = {
   onSaveDisplay: (display: DealerLogoDisplay) => Promise<AdminDealer>
   onSaveSecondary: (assets: SecondaryAssets) => Promise<AdminDealer>
   onUpdated: (dealer: AdminDealer) => void
+  embedded?: boolean
+  onDraftChange?: (display: DealerLogoDisplay) => void
 }
 
 const logoExtensions: Record<string, string> = {
@@ -62,7 +64,7 @@ function LogoPair({
   )
 }
 
-export function DealerLogoDisplaySettings({ dealer, onSaveDisplay, onSaveSecondary, onUpdated }: Props) {
+export function DealerLogoDisplaySettings({ dealer, onSaveDisplay, onSaveSecondary, onUpdated, embedded = false, onDraftChange }: Props) {
   const saved = normalizeLogoDisplay(dealer.logo_display)
   const [display, setDisplay] = useState<DealerLogoDisplay>(saved)
   const [isSaving, setIsSaving] = useState(false)
@@ -221,11 +223,11 @@ export function DealerLogoDisplaySettings({ dealer, onSaveDisplay, onSaveSeconda
       </div>
       <div className="logo-placement-options" role="radiogroup" aria-label="Logo display">
         <label className={`logo-placement-option ${display === 'single' ? 'is-selected' : ''}`}>
-          <input type="radio" name={`logo-display-${dealer.id}`} value="single" checked={display === 'single'} onChange={() => setDisplay('single')} />
+          <input type="radio" name={`logo-display-${dealer.id}`} value="single" checked={display === 'single'} onChange={() => { setDisplay('single'); onDraftChange?.('single') }} />
           <span><strong>1 Logo</strong><small>The current Door Builder logo. This is the default.</small></span>
         </label>
         <label className={`logo-placement-option ${display === 'dual' ? 'is-selected' : ''}`}>
-          <input type="radio" name={`logo-display-${dealer.id}`} value="dual" checked={display === 'dual'} onChange={() => setDisplay('dual')} />
+          <input type="radio" name={`logo-display-${dealer.id}`} value="dual" checked={display === 'dual'} onChange={() => { setDisplay('dual'); onDraftChange?.('dual') }} />
           <span><strong>2 Logos</strong><small>Primary logo on the left, second logo on the right, with a thin divider.</small></span>
         </label>
       </div>
@@ -250,7 +252,7 @@ export function DealerLogoDisplaySettings({ dealer, onSaveDisplay, onSaveSeconda
           </div>
         </div>
       )}
-      <div className="logo-display-previews">
+      {!embedded && <div className="logo-display-previews">
         {headerPreview && (
           <div>
             <p>Homepage header</p>
@@ -275,12 +277,12 @@ export function DealerLogoDisplaySettings({ dealer, onSaveDisplay, onSaveSeconda
             <LogoPair primary={findMyDoorPreview.primaryUrl} secondaryUrl={findMyDoorPreview.secondaryUrl} showPair={findMyDoorPreview.showPair} dark background={findMyDoorPreview.background} color={findMyDoorPreview.color} />
           </div>
         )}
-      </div>
+      </div>}
       {secondaryMissing && <p className="logo-helper-note" role="status">The second logo is missing for a surface, so that surface shows the first logo only.</p>}
       {message && <div className="portal-alert portal-alert--success" role="status">{message}</div>}
       {error && <div className="portal-alert" role="alert">{error}</div>}
       <div className="dealer-form__actions">
-        <button className="button button--outline" type="button" disabled={isSaving || display === saved} onClick={() => setDisplay(saved)}>Cancel</button>
+        <button className="button button--outline" type="button" disabled={isSaving || display === saved} onClick={() => { setDisplay(saved); onDraftChange?.(saved) }}>Cancel</button>
         <button className="button button--primary" type="button" disabled={isSaving || display === saved} onClick={() => void saveDisplay()}>{isSaving ? 'Saving...' : 'Save Logo Display'}</button>
       </div>
       {removal && (

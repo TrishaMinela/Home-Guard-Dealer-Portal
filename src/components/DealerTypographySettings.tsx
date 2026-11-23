@@ -1,19 +1,20 @@
-import { useState, type ChangeEvent } from 'react'
+import { useEffect, useState, type ChangeEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import type { AdminDealer } from '../types/admin'
 import { dealerFontOptions, dealerFontWeights, dealerTypographyValues, fontStacks, type DealerTypographyValues } from '../utils/dealerTypography'
 
-type Props = { dealer: AdminDealer; onSave: (values: DealerTypographyValues) => Promise<AdminDealer>; onUpdated: (dealer: AdminDealer) => void }
+type Props = { dealer: AdminDealer; onSave: (values: DealerTypographyValues) => Promise<AdminDealer>; onUpdated: (dealer: AdminDealer) => void; embedded?: boolean; onDraftChange?: (values: DealerTypographyValues) => void }
 type FontTarget = 'heading' | 'body'
 const maxFontBytes = 2 * 1024 * 1024
 
-export function DealerTypographySettings({ dealer, onSave, onUpdated }: Props) {
+export function DealerTypographySettings({ dealer, onSave, onUpdated, embedded = false, onDraftChange }: Props) {
   const [values,setValues] = useState(() => dealerTypographyValues(dealer))
   const [saving,setSaving] = useState(false)
   const [uploading,setUploading] = useState<FontTarget|null>(null)
   const [message,setMessage] = useState('')
   const [error,setError] = useState('')
   const set = (key:keyof DealerTypographyValues,value:string) => setValues(current => ({...current,[key]:value}))
+  useEffect(() => { onDraftChange?.(values) }, [onDraftChange, values])
   const headingCustom = `DealerPreview-${dealer.id}-Heading`
   const bodyCustom = `DealerPreview-${dealer.id}-Body`
   const headingFamily = values.headingFontFamily === 'custom' && values.customHeadingFontUrl ? headingCustom : fontStacks[values.headingFontFamily]
@@ -57,7 +58,7 @@ export function DealerTypographySettings({ dealer, onSave, onUpdated }: Props) {
       </fieldset>})}
     </div>
     <p className="typography-license-note">Only upload fonts you are licensed or authorized to use. WOFF2 or WOFF, maximum 2 MB.</p>
-    <div className="typography-preview" style={{'--preview-heading-font':headingFamily||'var(--font-heading)','--preview-heading-weight':values.headingFontWeight||'700','--preview-heading-size':`${values.headingFontSize||42}px`,'--preview-body-font':bodyFamily||'var(--font-body)','--preview-body-weight':values.bodyFontWeight||'400','--preview-body-size':`${values.bodyFontSize||16}px`} as React.CSSProperties}><p className="eyebrow">Typography Preview</p><h3>Build a Door Made for Your Home.</h3><p>Choose your door style, finish, glass, and hardware.</p><button type="button">Start Building Your Door</button></div>
+    {!embedded && <div className="typography-preview" style={{'--preview-heading-font':headingFamily||'var(--font-heading)','--preview-heading-weight':values.headingFontWeight||'700','--preview-heading-size':`${values.headingFontSize||42}px`,'--preview-body-font':bodyFamily||'var(--font-body)','--preview-body-weight':values.bodyFontWeight||'400','--preview-body-size':`${values.bodyFontSize||16}px`} as React.CSSProperties}><p className="eyebrow">Typography Preview</p><h3>Build a Door Made for Your Home.</h3><p>Choose your door style, finish, glass, and hardware.</p><button type="button">Start Building Your Door</button></div>}
     <div className="dealer-form__actions"><button type="button" className="button button--outline" disabled={saving} onClick={() => setValues(dealerTypographyValues(dealer))}>Cancel</button><button type="button" className="button button--outline" disabled={saving} onClick={reset}>Reset Typography to Default</button><button type="button" className="button button--primary" disabled={saving} onClick={()=>void save()}>{saving?'Saving...':'Save Typography'}</button></div>
   </section>
 }

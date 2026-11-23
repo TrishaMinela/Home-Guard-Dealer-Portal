@@ -137,7 +137,7 @@ test('Reset All asks for confirmation and clears only the appearance draft', asy
   await page.close()
 })
 
-test('main colors do not repaint selection cards, and both panels share the main background', async () => {
+test('main colors paint the left configuration area and leave the door panel alone', async () => {
   const page = await browser!.newPage({ viewport: { width: 1280, height: 1100 } })
   await openHarness(page)
   const card = page.locator('.db-appearance-preview .option-card.selected')
@@ -151,7 +151,7 @@ test('main colors do not repaint selection cards, and both panels share the main
   const left = await paint(page, '.db-appearance-preview .builder-panel')
   const right = await paint(page, '.db-appearance-preview .db-preview-panel')
   assert.equal(left.background, 'rgb(32, 48, 64)')
-  assert.equal(right.background, 'rgb(32, 48, 64)')
+  assert.equal(right.background, 'rgb(233, 240, 241)')
   assert.equal((await paint(page, '.db-appearance-preview .section-heading h1')).color, 'rgb(255, 255, 255)')
   const after = await card.evaluate((element) => {
     const style = getComputedStyle(element)
@@ -230,7 +230,7 @@ test('each background is independent and brand references resolve in the preview
   await page.getByRole('radio', { name: 'Primary', exact: true }).click()
   await page.locator('.appearance-popover__done').click()
   assert.equal((await paint(page, '.db-appearance-preview .builder-panel')).background, 'rgb(35, 81, 118)')
-  assert.equal((await paint(page, '.db-appearance-preview .db-preview-panel')).background, 'rgb(35, 81, 118)')
+  assert.equal((await paint(page, '.db-appearance-preview .db-preview-panel')).background, 'rgb(233, 240, 241)')
   assert.equal((await headerPaint(page)).background, originalHeader.background)
   await page.locator('#appearance-footerBackground').click()
   await page.getByRole('radio', { name: 'Secondary', exact: true }).click()
@@ -265,7 +265,7 @@ test('legacy appearance shows the replacement note and save keeps only the six s
   assert.equal(await page.getByText('Appearance has unsaved changes.').count(), 0)
   assert.equal(await page.getByRole('button', { name: 'Save Appearance' }).isDisabled(), true)
   assert.equal((await headerPaint(page)).background, 'rgb(17, 34, 51)')
-  assert.equal((await paint(page, '.db-appearance-preview .db-preview-panel')).background, 'rgb(1, 2, 3)')
+  assert.equal((await paint(page, '.db-appearance-preview .db-preview-panel')).background, 'rgb(233, 240, 241)')
   assert.notEqual((await paint(page, '.db-appearance-preview .option-card')).background, 'rgb(255, 244, 214)')
   await textChoice(page, 'appearance-footerText', 'White').click()
   await page.getByText('Appearance has unsaved changes.').waitFor()
@@ -324,6 +324,34 @@ test('the preview stays on screen while the footer group is edited', async () =>
     assert.ok(box.height < 880, `${width}px preview height ${box.height}`)
   }
   assert.equal(await page.locator('.appearance-text').getByRole('radio', { name: 'Default', exact: true }).count(), 0)
+  await page.close()
+})
+
+test('the branding workspace keeps the preview visible and moves the homepage logo between header and hero', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1440, height: 900 } })
+  await page.goto(`http://127.0.0.1:${port}/?role=admin#profile-nav-harness`, { waitUntil: 'networkidle' })
+  await page.getByRole('heading', { name: 'Branding & Appearance' }).waitFor()
+  for (const width of [320, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 })
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+    assert.ok(overflow <= 1, `${width}px horizontal overflow ${overflow}`)
+  }
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.getByRole('button', { name: 'Logo Display & Placement' }).click()
+  await page.getByRole('radio', { name: /Hero/ }).check()
+  await page.getByRole('button', { name: 'Homepage', exact: true }).click()
+  assert.equal(await page.locator('.db-appearance-preview header .logo-pair, .db-appearance-preview header .dealer-brand-mark').count(), 0)
+  assert.equal(await page.locator('.dealer-hero-logo img').count() > 0, true)
+  const heroBackground = await page.locator('.db-home .home-hero').evaluate((element) => getComputedStyle(element).backgroundColor)
+  assert.equal(heroBackground, 'rgb(255, 255, 255)')
+  await page.getByRole('radio', { name: /Header/ }).check()
+  assert.equal(await page.locator('.db-appearance-preview header img').count() > 0, true)
+  assert.equal(await page.locator('.dealer-hero-logo').count(), 0)
+  await page.keyboard.press('Escape')
+  assert.equal(await page.locator('#branding-customizer-drawer').getAttribute('hidden'), '')
+  await page.getByRole('button', { name: 'Colors', exact: true }).click()
+  await page.getByRole('button', { name: 'Typography', exact: true }).click()
+  assert.equal(await page.locator('#heading-font-family, select').count() > 0, true)
   await page.close()
 })
 

@@ -29,6 +29,8 @@ type Props = {
   canEdit?: boolean
   loadFromServer?: boolean
   initialAppearance?: DoorBuilderAppearance | null
+  embedded?: boolean
+  onDraftChange?: (value: DoorBuilderAppearance | null) => void
   onSave: (value: DoorBuilderAppearance | null) => Promise<void>
 }
 
@@ -46,6 +48,8 @@ export function DoorBuilderAppearanceSettings({
   canEdit = mode === 'admin',
   loadFromServer = true,
   initialAppearance = null,
+  embedded = false,
+  onDraftChange,
   onSave,
 }: Props) {
   const [saved, setSaved] = useState<DoorBuilderAppearance | null>(initialAppearance)
@@ -91,6 +95,10 @@ export function DoorBuilderAppearanceSettings({
     })()
     return () => { active = false }
   }, [dealer.id, loadFromServer])
+
+  useEffect(() => {
+    onDraftChange?.(draft)
+  }, [draft, onDraftChange])
 
   useEffect(() => {
     if (!dirty) return
@@ -194,7 +202,7 @@ export function DoorBuilderAppearanceSettings({
             </fieldset>
           ))}
         </div>
-        <DoorBuilderAppearancePreview dealer={dealer} appearance={shownDraft} />
+        {!embedded && <DoorBuilderAppearancePreview dealer={dealer} appearance={shownDraft} />}
       </div>
       <div className="dealer-form__actions appearance-toolbar">
         <button className="button button--outline" type="button" disabled={!dirty || saving} onClick={() => { setDraft(saved); setOpenKey(null); setError(''); setMessage('') }}>Cancel Changes</button>

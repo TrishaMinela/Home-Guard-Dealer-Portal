@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react'
 import type { AdminDealer } from '../types/admin'
-import { doorBuilderLogoPreview, isLightBrandColor } from '../utils/dealerLogoVariants'
+import { doorBuilderLogoPreview, isLightBrandColor, type DoorBuilderPreviewSurface } from '../utils/dealerLogoVariants'
+import { fontStacks } from '../utils/dealerTypography'
 import { logoWebsiteHref } from '../utils/logoWebsiteUrl'
 import {
   appearanceCssVars,
@@ -21,6 +22,13 @@ type Props = {
 
 const DESKTOP_WIDTH = 1280
 const MOBILE_WIDTH = 390
+type PreviewSurface = 'homepage' | 'builder' | 'find'
+
+const SURFACE_LOGO: Record<PreviewSurface, DoorBuilderPreviewSurface> = {
+  homepage: 'home-header',
+  builder: 'page-header',
+  find: 'find-my-door',
+}
 
 const CONFIGURATIONS = [
   { name: 'Single Door', description: 'One standard entry door.', image: '/appearance-preview/single-door.webp', selected: true },
@@ -94,6 +102,7 @@ function GlobeIcon() {
 
 export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 900px)').matches)
+  const [surface, setSurface] = useState<PreviewSurface>('builder')
   const frameRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
@@ -102,6 +111,8 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
   const shown = appearanceEditorPayload(appearance)
   const headerBackground = resolveAppearanceValue(shown?.headerBackground, brand) ?? brand.secondary
   const footerBackground = resolveAppearanceValue(shown?.footerBackground, brand) ?? brand.secondary
+  const headingFont = dealer.heading_font_family ? fontStacks[dealer.heading_font_family] : ''
+  const bodyFont = dealer.body_font_family ? fontStacks[dealer.body_font_family] : ''
   const style = {
     '--dealer-primary': brand.primary,
     '--dealer-primary-foreground': inkFor(brand.primary),
@@ -110,8 +121,14 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
     '--peacock': brand.primary,
     '--gold': '#f8d30e',
     ...appearanceCssVars(shown, brand),
+    ...(headingFont ? { '--db-preview-heading-font': headingFont } : {}),
+    ...(dealer.heading_font_size ? { '--db-preview-heading-size': `${dealer.heading_font_size}px` } : {}),
+    ...(dealer.heading_font_weight ? { '--db-preview-heading-weight': String(dealer.heading_font_weight) } : {}),
+    ...(bodyFont ? { '--db-preview-body-font': bodyFont } : {}),
+    ...(dealer.body_font_size ? { '--db-preview-body-size': `${dealer.body_font_size}px` } : {}),
   } as CSSProperties
-  const logos = doorBuilderLogoPreview(dealer, 'page-header')
+  const logos = doorBuilderLogoPreview(dealer, SURFACE_LOGO[surface])
+  const heroLogos = surface === 'homepage' ? doorBuilderLogoPreview(dealer, 'home-hero') : null
   const primaryHref = logoWebsiteHref(dealer.logo_website_url, dealer.website)
   const secondaryHref = logoWebsiteHref(dealer.logo_secondary_website_url)
   const headerIsLight = isLightBrandColor(headerBackground)
@@ -133,7 +150,7 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
     observer.observe(frame)
     observer.observe(stage)
     return () => observer.disconnect()
-  }, [designWidth, appearance, dealer, mobile])
+  }, [designWidth, appearance, dealer, mobile, surface])
 
   const stop = (event: MouseEvent<HTMLAnchorElement>) => event.preventDefault()
 
@@ -141,6 +158,11 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
     <div className="db-preview-shell">
       <div className="db-preview-shell__bar">
         <strong>Live preview</strong>
+        <div className="db-preview-shell__toggle" role="group" aria-label="Preview page">
+          {([['homepage', 'Homepage'], ['builder', 'Door Builder'], ['find', 'Find My Door']] as const).map(([value, label]) => (
+            <button key={value} type="button" className={surface === value ? 'is-selected' : ''} aria-pressed={surface === value} onClick={() => setSurface(value)}>{label}</button>
+          ))}
+        </div>
         <div className="db-preview-shell__toggle" role="group" aria-label="Preview width">
           <button type="button" className={mobile ? '' : 'is-selected'} aria-pressed={!mobile} onClick={() => setMobile(false)}>Desktop</button>
           <button type="button" className={mobile ? 'is-selected' : ''} aria-pressed={mobile} onClick={() => setMobile(true)}>Mobile</button>
@@ -154,21 +176,49 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
               data-appearance-mode={shown ? 'simple' : undefined}
               style={style}
             >
-              <header aria-label="Door Builder header">
+              <header aria-label={surface === 'homepage' ? 'Homepage header' : 'Door Builder header'}>
                 <div className="dealer-header-brand">
-                  <LogoPair
-                    primaryUrl={logos?.primaryUrl ?? null}
-                    secondaryUrl={logos?.showPair ? logos.secondaryUrl : null}
+                  {logos && <LogoPair
+                    primaryUrl={logos.primaryUrl}
+                    secondaryUrl={logos.showPair ? logos.secondaryUrl : null}
                     primaryHref={primaryHref}
                     secondaryHref={secondaryHref}
                     companyName={dealer.company_name}
-                  />
+                  />}
                 </div>
                 <div className="dealer-header-actions">
                   <button className="home-return" type="button" aria-label="Home"><HomeIcon /><span>Home</span></button>
                   {dealer.website && <a className="dealer-website-link" href={dealer.website} onClick={stop}><span>Visit Our Website</span> <ExternalIcon /></a>}
                 </div>
               </header>
+              {surface === 'homepage' && (
+                <main className="home-page db-home">
+                  <section className="home-hero">
+                    <div className="home-hero-copy">
+                      {heroLogos && (
+                        <div className="dealer-hero-logo">
+                          <LogoPair primaryUrl={heroLogos.primaryUrl} secondaryUrl={heroLogos.showPair ? heroLogos.secondaryUrl : null} primaryHref={primaryHref} secondaryHref={secondaryHref} companyName={dealer.company_name} />
+                        </div>
+                      )}
+                      <h1>Build a Door Made for Your Home.</h1>
+                      <p>Choose your door style, finish, glass, and hardware, then bring your vision to life.</p>
+                      <button className="start-building" type="button">Start Building Your Door</button>
+                    </div>
+                    <div className="home-hero-visual">
+                      <img src="/appearance-preview/single-door.webp" alt="Door on a home entryway" />
+                    </div>
+                  </section>
+                </main>
+              )}
+              {surface === 'find' && (
+                <main className="find-my-door-main db-find">
+                  <section className="find-door-options">
+                    <h1>Find My Door</h1>
+                    <p>Answer a few questions and we will suggest a starting door.</p>
+                  </section>
+                </main>
+              )}
+              {surface === 'builder' && <>
               <div className="builder-toolbar">
                 <nav className="stepper" aria-label="Configuration progress">
                   {['Door', 'Finish', 'Glass', 'Hardware'].map((label, index) => (
@@ -228,6 +278,7 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
                   </div>
                 </aside>
               </main>
+              </>}
               <footer className="site-footer shared-site-footer">
                 <div className="site-footer-feedback">
                   <div className="site-footer-actions">

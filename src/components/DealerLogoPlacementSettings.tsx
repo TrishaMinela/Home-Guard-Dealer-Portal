@@ -7,9 +7,10 @@ type Props = {
   dealer: AdminDealer
   onSave: (placement: DealerLogoPlacement) => Promise<AdminDealer>
   onUpdated: (dealer: AdminDealer) => void
+  onDraftChange?: (placement: DealerLogoPlacement) => void
 }
 
-export function DealerLogoPlacementSettings({ dealer, onSave, onUpdated }: Props) {
+export function DealerLogoPlacementSettings({ dealer, onSave, onUpdated, onDraftChange }: Props) {
   const current = dealer.logo_placement === 'header' ? 'header' : 'hero'
   const [placement, setPlacement] = useState<DealerLogoPlacement>(current)
   const [isSaving, setIsSaving] = useState(false)
@@ -41,17 +42,13 @@ export function DealerLogoPlacementSettings({ dealer, onSave, onUpdated }: Props
       </div>
       <div className="logo-placement-options" role="radiogroup" aria-label="Dealer logo placement">
         <label className={`logo-placement-option ${placement === 'header' ? 'is-selected' : ''}`}>
-          <input type="radio" name={`logo-placement-${dealer.id}`} value="header" checked={placement === 'header'} onChange={() => setPlacement('header')} />
+          <input type="radio" name={`logo-placement-${dealer.id}`} value="header" checked={placement === 'header'} onChange={() => { setPlacement('header'); onDraftChange?.('header') }} />
           <span><strong>Header</strong><small>Show the dealer logo in the top navigation/header.</small></span>
         </label>
         <label className={`logo-placement-option ${placement === 'hero' ? 'is-selected' : ''}`}>
-          <input type="radio" name={`logo-placement-${dealer.id}`} value="hero" checked={placement === 'hero'} onChange={() => setPlacement('hero')} />
+          <input type="radio" name={`logo-placement-${dealer.id}`} value="hero" checked={placement === 'hero'} onChange={() => { setPlacement('hero'); onDraftChange?.('hero') }} />
           <span><strong>Hero</strong><small>Show the dealer logo above the main Door Builder headline.</small></span>
         </label>
-      </div>
-      <div className={`logo-placement-preview logo-placement-preview--${placement}`} aria-label={`${placement} placement preview`}>
-        <span className="logo-placement-preview__logo">Dealer logo</span>
-        {placement === 'header' ? <span>Visit Our Website</span> : <strong>Build a Door Made for Your Home.</strong>}
       </div>
       {message && <div className="portal-alert portal-alert--success" role="status">{message}</div>}
       {error && <div className="portal-alert" role="alert">{error}</div>}

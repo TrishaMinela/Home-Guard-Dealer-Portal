@@ -49,6 +49,9 @@ type Props = {
   onWebsiteUpdated?: (dealer: AdminDealer) => void
   onUpdated: (dealer: AdminDealer) => void
   onHydrated?: (dealer: AdminDealer) => void
+  embedded?: boolean
+  placement?: 'header' | 'hero'
+  onDraftChange?: (patch: Pick<AdminDealer, 'logo_header_variant' | 'logo_pages_variant' | 'logo_secondary_header_variant' | 'logo_secondary_pages_variant'>) => void
 }
 
 const choices: Array<{ value: DealerLogoVariant; label: string; detail: string }> = [
@@ -88,7 +91,7 @@ function inkKey(url: string, background: string) {
   return `${url}@@${background}`
 }
 
-export function DealerLogoVariantSettings({ dealer, onSave, onSaveWebsite, onWebsiteUpdated, onUpdated, onHydrated }: Props) {
+export function DealerLogoVariantSettings({ dealer, onSave, onSaveWebsite, onWebsiteUpdated, onUpdated, onHydrated, embedded = false, placement, onDraftChange }: Props) {
   const whiteLogoUrl = resolveWhiteLogoUrl(dealer)
   const blackLogoUrl = resolveBlackLogoUrl(dealer)
   const [header, setHeader] = useState<DealerLogoVariant | null>(normalizeLogoVariant(dealer.logo_header_variant))
@@ -348,7 +351,16 @@ export function DealerLogoVariantSettings({ dealer, onSave, onSaveWebsite, onWeb
     logo_secondary_header_variant: dual ? secondaryHeader : null,
     logo_secondary_pages_variant: dual ? secondaryPages : null,
   }
-  const homePreview = doorBuilderLogoPreview(draft, dealer.logo_placement === 'header' ? 'home-header' : 'home-hero')
+  const homePlacement = placement ?? (dealer.logo_placement === 'header' ? 'header' : 'hero')
+  const homePreview = doorBuilderLogoPreview({ ...draft, logo_placement: homePlacement }, homePlacement === 'header' ? 'home-header' : 'home-hero')
+  useEffect(() => {
+    onDraftChange?.({
+      logo_header_variant: header,
+      logo_pages_variant: pages,
+      logo_secondary_header_variant: dual ? secondaryHeader : null,
+      logo_secondary_pages_variant: dual ? secondaryPages : null,
+    })
+  }, [dual, header, onDraftChange, pages, secondaryHeader, secondaryPages])
   const builderPreview = doorBuilderLogoPreview(draft, 'page-header')
   const findMyDoorPreview = doorBuilderLogoPreview(draft, 'find-my-door')
   const unchanged = sameVariants(dealer, header, pages, secondaryHeader, secondaryPages)
@@ -430,11 +442,11 @@ export function DealerLogoVariantSettings({ dealer, onSave, onSaveWebsite, onWeb
           )}
         </div>
       </div>
-      <div className="logo-variant-settings__previews">
+      {!embedded && <div className="logo-variant-settings__previews">
         {homePreview && (
           <LogoPreview
-            title={dealer.logo_placement === 'header' ? 'Homepage header preview' : 'Homepage hero preview'}
-            caption={dealer.logo_placement === 'header'
+            title={homePlacement === 'header' ? 'Homepage header preview' : 'Homepage hero preview'}
+            caption={homePlacement === 'header'
               ? 'The homepage header uses this dealer’s secondary color. The logo sits directly on that color.'
               : 'The homepage hero uses a white background. Builder pages still use the secondary color.'}
             background={homePreview.background}
@@ -468,7 +480,7 @@ export function DealerLogoVariantSettings({ dealer, onSave, onSaveWebsite, onWeb
             companyName={dealer.company_name}
           />
         )}
-      </div>
+      </div>}
       {message && <div className="portal-alert portal-alert--success" role="status">{message}</div>}
       {error && <div className="portal-alert" role="alert">{error}</div>}
       <div className="dealer-form__actions">

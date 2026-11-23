@@ -7,7 +7,11 @@ import { DealerUserAccess } from '../components/DealerUserAccess'
 import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
 import { DealerLogoPlacementSettings, type DealerLogoPlacement } from '../components/DealerLogoPlacementSettings'
 import { DoorBuilderAppearanceSettings } from '../components/DoorBuilderAppearanceSettings'
-import { appearanceUpdate, type DoorBuilderAppearance } from '../utils/doorBuilderAppearance'
+import { BrandingAppearanceWorkspace } from '../components/BrandingAppearanceWorkspace'
+import { DealerTypographySettings } from '../components/DealerTypographySettings'
+import { appearanceEquals, appearanceUpdate, type DoorBuilderAppearance } from '../utils/doorBuilderAppearance'
+import { dealerTypographyValues, typographyPayload, type DealerTypographyValues } from '../utils/dealerTypography'
+import { normalizeLogoDisplay } from '../utils/dealerLogoVariants'
 import { DealerLogoVariantSettings } from '../components/DealerLogoVariantSettings'
 import { DealerLogoDisplaySettings } from '../components/DealerLogoDisplaySettings'
 import { LogoBackgroundDialog } from '../components/LogoBackgroundDialog'
@@ -439,6 +443,20 @@ export function DealerDetailPage({
     onDealerUpdated({ ...dealer, door_builder_appearance: appearance }, successMessage)
   }
 
+  const [placementDraft, setPlacementDraft] = useState<DealerLogoPlacement | null>(null)
+  const [displayDraft, setDisplayDraft] = useState<DealerLogoDisplay | null>(null)
+  const [variantDraft, setVariantDraft] = useState<Partial<AdminDealer> | null>(null)
+  const [typographyDraft, setTypographyDraft] = useState<DealerTypographyValues | null>(null)
+  const [appearanceDraft, setAppearanceDraft] = useState<DoorBuilderAppearance | null | undefined>(undefined)
+
+  async function saveTypography(values: DealerTypographyValues) {
+    if (!dealer) throw new Error('Dealer not found.')
+    const { data, error: saveError } = await supabase.from('dealers').update(typographyPayload(values)).eq('id', dealer.id).select('*').single()
+    if (saveError) throw saveError
+    onDealerUpdated(data as AdminDealer, 'Typography saved.')
+    return data as AdminDealer
+  }
+
   async function saveLogoPlacement(placement: DealerLogoPlacement) {
     if (!dealer) throw new Error('Dealer not found.')
     const { data, error: updateError } = await supabase
@@ -539,6 +557,37 @@ export function DealerDetailPage({
         </div>
       </section>
 
+      <BrandingAppearanceWorkspace
+        dealer={{
+          ...dealer,
+          ...(placementDraft ? { logo_placement: placementDraft } : {}),
+          ...(displayDraft ? { logo_display: displayDraft } : {}),
+          ...(variantDraft ?? {}),
+          ...(typographyDraft ? {
+            heading_font_family: typographyDraft.headingFontFamily || null,
+            heading_font_weight: typographyDraft.headingFontWeight ? Number(typographyDraft.headingFontWeight) : null,
+            heading_font_size: typographyDraft.headingFontSize ? Number(typographyDraft.headingFontSize) : null,
+            body_font_family: typographyDraft.bodyFontFamily || null,
+            body_font_weight: typographyDraft.bodyFontWeight ? Number(typographyDraft.bodyFontWeight) : null,
+            body_font_size: typographyDraft.bodyFontSize ? Number(typographyDraft.bodyFontSize) : null,
+          } : {}),
+        }}
+        appearance={appearanceDraft === undefined ? dealer.door_builder_appearance ?? null : appearanceDraft}
+        unsaved={
+          (placementDraft != null && placementDraft !== (dealer.logo_placement === 'header' ? 'header' : 'hero'))
+          || (displayDraft != null && displayDraft !== normalizeLogoDisplay(dealer.logo_display))
+          || (appearanceDraft !== undefined && !appearanceEquals(appearanceDraft, dealer.door_builder_appearance ?? null))
+          || (typographyDraft != null && JSON.stringify(typographyDraft) !== JSON.stringify(dealerTypographyValues(dealer)))
+          || (variantDraft != null && (
+            (variantDraft.logo_header_variant ?? null) !== (dealer.logo_header_variant ?? null)
+            || (variantDraft.logo_pages_variant ?? null) !== (dealer.logo_pages_variant ?? null)
+            || (variantDraft.logo_secondary_header_variant ?? null) !== (dealer.logo_secondary_header_variant ?? null)
+            || (variantDraft.logo_secondary_pages_variant ?? null) !== (dealer.logo_secondary_pages_variant ?? null)
+          ))
+        }
+        panels={{
+          logos: (
+            <>
       <section id="branding" className="content-card dealer-management-card dealer-settings-section dealer-branding-panel" aria-labelledby="branding-heading">
         <DealerSectionHeader eyebrow="Branding" title="Customer-facing Door Builder" headingId="branding-heading" description="Logos are managed here. Brand colors and typography are saved with Edit colors. Marketing banners use the logo and do not recolor the template." actionLabel="Edit colors" actionTo={`/admin/dealers/${dealer.id}/edit#branding`} onActionClick={onClearSuccess} />
         <p id="branding-colors" className="dealer-setup-anchor" tabIndex={-1}>Brand colors are saved with Edit colors. This section does not contain a second color form.</p>
@@ -637,35 +686,41 @@ export function DealerDetailPage({
           />
         )}
       </section>
-
-      <DealerLogoDisplaySettings
-        dealer={dealer}
-        onSaveDisplay={saveLogoDisplay}
-        onSaveSecondary={saveSecondaryLogos}
-        onUpdated={(updated) => onDealerUpdated(updated, 'Logo display saved.')}
+              <DealerLogoVariantSettings
+                dealer={dealer}
+                embedded
+                placement={placementDraft ?? (dealer.logo_placement === 'header' ? 'header' : 'hero')}
+                onDraftChange={setVariantDraft}
+                onSave={saveLogoVariants}
+                onSaveWebsite={saveLogoWebsite}
+                onWebsiteUpdated={(updated) => onDealerUpdated(updated, 'Logo website saved.')}
+                onUpdated={(updated) => onDealerUpdated(updated, 'Door Builder logo choices saved.')}
+                onHydrated={(updated) => onDealerUpdated(updated, successMessage)}
+              />
+            </>
+          ),
+          placement: (
+            <>
+              <DealerLogoDisplaySettings
+                dealer={dealer}
+                embedded
+                onDraftChange={setDisplayDraft}
+                onSaveDisplay={saveLogoDisplay}
+                onSaveSecondary={saveSecondaryLogos}
+                onUpdated={(updated) => onDealerUpdated(updated, 'Logo display saved.')}
+              />
+              <DealerLogoPlacementSettings
+                dealer={dealer}
+                onDraftChange={setPlacementDraft}
+                onSave={saveLogoPlacement}
+                onUpdated={(updated) => onDealerUpdated(updated, 'Dealer logo placement saved.')}
+              />
+            </>
+          ),
+          colors: <DoorBuilderAppearanceSettings dealer={dealer} mode="admin" embedded onDraftChange={setAppearanceDraft} onSave={saveAppearance} />,
+          typography: <div id="design"><DealerTypographySettings dealer={dealer} embedded onDraftChange={setTypographyDraft} onSave={saveTypography} onUpdated={(updated) => onDealerUpdated(updated, 'Typography saved.')} /></div>,
+        }}
       />
-
-      <DealerLogoVariantSettings
-        dealer={dealer}
-        onSave={saveLogoVariants}
-        onSaveWebsite={saveLogoWebsite}
-        onWebsiteUpdated={(updated) => onDealerUpdated(updated, 'Logo website saved.')}
-        onUpdated={(updated) => onDealerUpdated(updated, 'Door Builder logo choices saved.')}
-        onHydrated={(updated) => onDealerUpdated(updated, successMessage)}
-      />
-
-      <DealerLogoPlacementSettings
-        dealer={dealer}
-        onSave={saveLogoPlacement}
-        onUpdated={(updated) => onDealerUpdated(updated, 'Dealer logo placement saved.')}
-      />
-
-      <DoorBuilderAppearanceSettings dealer={dealer} mode="admin" onSave={saveAppearance} />
-
-      <section id="design" className="content-card dealer-management-card dealer-settings-summary dealer-setup-anchor" tabIndex={-1} aria-labelledby="design-heading">
-        <DealerSectionHeader eyebrow="Typography & Design" title="Door Builder Design" headingId="design-heading" description="Manage heading and UI fonts, weights, sizes, custom font files, and a live typography preview." actionLabel="Edit design" actionTo={`/admin/dealers/${dealer.id}/edit#design`} onActionClick={onClearSuccess} />
-        <div className="dealer-design-preview" aria-hidden="true"><span>Aa</span><div><strong>Build a Door Made for Your Home.</strong><small>Heading and interface typography preview</small></div></div>
-      </section>
 
       <DoorBuilderLeadWebhook dealerId={dealer.id} />
 
