@@ -70,7 +70,7 @@ export function DealerCompanyProfilePage({
     const redirect = () => {
       if (!isLegacyBrandingTarget(window.location.hash)) return
       const section = studioSectionFromValue(window.location.hash)
-      const allowed = section === 'colors' && !canEditAppearance ? 'logos' : section
+      const allowed = section
       window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
       navigate(`/company/branding${allowed ? `?section=${allowed}` : ''}`, { replace: true })
     }
@@ -203,7 +203,7 @@ export function DealerCompanyProfilePage({
         <div className="dealer-form__section">
           <div className="dealer-form__section-heading">
             <h2>Company Details</h2>
-            <p>Name, contact, and address for this dealership. Colors are saved with these details from the Colors section.</p>
+            <p>Name, contact, and address for this dealership. Brand colors are edited in the Branding Studio.</p>
           </div>
           <div className="form-grid">
             <div className="filter-field form-field--wide">

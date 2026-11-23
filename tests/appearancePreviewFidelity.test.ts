@@ -117,7 +117,7 @@ test('the preview shows the real builder layout and does not call the network', 
   assert.equal(await page.locator('.db-appearance-preview aside').evaluate((element) => getComputedStyle(element).display), 'none')
   assert.equal(await page.locator('.db-appearance-preview .mobile-live-preview').evaluate((element) => getComputedStyle(element).display), 'grid')
   const mobileLogos = await page.locator('.db-preview-scale .logo-pair img').evaluateAll((images) => images.map((image) => (image as HTMLElement).offsetHeight))
-  assert.deepEqual(mobileLogos, [32, 32])
+  assert.deepEqual(mobileLogos, [36, 36])
   assert.equal(await page.locator('.db-appearance-preview.is-mobile > header').evaluate((element) => (element as HTMLElement).offsetHeight), 72)
   assert.equal(await page.locator('.db-appearance-preview.is-mobile .home-return').evaluate((element) => (element as HTMLElement).offsetWidth) <= 40, true)
   assert.notEqual(await page.locator('.mobile-live-preview .preview-reset-design').evaluate((element) => getComputedStyle(element).display), 'none')

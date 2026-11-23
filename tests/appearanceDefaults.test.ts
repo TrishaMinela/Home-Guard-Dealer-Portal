@@ -363,8 +363,8 @@ test('old branding links open the matching studio category', async () => {
   await page.goto(`http://127.0.0.1:${port}/?role=admin#profile-nav-harness`, { waitUntil: 'networkidle' })
   await page.evaluate(() => { window.location.hash = 'door-builder-appearance' })
   await page.getByRole('heading', { name: 'Door Builder Appearance' }).waitFor()
-  await page.getByRole('link', { name: 'Company Details' }).click()
-  await page.getByRole('link', { name: 'Company Details' }).waitFor()
+  await page.getByRole('link', { name: 'Company Details', exact: true }).click()
+  await page.getByRole('link', { name: 'Company Details', exact: true }).waitFor()
   await page.evaluate(() => { window.location.hash = 'heading-font-family' })
   await page.locator('#heading-font-family').waitFor()
   await page.close()
@@ -552,12 +552,12 @@ test('leaving the studio with unsaved changes asks first and Back returns to the
   await page.getByRole('radio', { name: /Hero/ }).check()
   let asked = false
   page.once('dialog', (dialog) => { asked = true; void dialog.dismiss() })
-  await page.getByRole('link', { name: 'Company Details' }).click()
+  await page.getByRole('link', { name: 'Company Details', exact: true }).click()
   assert.equal(asked, true)
   assert.equal(await page.locator('.branding-studio').count(), 1)
   page.once('dialog', (dialog) => void dialog.accept())
-  await page.getByRole('link', { name: 'Company Details' }).click()
-  await page.getByRole('link', { name: 'Company Details' }).waitFor()
+  await page.getByRole('link', { name: 'Company Details', exact: true }).click()
+  await page.getByRole('link', { name: 'Company Details', exact: true }).waitFor()
   await page.close()
 })
 
@@ -589,7 +589,73 @@ test('a dealer with no logo still opens the studio and the preview', async () =>
   await page.getByRole('link', { name: 'Customize Door Builder' }).click()
   await page.getByRole('heading', { name: 'Branding & Appearance' }).waitFor()
   await page.getByText('Add Second Logo').waitFor()
+  assert.equal(await page.getByRole('button', { name: 'Generate White' }).first().isDisabled(), true)
+  assert.equal(await page.getByRole('button', { name: 'Generate Black' }).first().getAttribute('title'), 'Upload a logo first')
+  assert.equal(await page.getByRole('button', { name: 'Manage Variants' }).count(), 0)
+  assert.doesNotMatch(await page.locator('#logo-original').innerText(), /Logo 1 · Active/)
   assert.match(await page.locator('.db-appearance-preview header').innerText(), /Diligent Exterior Remodeling/)
+  await page.close()
+})
+
+test('the preview fills the studio and scrolls to Restart Build', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1440, height: 900 } })
+  await openStudio(page)
+  for (const width of [1024, 1280, 1440]) {
+    await page.setViewportSize({ width, height: 900 })
+    const gap = await page.evaluate(() => {
+      const studio = document.querySelector('.branding-studio')?.getBoundingClientRect()
+      const card = document.querySelector('.branding-studio__preview-card')?.getBoundingClientRect()
+      return {
+        underCard: studio && card ? Math.round(studio.bottom - card.bottom) : 999,
+        underStudio: studio ? Math.round(window.innerHeight - studio.bottom) : 999,
+      }
+    })
+    assert.ok(gap.underCard < 24, `${width}px gap under the preview card ${gap.underCard}`)
+    assert.ok(gap.underStudio < 24, `${width}px gap under the studio ${gap.underStudio}`)
+  }
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.getByRole('button', { name: 'Mobile', exact: true }).click()
+  const reached = await page.evaluate(() => {
+    const shell = document.querySelector<HTMLElement>('.branding-studio__preview .db-preview-shell')
+    if (!shell || shell.scrollHeight <= shell.clientHeight + 8) return false
+    const buttons = [...document.querySelectorAll<HTMLElement>('.preview-reset-design')]
+    const button = buttons.find((item) => (item.textContent || '').includes('Restart Build') && getComputedStyle(item).display !== 'none' && item.getBoundingClientRect().height > 0)
+    if (!button) return false
+    const shellBox = shell.getBoundingClientRect()
+    const box = button.getBoundingClientRect()
+    shell.scrollTop += box.top - shellBox.top - 12
+    const next = button.getBoundingClientRect()
+    const nextShell = shell.getBoundingClientRect()
+    const bottom = shell.scrollHeight - shell.clientHeight
+    shell.scrollTop = bottom
+    return next.top >= nextShell.top - 2 && next.bottom <= nextShell.bottom + 2 && shell.scrollTop > 40
+  })
+  assert.equal(reached, true)
+  const underline = await page.locator('.section-heading h1').evaluate((element) => getComputedStyle(element, '::after').backgroundColor)
+  assert.equal(underline, 'rgb(35, 81, 118)')
+  await page.setViewportSize({ width: 1024, height: 900 })
+  const overlap = await page.evaluate(() => {
+    const name = document.querySelector('.branding-studio__identity p')?.getBoundingClientRect()
+    const status = document.querySelector('.branding-studio__status')?.getBoundingClientRect()
+    const title = document.querySelector('.branding-studio__identity h1')?.getBoundingClientRect()
+    const live = document.querySelector('.branding-studio__live-status')?.getBoundingClientRect()
+    const hits = (left?: DOMRect, right?: DOMRect) => !!left && !!right && left.right > right.left + 1 && left.left < right.right - 1 && left.bottom > right.top + 1 && left.top < right.bottom - 1
+    return { nameStatus: hits(name, status), titleLive: hits(title, live) }
+  })
+  assert.equal(overlap.nameStatus, false)
+  assert.equal(overlap.titleLive, false)
+  await page.getByRole('button', { name: 'Mobile', exact: true }).click()
+  const header = await page.evaluate(() => {
+    const logo = document.querySelector<HTMLElement>('.db-appearance-preview.is-mobile header img')
+    const link = document.querySelector<HTMLElement>('.db-appearance-preview.is-mobile .dealer-website-link')
+    if (!logo || !link) return null
+    const logoBox = logo.getBoundingClientRect()
+    const linkBox = link.getBoundingClientRect()
+    return { beside: linkBox.left >= logoBox.right - 1, text: (link.textContent || '').includes('Visit Our Website') }
+  })
+  assert.equal(header?.beside, true)
+  assert.equal(header?.text, true)
+  await page.getByRole('link', { name: 'Back to Company Details' }).waitFor()
   await page.close()
 })
 

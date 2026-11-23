@@ -77,7 +77,7 @@ export function AdminBrandingStudioRoute({
 export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, onDealerUpdated }: Props) {
   const [params, setParams] = useSearchParams()
   const requested = studioSectionFromValue(params.get('section')) ?? studioSectionFromValue(window.location.hash) ?? 'logos'
-  const section: StudioSectionId = requested === 'colors' && mode === 'dealer' && !canEditAppearance ? 'logos' : requested
+  const section: StudioSectionId = requested
   const [panel, setPanel] = useState<StudioSectionId>(section)
   const [logoView, setLogoView] = useState<'cards' | 'primary-variants' | 'secondary-variants'>('cards')
   const [editing, setEditing] = useState(false)
@@ -509,6 +509,7 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
   }
 
   async function generateLightLogo() {
+    if (!dealer.logo_url) { setError('Upload a logo first.'); return }
     setError('')
     setUploading(true)
     const result = await generateDefaultDealerLightLogo(dealer.id)
@@ -652,6 +653,7 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
   }
 
   async function generateBlackLogo() {
+    if (!dealer.logo_url) { setError('Upload a logo first.'); return }
     setUploading(true)
     setError('')
     const result = await generateDefaultDealerLightLogo(dealer.id, 'black')
@@ -692,23 +694,33 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
       {panel === 'logos' && logoView === 'cards' && (
         <div className="branding-studio__cards">
           <p className="branding-studio__note">Logo files and generated variants save immediately. Website links stay in the draft until you save.</p>
+          {dealer.logo_url ? (
           <article className="studio-logo" id="logo-original">
             <strong>Logo 1 · Active</strong>
             <div className="studio-logo__row">
-              <div className="studio-logo__thumb">{dealer.logo_url ? <img src={dealer.logo_url} alt="" onLoad={(event) => { const size = `${event.currentTarget.naturalWidth} × ${event.currentTarget.naturalHeight}`; setLogoSize((current) => ({ ...current, primary: size })) }} /> : <span>Add</span>}</div>
+              <div className="studio-logo__thumb"><img src={dealer.logo_url} alt="" onLoad={(event) => { const size = `${event.currentTarget.naturalWidth} × ${event.currentTarget.naturalHeight}`; setLogoSize((current) => ({ ...current, primary: size })) }} /></div>
               <div className="studio-logo__actions">
                 <label className="button button--outline">Upload Original<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onChange={(event) => void uploadLogo(event, 'primary')} /></label>
                 <span id="logo-white"><button type="button" className="button button--outline" onClick={() => void generateLightLogo()}>Generate White</button></span>
                 <span id="logo-black"><button type="button" className="button button--outline" onClick={() => void generateBlackLogo()}>Generate Black</button></span>
               </div>
             </div>
-            <p className="studio-logo__meta">{dealer.logo_url ? <span className="studio-logo__ok">Saved</span> : null}{logoName(dealer.logo_url)}{logoSize.primary ? ` · ${logoSize.primary}` : ''}</p>
+            <p className="studio-logo__meta"><span className="studio-logo__ok">Saved</span>{logoName(dealer.logo_url)}{logoSize.primary ? ` · ${logoSize.primary}` : ''}</p>
             {(dealer.logo_light_url || dealer.logo_generated_light_url) && <img className="studio-logo__variant" src={dealer.logo_light_url ?? dealer.logo_generated_light_url ?? ''} alt="" />}
             <button type="button" className="button button--outline" onClick={() => setLogoView('primary-variants')}>Manage Variants</button>
             {dealer.logo_light_url && <button type="button" className="button button--outline" onClick={() => void removeCustomLightLogo()}>Remove Custom Logo</button>}
             {dealer.logo_source_url && <button type="button" className="button button--outline" onClick={() => void restoreOriginalLogo()}>Restore Original</button>}
             {removalNotice && <p role="status">{removalNotice}</p>}
           </article>
+          ) : (
+          <article className="studio-logo" id="logo-original">
+            <strong>Logo 1</strong>
+            <p>No file yet.</p>
+            <label className="button button--outline">Upload Original<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onChange={(event) => void uploadLogo(event, 'primary')} /></label>
+            <button type="button" className="button button--outline" disabled title="Upload a logo first">Generate White</button>
+            <button type="button" className="button button--outline" disabled title="Upload a logo first">Generate Black</button>
+          </article>
+          )}
           {dealer.logo_secondary_url ? (
             <article className="studio-logo" id="logo-secondary">
               <strong>Logo 2 · Active</strong>
@@ -781,10 +793,10 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
         {mode === 'admin' ? <Link to={`${backTo}#door-builder-lead-webhook`}>Lead Webhook</Link> : <Link to="/company#website-address">Website Address</Link>}
       </nav>
       <header className="branding-studio__toolbar">
-        <Link className="branding-studio__back" to={backTo}>Back to Dealer</Link>
+        <Link className="branding-studio__back" to={backTo}>{mode === 'dealer' ? 'Back to Company Details' : 'Back to Dealer'}</Link>
         <div className="branding-studio__identity">
-          <h1>Branding &amp; Appearance</h1>
-          <p>{dealer.company_name}</p>
+          <h1 title="Branding & Appearance">Branding &amp; Appearance</h1>
+          <p title={dealer.company_name}>{dealer.company_name}</p>
         </div>
         <p className="branding-studio__live-status"><span />Live preview updates instantly</p>
         <p className={`branding-studio__status${dirty ? '' : ' is-clean'}`} role="status">{dirty ? 'Unsaved changes' : 'All changes saved'}</p>

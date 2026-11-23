@@ -137,7 +137,8 @@ test('only an admin sees the Door Builder Appearance section link', async () => 
   await member.getByRole('link', { name: 'Company Details' }).waitFor()
   assert.equal(await member.getByRole('link', { name: 'Door Builder Appearance' }).count(), 0)
   assert.equal(await member.getByRole('heading', { name: 'Door Builder Appearance' }).count(), 0)
-  await member.getByRole('link', { name: 'Branding Studio' }).waitFor()
+  await member.getByRole('link', { name: 'Edit colors', exact: true }).click()
+  await member.getByRole('heading', { name: 'Brand colors' }).waitFor()
   await member.close()
 
   const admin = await browser!.newPage()
