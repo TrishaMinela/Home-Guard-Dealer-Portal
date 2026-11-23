@@ -71,7 +71,9 @@ export function buildSampleZapierLead(input: {
   testSubmissionId: string
 }) {
   const extra = input.contact.note.replace(/^TEST LEAD — NOT A REAL CUSTOMER\s*/, '').trim()
-  const notes = extra ? `${SAMPLE_LEAD_NOTE} ${extra}` : SAMPLE_LEAD_NOTE
+  const dealerName = input.dealer.companyName.replace(/\s+/g, ' ').trim()
+  const dealerAnswer = `Working with a dealer: Yes — Dealer: ${dealerName}`
+  const notes = `${extra ? `${SAMPLE_LEAD_NOTE} ${extra}` : SAMPLE_LEAD_NOTE}\n${dealerAnswer}`
   return {
     test: true as const,
     test_submission_id: input.testSubmissionId,
@@ -83,6 +85,8 @@ export function buildSampleZapierLead(input: {
     phone: input.contact.phone,
     postal_code: input.contact.postalCode,
     notes,
+    working_with_dealer: 'yes' as const,
+    working_dealer_name: dealerName,
     ...SAMPLE_DOOR_FIELDS,
     lead_source: input.dealer.leadSource,
     dealer_name: input.dealer.companyName,
