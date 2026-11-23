@@ -50,7 +50,7 @@ export function DealerLogoPlacementSettings({ dealer, onSave, onUpdated, onDraft
       <div className="logo-placement-options" role="radiogroup" aria-label="Dealer logo placement">
         <label className={`logo-placement-option ${placement === 'header' ? 'is-selected' : ''}`}>
           <input type="radio" name={`logo-placement-${dealer.id}`} value="header" checked={placement === 'header'} onChange={() => { setPlacement('header'); onDraftChange?.('header') }} />
-          <span><strong>Header</strong><small>Show the dealer logo in the top navigation/header.</small></span>
+          <span><strong>Header</strong><small>Show the dealer logo in the top navigation / header.</small></span>
         </label>
         <label className={`logo-placement-option ${placement === 'hero' ? 'is-selected' : ''}`}>
           <input type="radio" name={`logo-placement-${dealer.id}`} value="hero" checked={placement === 'hero'} onChange={() => { setPlacement('hero'); onDraftChange?.('hero') }} />

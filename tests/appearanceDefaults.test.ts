@@ -726,6 +726,15 @@ test('each branding category scrolls its last control into view', async () => {
       })
       assert.deepEqual(result.clipped, [], `${size.width}x${size.height} ${name} clips ${result.clipped.join(', ')}`)
       assert.equal(result.clickable, true, `${size.width}x${size.height} ${name} last control ${result.label} scroll ${result.scroll} visible ${result.visible} rect ${result.top}-${result.bottom} editor ${result.editorTop}-${result.editorBottom} hit ${result.hit}`)
+      if (size.width === 1024 || size.width === 1440) {
+        const overflow = await editor.evaluate((element) => [...element.querySelectorAll<HTMLElement>('.content-card, .studio-logo, .studio-brand, .studio-links')].flatMap((card) => {
+          const cardRight = card.getBoundingClientRect().right
+          return [...card.querySelectorAll<HTMLElement>('p, span, small, strong, label, h2, h3, legend, li, button, a')]
+            .filter((node) => node.clientWidth > 0 && (node.scrollWidth > node.clientWidth + 1 || node.getBoundingClientRect().right > cardRight + 1))
+            .map((node) => `${node.tagName} ${(node.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 48)} ${node.clientWidth}/${node.scrollWidth}`)
+        }))
+        assert.deepEqual(overflow, [], `${size.width} ${name} text overflows ${overflow.join(', ')}`)
+      }
     }
   }
   await page.setViewportSize({ width: 1024, height: 768 })

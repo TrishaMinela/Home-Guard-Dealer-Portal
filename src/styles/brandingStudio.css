@@ -75,6 +75,8 @@
 .branding-studio__editor .dealer-form,
 .branding-studio__editor fieldset,
 .branding-studio__editor label { min-width: 0; max-width: 100%; }
+.branding-studio__editor label,
+.branding-studio__editor .logo-placement-option > span { overflow-wrap: anywhere; min-width: 0; }
 .branding-studio__editor .typography-settings-grid { grid-template-columns: 1fr; }
 .branding-studio__editor .typography-settings-grid legend,
 .branding-studio__editor .typography-settings-grid label { overflow-wrap: anywhere; }
