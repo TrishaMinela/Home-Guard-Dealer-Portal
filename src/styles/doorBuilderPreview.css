@@ -1,5 +1,5 @@
 .db-preview-shell { display: grid; gap: 8px; min-width: 0; }
-.db-preview-shell__bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.db-preview-shell__bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .db-preview-shell__bar strong { font-size: 12px; }
 .db-preview-shell__toggle { display: flex; gap: 4px; }
 .db-preview-shell__toggle button { min-height: 32px; border: 1px solid #c5d0cc; border-radius: 999px; padding: 0 10px; background: #fff; font-size: 11px; font-weight: 700; }
@@ -10,6 +10,10 @@
 .db-preview-scale { position: absolute; top: 0; left: 0; transform-origin: top left; }
 .db-preview-caption { margin: 0; color: var(--color-muted); font-size: 11px; line-height: 1.4; }
 
+@font-face { font-family: "Caladea"; font-style: normal; font-weight: 400; font-display: swap; src: url(/appearance-preview/fonts/caladea-400-normal-latin.woff2) format("woff2"); }
+@font-face { font-family: "Caladea"; font-style: normal; font-weight: 700; font-display: swap; src: url(/appearance-preview/fonts/caladea-700-normal-latin.woff2) format("woff2"); }
+@font-face { font-family: "Caladea"; font-style: italic; font-weight: 400; font-display: swap; src: url(/appearance-preview/fonts/caladea-400-italic-latin.woff2) format("woff2"); }
+@font-face { font-family: "Caladea"; font-style: italic; font-weight: 700; font-display: swap; src: url(/appearance-preview/fonts/caladea-700-italic-latin.woff2) format("woff2"); }
 @font-face { font-family: "PT Sans"; font-style: normal; font-weight: 400; font-display: swap; src: url(/appearance-preview/fonts/pt-sans-400-normal-latin-ext.woff2) format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
 @font-face { font-family: "PT Sans"; font-style: normal; font-weight: 400; font-display: swap; src: url(/appearance-preview/fonts/pt-sans-400-normal-latin.woff2) format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 @font-face { font-family: "PT Sans"; font-style: normal; font-weight: 700; font-display: swap; src: url(/appearance-preview/fonts/pt-sans-700-normal-latin-ext.woff2) format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
@@ -35,18 +39,18 @@
 .db-appearance-preview .stepper button > em { display: block; overflow: hidden; font-size: 14px; font-style: normal; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .db-appearance-preview .stepper .active { color: #05040b; font-weight: 800; }
 .db-appearance-preview .stepper .active:before { content: ""; position: absolute; left: 14px; right: 14px; bottom: 0; height: 3px; background: #f8d30e; }
-.db-appearance-preview .preview-toolbar { display: flex; align-items: center; justify-content: flex-end; padding: 0 28px; background: var(--db-body-background, #e9f0f1); color: var(--db-body-text, #0d666c); border-left: 1px solid #d8e1e3; }
+.db-appearance-preview .preview-toolbar { display: flex; align-items: center; justify-content: flex-end; padding: 0 28px; background: #e9f0f1; color: #0d666c; border-left: 1px solid #d8e1e3; }
 .db-appearance-preview .preview-reset-design { display: inline-flex; height: 34px; align-items: center; gap: 8px; border: 1px solid color-mix(in srgb, currentColor 55%, transparent); border-radius: 4px; padding: 0 12px; background: transparent; color: inherit; font-size: 12px; font-weight: 700; }
 .db-appearance-preview main { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(390px, .75fr); min-height: 560px; background: var(--db-body-background, #f5f7f7); }
 .db-appearance-preview .builder-panel { min-width: 0; padding: 28px 32px 32px; background: var(--db-body-background, #f5f7f7); }
 .db-appearance-preview .step-label-row span { color: #536267; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .db-appearance-preview .section-heading h1,
 .db-appearance-preview .popular-styles h2 { margin: 8px 0 8px; color: #05040b; line-height: 1.15; letter-spacing: -.03em; }
-.db-appearance-preview .section-heading h1 { font-size: 36px; }
+.db-appearance-preview .section-heading h1 { font-family: var(--db-preview-heading-font, "PT Sans", Arial, sans-serif); font-size: var(--db-preview-heading-size, 36px); font-weight: var(--db-preview-heading-weight, 700); }
 .db-appearance-preview .popular-styles h2 { font-size: 28px; }
 .db-appearance-preview .section-heading h1:after,
 .db-appearance-preview .popular-styles h2:after { content: ""; display: block; width: 54px; height: 4px; margin-top: 12px; background: #f8d30e; }
-.db-appearance-preview .builder-panel p { margin: 0 0 18px; color: #535860; font-size: 14px; line-height: 1.5; }
+.db-appearance-preview .builder-panel p { margin: 0 0 18px; color: #535860; font-family: var(--db-preview-body-font, "PT Sans", Arial, sans-serif); font-size: var(--db-preview-body-size, 14px); line-height: 1.5; }
 .db-appearance-preview .popular-styles { margin: 0 0 22px; }
 .db-appearance-preview .popular-styles-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
 .db-appearance-preview .popular-styles-row button { display: flex; flex-direction: column; min-width: 0; padding: 0; border: 1px solid #d7dee1; border-radius: 8px; background: #fff; text-align: left; overflow: hidden; }
@@ -123,6 +127,54 @@
 .db-appearance-preview.is-mobile .shared-site-footer { grid-template-columns: 1fr; justify-items: center; text-align: center; }
 .db-appearance-preview.is-mobile .site-footer-feedback,
 .db-appearance-preview.is-mobile .site-footer-contact { justify-items: center; }
+.db-appearance-preview .db-home { width: 100%; background: #fff; }
+.db-appearance-preview .db-home .home-hero { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: none; margin: 0; background: #fff; }
+.db-appearance-preview .db-home .home-hero-copy { display: flex; flex-direction: column; align-items: center; width: min(1180px, 100%); padding: 48px 28px 28px; background: #fff; text-align: center; }
+.db-appearance-preview .db-home .home-hero-copy h1 { max-width: 940px; margin: 0 0 18px; color: #05040b; font-family: Caladea, Georgia, serif; font-style: normal; font-size: 64px; font-weight: 400; line-height: 1.12; letter-spacing: -.045em; }
+.db-appearance-preview .db-home .home-hero-copy h1 em { font-family: Caladea, Georgia, serif; font-style: italic; font-weight: 700; }
+.db-appearance-preview .db-home .home-hero-copy p { max-width: 760px; margin: 0 0 22px; color: #50565c; font-size: 16px; font-weight: 400; line-height: 1.6; }
+.db-appearance-preview .db-home .start-building { display: inline-flex; min-height: 50px; align-items: center; border: 0; border-radius: 999px; padding: 14px 28px; background: var(--dealer-primary, #05040b); color: var(--dealer-primary-foreground, #fff); font-size: 16px; font-weight: 600; }
+.db-appearance-preview .db-home .dealer-hero-logo { display: flex; justify-content: center; margin: 0 0 16px; }
+.db-appearance-preview main.db-home,
+.db-appearance-preview main.find-my-door-main { display: block; grid-template-columns: none; min-height: 0; }
+.db-appearance-preview .db-home .home-hero-visual { width: min(1180px, 100%); margin: 0 auto; background: transparent; }
+.db-appearance-preview .db-home .hero-composite { position: relative; width: 100%; margin: 0 auto; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 12px; }
+.db-appearance-preview .db-home .hero-composite-stage { position: absolute; top: 50%; left: 0; width: 100%; aspect-ratio: 1; transform: translateY(-45.375%); }
+.db-appearance-preview .db-home .home-entryway-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+.db-appearance-preview .db-home .hero-door { position: absolute; left: 45.3%; top: 25.12%; width: 17.86%; height: 40.51%; object-fit: contain; }
+.db-appearance-preview .db-home .home-preview-caption { display: flex; justify-content: space-between; width: min(1180px, 100%); margin: 0 auto; padding: 18px 28px 36px; color: #05040b; }
+.db-appearance-preview .db-home .home-preview-caption p { margin: 0; font-size: 16px; font-weight: 400; }
+.db-appearance-preview.is-mobile .db-home .hero-composite { aspect-ratio: 4 / 3; }
+.db-appearance-preview.is-mobile .db-home .home-preview-caption { flex-direction: column; align-items: flex-start; gap: 8px; }
+.db-appearance-preview .db-find { background: #f7faff; color: #05040b; }
+.db-appearance-preview .db-find .find-my-door-header { display: flex; height: 94px; align-items: center; justify-content: space-between; gap: 16px; padding: 0 28px; background: var(--db-header-background, #05040b); color: var(--db-header-text, #fff); border-bottom: 4px solid var(--db-header-accent, #f8d30e); }
+.db-appearance-preview .db-find .brand { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.db-appearance-preview .db-find .app-name { border-left: 1px solid #ffffff35; padding-left: 16px; }
+.db-appearance-preview .db-find .find-my-door-builder-link { display: inline-flex; height: 34px; align-items: center; border: 1px solid #ffffff50; border-radius: 3px; padding: 0 13px; color: inherit; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-decoration: none; text-transform: uppercase; }
+.db-appearance-preview .db-find .find-door-steps { display: flex; height: 70px; align-items: center; margin: 0; padding: 0 28px; list-style: none; background: #fff; }
+.db-appearance-preview .db-find .find-door-steps span { display: inline-flex; align-items: center; gap: 8px; padding-right: 18px; color: #929a95; font-size: 11px; font-weight: 700; }
+.db-appearance-preview .db-find .find-door-steps .current { color: #0d666c; }
+.db-appearance-preview .db-find .find-door-steps i { display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid #d5dadd; border-radius: 50%; font-style: normal; }
+.db-appearance-preview .db-find .find-door-steps .current i { border-color: #0d666c; background: #0d666c; color: #fff; }
+.db-appearance-preview .db-find .find-my-door-main { width: min(1120px, 100%); margin: 0 auto; padding: 20px 28px 40px; background: transparent; }
+.db-appearance-preview .db-find .find-door-open { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .8fr); gap: 22px; align-items: center; }
+.db-appearance-preview .db-find .find-door-name { margin: 0 0 8px; color: #0d666c; font-size: 12px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
+.db-appearance-preview .db-find .find-my-door-main h1 { margin: 0 0 12px; color: #05040b; font-size: 36px; }
+.db-appearance-preview .db-find .find-door-lead { max-width: 38rem; margin: 0 0 18px; color: #535860; font-size: 16px; font-weight: 400; }
+.db-appearance-preview .db-find .find-door-upload { display: inline-flex; min-height: 46px; align-items: center; border: 0; border-radius: 4px; padding: 0 18px; background: var(--dealer-primary, #0d666c); color: var(--dealer-primary-foreground, #fff); font-weight: 700; }
+.db-appearance-preview .db-find .find-door-hint { margin: 10px 0 0; color: #3a4448; font-size: 14px; }
+.db-appearance-preview .db-find .find-door-feature { margin: 0; background: #e9f0f1; }
+.db-appearance-preview .db-find .find-door-feature img,
+.db-appearance-preview .db-find .find-door-marquee img { display: block; width: 100%; height: 180px; object-fit: cover; }
+.db-appearance-preview .db-find .find-door-gallery { margin-top: 28px; }
+.db-appearance-preview .db-find .find-door-gallery h2 { margin: 0 0 12px; font-size: 22px; }
+.db-appearance-preview .db-find .find-door-gallery h2:after { content: ""; display: block; width: 54px; height: 4px; margin-top: 8px; background: #f8d30e; }
+.db-appearance-preview .db-find .find-door-marquee { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.db-appearance-preview.is-mobile .db-find .find-door-open { display: flex; flex-direction: column; }
+.db-appearance-preview.is-mobile .db-find .find-door-feature { order: -1; }
+.db-appearance-preview.is-mobile .db-find .find-door-marquee { display: flex; overflow-x: auto; }
+.db-appearance-preview.is-mobile .db-find .find-door-marquee img { width: 180px; flex: none; }
+.db-appearance-preview.is-mobile .db-home .home-hero-copy h1 { font-size: 36px; }
 .db-appearance-preview.is-mobile .section-heading h1 { font-size: 28px; }
 .db-appearance-preview.is-mobile .popular-styles h2 { font-size: 24px; }
 .db-appearance-preview.is-mobile .popular-styles-row { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 6px; }

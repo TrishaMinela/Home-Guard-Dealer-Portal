@@ -240,7 +240,7 @@ function explicitAppearanceCssVars(config: DoorBuilderAppearance, brand: { prima
   return style
 }
 
-/** Header, both main panels, and footer. Icons, header buttons, links, and step text are derived. */
+/** Header, the left configuration area, and footer. The door preview and homepage hero stay on their own colors. */
 export function simplifiedAppearanceCssVars(config: DoorBuilderAppearance | null | undefined, brand: { primary: string; secondary: string }) {
   const style: Record<string, string> = {}
   if (!config) return style
@@ -258,17 +258,10 @@ export function simplifiedAppearanceCssVars(config: DoorBuilderAppearance | null
     style['--db-header-button-border'] = headerText
     style['--db-header-button-background'] = 'transparent'
   }
-  if (bodyBackground) {
-    style['--db-body-background'] = bodyBackground
-    style['--db-preview-background'] = bodyBackground
-    style['--db-step-background'] = bodyBackground
-  }
+  if (bodyBackground) style['--db-body-background'] = bodyBackground
   if (bodyText) {
     style['--db-body-text'] = bodyText
     style['--db-heading-text'] = bodyText
-    style['--db-step-text'] = bodyText
-    style['--db-preview-text'] = bodyText
-    style['--db-preview-label'] = bodyText
   }
   if (footerBackground) style['--db-footer-background'] = footerBackground
   if (footerText) {

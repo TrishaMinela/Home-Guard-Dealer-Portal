@@ -29,12 +29,14 @@ type Props = {
   canEdit?: boolean
   loadFromServer?: boolean
   initialAppearance?: DoorBuilderAppearance | null
+  embedded?: boolean
+  onDraftChange?: (value: DoorBuilderAppearance | null) => void
   onSave: (value: DoorBuilderAppearance | null) => Promise<void>
 }
 
 const GROUP_NOTES: Record<SimplifiedAppearanceGroup, string> = {
   header: 'Background covers the builder header, the homepage header, and the Find My Door header. Text colors navigation labels, icons, and header buttons. Logos, logo links, and logo sizing stay as they are.',
-  main: 'One background covers the configuration area and the door preview on Door, Finish, Glass, and Hardware, plus Find My Door. Text colors headings, labels, and step text. Cards, door images, glass, finishes, hardware, and photos keep their own colors.',
+  main: 'One background covers the left configuration area on Door, Finish, Glass, and Hardware, including its headings and instructions. It does not recolor the door preview, the homepage hero, or homepage content. Find My Door uses it only on the options block. Cards, door images, glass, finishes, hardware, and photos keep their own colors.',
   footer: 'Text colors footer copy, links, the Built with ♥ by School Radius credit, and icons. Home Guard branding, feedback, and links stay in place.',
 }
 
@@ -46,6 +48,8 @@ export function DoorBuilderAppearanceSettings({
   canEdit = mode === 'admin',
   loadFromServer = true,
   initialAppearance = null,
+  embedded = false,
+  onDraftChange,
   onSave,
 }: Props) {
   const [saved, setSaved] = useState<DoorBuilderAppearance | null>(initialAppearance)
@@ -91,6 +95,10 @@ export function DoorBuilderAppearanceSettings({
     })()
     return () => { active = false }
   }, [dealer.id, loadFromServer])
+
+  useEffect(() => {
+    onDraftChange?.(draft)
+  }, [draft, onDraftChange])
 
   useEffect(() => {
     if (!dirty) return
@@ -142,6 +150,7 @@ export function DoorBuilderAppearanceSettings({
 
   return (
     <section id="door-builder-appearance" className="content-card dealer-management-card appearance-settings dealer-setup-anchor" aria-labelledby="door-builder-appearance-heading">
+      <div className="branding-customizer__scroll">
       <div className="dealer-form__section-heading">
         <p className="eyebrow">Door Builder</p>
         <h2 id="door-builder-appearance-heading">Door Builder Appearance</h2>
@@ -194,7 +203,8 @@ export function DoorBuilderAppearanceSettings({
             </fieldset>
           ))}
         </div>
-        <DoorBuilderAppearancePreview dealer={dealer} appearance={shownDraft} />
+        {!embedded && <DoorBuilderAppearancePreview dealer={dealer} appearance={shownDraft} />}
+      </div>
       </div>
       <div className="dealer-form__actions appearance-toolbar">
         <button className="button button--outline" type="button" disabled={!dirty || saving} onClick={() => { setDraft(saved); setOpenKey(null); setError(''); setMessage('') }}>Cancel Changes</button>

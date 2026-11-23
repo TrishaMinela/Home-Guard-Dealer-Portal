@@ -11,13 +11,14 @@ import {
 } from '../utils/unsavedProfileNavigation'
 import { getDealerVisualizerDisplayUrl } from '../config/visualizer'
 import { DealerTypographySettings } from '../components/DealerTypographySettings'
-import { typographyPayload, type DealerTypographyValues } from '../utils/dealerTypography'
+import { BrandingAppearanceWorkspace } from '../components/BrandingAppearanceWorkspace'
+import { dealerTypographyValues, typographyPayload, type DealerTypographyValues } from '../utils/dealerTypography'
 import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
 import { DealerLogoPlacementSettings, type DealerLogoPlacement } from '../components/DealerLogoPlacementSettings'
 import { DoorBuilderAppearanceSettings } from '../components/DoorBuilderAppearanceSettings'
-import { appearanceRpcArgs, type DoorBuilderAppearance } from '../utils/doorBuilderAppearance'
+import { appearanceEquals, appearanceRpcArgs, type DoorBuilderAppearance } from '../utils/doorBuilderAppearance'
 import { DealerLogoDisplaySettings } from '../components/DealerLogoDisplaySettings'
-import type { DealerLogoDisplay } from '../utils/dealerLogoVariants'
+import { normalizeLogoDisplay, type DealerLogoDisplay } from '../utils/dealerLogoVariants'
 import { DealerLogoVariantSettings } from '../components/DealerLogoVariantSettings'
 import { LogoBackgroundDialog } from '../components/LogoBackgroundDialog'
 import { readLogoForRemoval } from '../utils/readLogoForRemoval'
@@ -59,6 +60,11 @@ export function DealerCompanyProfilePage({
   onDealerUpdated,
 }: DealerCompanyProfilePageProps) {
   const [form, setForm] = useState(() => dealerToForm(dealer))
+  const [placementDraft, setPlacementDraft] = useState<DealerLogoPlacement | null>(null)
+  const [displayDraft, setDisplayDraft] = useState<DealerLogoDisplay | null>(null)
+  const [variantDraft, setVariantDraft] = useState<Partial<DealerAccount> | null>(null)
+  const [typographyDraft, setTypographyDraft] = useState<DealerTypographyValues | null>(null)
+  const [appearanceDraft, setAppearanceDraft] = useState<DoorBuilderAppearance | null | undefined>(undefined)
   const profileDirty = JSON.stringify(form) !== JSON.stringify(dealerToForm(dealer))
   useEffect(() => {
     if (!profileDirty) return
@@ -688,19 +694,49 @@ export function DealerCompanyProfilePage({
       )}
       </section>
 
-      <section id="door-builder-branding">
-        <p className="profile-section-note">The homepage logo and the logo on other Door Builder pages are chosen here. Marketing banners do not use these choices; they use the logo you select in Marketing Tools.</p>
-        <DealerLogoDisplaySettings dealer={dealer} onSaveDisplay={saveLogoDisplay} onSaveSecondary={saveSecondaryLogos} onUpdated={onDealerUpdated} />
-        <DealerLogoVariantSettings
-          dealer={dealer}
-          onSave={saveLogoVariants}
-          onSaveWebsite={saveLogoWebsite}
-          onUpdated={onDealerUpdated}
-          onHydrated={onDealerUpdated}
-        />
-        <DealerLogoPlacementSettings dealer={dealer} onSave={saveLogoPlacement} onUpdated={onDealerUpdated} />
-      </section>
-      {canEditAppearance && <DoorBuilderAppearanceSettings dealer={dealer} mode="dealer" canEdit onSave={saveAppearance} />}
+      <BrandingAppearanceWorkspace
+        dealer={{
+          ...dealer,
+          ...(placementDraft ? { logo_placement: placementDraft } : {}),
+          ...(displayDraft ? { logo_display: displayDraft } : {}),
+          ...(variantDraft ?? {}),
+          ...(typographyDraft ? {
+            heading_font_family: typographyDraft.headingFontFamily || null,
+            heading_font_weight: typographyDraft.headingFontWeight ? Number(typographyDraft.headingFontWeight) : null,
+            heading_font_size: typographyDraft.headingFontSize ? Number(typographyDraft.headingFontSize) : null,
+            body_font_family: typographyDraft.bodyFontFamily || null,
+            body_font_weight: typographyDraft.bodyFontWeight ? Number(typographyDraft.bodyFontWeight) : null,
+            body_font_size: typographyDraft.bodyFontSize ? Number(typographyDraft.bodyFontSize) : null,
+          } : {}),
+        }}
+        appearance={appearanceDraft === undefined ? dealer.door_builder_appearance ?? null : appearanceDraft}
+        unsaved={
+          (placementDraft != null && placementDraft !== (dealer.logo_placement === 'header' ? 'header' : 'hero'))
+          || (displayDraft != null && displayDraft !== normalizeLogoDisplay(dealer.logo_display))
+          || (canEditAppearance && appearanceDraft !== undefined && !appearanceEquals(appearanceDraft, dealer.door_builder_appearance ?? null))
+          || (typographyDraft != null && JSON.stringify(typographyDraft) !== JSON.stringify(dealerTypographyValues(dealer)))
+          || (variantDraft != null && (
+            (variantDraft.logo_header_variant ?? null) !== (dealer.logo_header_variant ?? null)
+            || (variantDraft.logo_pages_variant ?? null) !== (dealer.logo_pages_variant ?? null)
+          ))
+        }
+        panels={{
+          logos: (
+            <section id="door-builder-branding">
+              <p className="profile-section-note">The homepage logo and the logo on other Door Builder pages are chosen here. Marketing banners do not use these choices; they use the logo you select in Marketing Tools.</p>
+              <DealerLogoVariantSettings dealer={dealer} embedded placement={placementDraft ?? (dealer.logo_placement === 'header' ? 'header' : 'hero')} onDraftChange={setVariantDraft} onSave={saveLogoVariants} onSaveWebsite={saveLogoWebsite} onUpdated={onDealerUpdated} onHydrated={onDealerUpdated} />
+            </section>
+          ),
+          placement: (
+            <>
+              <DealerLogoDisplaySettings dealer={dealer} embedded onDraftChange={setDisplayDraft} onSaveDisplay={saveLogoDisplay} onSaveSecondary={saveSecondaryLogos} onUpdated={onDealerUpdated} />
+              <DealerLogoPlacementSettings dealer={dealer} onDraftChange={setPlacementDraft} onSave={saveLogoPlacement} onUpdated={onDealerUpdated} />
+            </>
+          ),
+          colors: canEditAppearance ? <DoorBuilderAppearanceSettings dealer={dealer} mode="dealer" canEdit embedded onDraftChange={setAppearanceDraft} onSave={saveAppearance} /> : <p>Appearance settings are available to dealer admins.</p>,
+          typography: <DealerTypographySettings dealer={dealer} embedded onDraftChange={setTypographyDraft} onSave={saveTypography} onUpdated={onDealerUpdated} />,
+        }}
+      />
 
       <section id="colors-and-typography">
         <div className="content-card dealer-form">
@@ -721,7 +757,6 @@ export function DealerCompanyProfilePage({
             </button>
           </div>
         </div>
-        <DealerTypographySettings dealer={dealer} onSave={saveTypography} onUpdated={onDealerUpdated}/>
       </section>
       </form>
 

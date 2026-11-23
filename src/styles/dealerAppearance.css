@@ -248,66 +248,39 @@
 
 /* Simplified six-key documents set data-appearance-mode="simple".
    These rules do not apply to older 39-key documents. */
-.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-background"] :is(
-  .home-hero,
-  .home-hero-copy,
-  .home-page,
-  .home-preview-caption,
-  .preview-toolbar
-),
-.home-app.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-background"] :is(.home-hero, .home-hero-copy, .home-preview-caption),
-.app.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-background"]:not(.home-app):not(.visualizer-app) :is(.builder-panel, .builder-options-scroll),
-.app.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-background"]:not(.home-app):not(.visualizer-app) > main {
+.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-background"] :is(.builder-panel, .builder-options-scroll, .find-door-options) {
   background: var(--db-body-background);
   background-color: var(--db-body-background);
 }
 
-.dealer-cobranded[data-appearance-mode="simple"][style*="--db-preview-background"] .mobile-live-preview {
-  background: var(--db-preview-background);
-  background-color: var(--db-preview-background);
+.home-app.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-background"] :is(.home-page, .home-hero, .home-hero-copy, .home-preview-caption) {
+  background: #fff;
+  background-color: #fff;
 }
 
-.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-text"] :is(
-  .step-label-row span,
-  .home-hero-copy h1,
-  .home-hero-copy h2,
-  .home-hero-copy p,
-  .home-hero-copy em,
-  .home-preview-caption,
-  .home-preview-caption p
-) {
+.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-background"] .find-my-door-main {
+  background: transparent;
+  background-color: transparent;
+}
+
+.dealer-cobranded[data-appearance-mode="simple"][style*="--db-heading-text"] .find-my-door-main :is(h1, h2) {
+  color: #05040b;
+}
+
+.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-text"] .find-my-door-main :is(p, .section-heading p) {
+  color: #535860;
+}
+
+.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-text"] .builder-panel :is(h1, h2, p, .step-label-row span),
+.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-text"] .find-door-options :is(h1, h2, h3, p, span, label, button),
+.dealer-cobranded[data-appearance-mode="simple"][style*="--db-heading-text"] .find-door-options :is(h1, h2, h3) {
   color: var(--db-body-text);
 }
 
-.dealer-cobranded[data-appearance-mode="simple"][style*="--db-preview-text"] :is(.mini-summary, .mini-summary b, .mini-summary strong) {
-  color: var(--db-preview-text);
+.home-app.dealer-cobranded[data-appearance-mode="simple"][style*="--db-heading-text"] .home-hero :is(h1, h2) {
+  color: #05040b;
 }
 
-.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-background"] .preview-toolbar {
-  background: var(--db-body-background);
-  background-color: var(--db-body-background);
-  color: var(--db-body-text, inherit);
-  border-left-color: color-mix(in srgb, var(--db-body-text, currentColor) 28%, transparent);
-}
-
-.dealer-cobranded[data-appearance-mode="simple"] .preview-toolbar .preview-reset-design,
-.dealer-cobranded[data-appearance-mode="simple"] .preview-toolbar .preview-reset-design:hover {
-  background: transparent;
-  color: inherit;
-  border-color: color-mix(in srgb, currentColor 55%, transparent);
-}
-
-.dealer-cobranded[data-appearance-mode="simple"] .preview-toolbar .preview-view-toggle,
-.dealer-cobranded[data-appearance-mode="simple"] .preview-toolbar .preview-view-toggle button,
-.dealer-cobranded[data-appearance-mode="simple"] .preview-toolbar .preview-view-toggle button:hover {
-  background: transparent;
-  color: inherit;
-  border-color: color-mix(in srgb, currentColor 35%, transparent);
-}
-
-.dealer-cobranded[data-appearance-mode="simple"] .preview-toolbar .preview-view-toggle button.active,
-.dealer-cobranded[data-appearance-mode="simple"] .preview-toolbar .preview-view-toggle button.active:hover {
-  background: var(--db-body-text, #05040b);
-  color: var(--db-body-background, #fff);
-  border-color: transparent;
+.home-app.dealer-cobranded[data-appearance-mode="simple"][style*="--db-body-text"] .home-hero-copy > p {
+  color: #50565c;
 }
