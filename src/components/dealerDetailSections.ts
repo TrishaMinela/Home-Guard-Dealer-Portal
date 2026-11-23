@@ -4,15 +4,15 @@ export type DealerDetailSection = {
   id: string
   label: string
   access?: DealerDetailSectionAccess
+  /** When set, the nav item opens this path under /admin/dealers/:id instead of scrolling. */
+  route?: string
 }
 
 export const dealerDetailSectionScrollGap = 12
 
 export const dealerDetailSections: readonly DealerDetailSection[] = [
   { id: 'company-details', label: 'Company Details' },
-  { id: 'branding', label: 'Branding' },
-  { id: 'door-builder-appearance', label: 'Door Builder Appearance' },
-  { id: 'design', label: 'Typography & Design' },
+  { id: 'branding-studio', label: 'Branding Studio', route: 'branding' },
   { id: 'door-builder-lead-webhook', label: 'Lead Webhook' },
   { id: 'marketing-tools', label: 'Marketing Tools', access: 'credentials' },
   { id: 'crm-integrations', label: 'CRM Integrations', access: 'credentials' },

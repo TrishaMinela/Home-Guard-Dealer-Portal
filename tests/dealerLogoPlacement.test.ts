@@ -12,12 +12,11 @@ test('dealer logo placement migration defaults safely and enforces allowed value
 
 test('branding UI exposes explicit Header and Hero choices without changing the Portal shell', async () => {
   const component = await readFile(new URL('../src/components/DealerLogoPlacementSettings.tsx', import.meta.url), 'utf8')
-  const dealerPage = await readFile(new URL('../src/pages/DealerCompanyProfilePage.tsx', import.meta.url), 'utf8')
-  const adminPage = await readFile(new URL('../src/pages/DealerDetailPage.tsx', import.meta.url), 'utf8')
+  const studio = await readFile(new URL('../src/pages/BrandingStudioPage.tsx', import.meta.url), 'utf8')
   assert.match(component, /Dealer Logo Placement/)
   assert.match(component, /value="header"/)
   assert.match(component, /value="hero"/)
-  assert.match(dealerPage, /update_my_dealer_logo_placement/)
-  assert.match(adminPage, /update\(\{ logo_placement: placement \}\)/)
+  assert.match(studio, /update_my_dealer_logo_placement/)
+  assert.match(studio, /update\(\{ logo_placement: value \}\)/)
   assert.doesNotMatch(component, /PortalLayout|portal-sidebar/i)
 })

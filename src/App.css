@@ -576,7 +576,7 @@ select:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,10
 @media (prefers-reduced-motion: reduce) { .dealer-setup-target { animation: none; box-shadow: inset 0 0 0 3px #f8d30e; } }
 .profile-section-note { margin: 8px 0 0; color: var(--color-muted); font-size: 13px; line-height: 1.5; }
 .dealer-detail-page { --dealer-section-scroll-offset: 76px; }
-.dealer-detail-page :is(#company-details, #branding, #design, #door-builder-appearance, #door-builder-lead-webhook, #marketing-tools, #crm-integrations, #dealer-users, #add-dealer-user, #setup, #website-address) {
+.dealer-detail-page :is(#company-details, #branding-studio, #door-builder-lead-webhook, #marketing-tools, #crm-integrations, #dealer-users, #add-dealer-user, #setup, #website-address) {
   scroll-margin-top: var(--dealer-section-scroll-offset);
 }
 .dealer-detail-nav-sentinel { height: 1px; pointer-events: none; }

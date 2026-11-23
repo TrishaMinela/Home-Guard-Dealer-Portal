@@ -18,18 +18,18 @@ const crm = readFileSync('src/components/DealerCrmIntegrations.tsx', 'utf8')
 
 test('dealer detail nav targets match the section ids they scroll to', () => {
   const ids = dealerDetailSections.map((section) => section.id)
-  assert.deepEqual(ids, ['company-details', 'branding', 'door-builder-appearance', 'design', 'door-builder-lead-webhook', 'marketing-tools', 'crm-integrations', 'dealer-users'])
+  assert.deepEqual(ids, ['company-details', 'branding-studio', 'door-builder-lead-webhook', 'marketing-tools', 'crm-integrations', 'dealer-users'])
   assert.equal(new Set(ids).size, ids.length)
 
   assert.match(page, /id="company-details"/)
-  assert.match(page, /id="branding"/)
-  assert.match(page, /id="design"/)
+  assert.match(page, /id="branding-studio"/)
+  assert.doesNotMatch(page, /id="design"/)
   assert.match(page, /sectionId="dealer-users"/)
   assert.match(marketing, /id="marketing-tools"/)
   assert.match(crm, /id="crm-integrations"/)
   assert.match(page, /DealerDetailSectionNav/)
   assert.match(nav, /visibleDealerDetailSections/)
-  assert.match(nav, /href=\{`#\$\{section\.id\}`\}/)
+  assert.match(nav, /section\.route && dealerId \? `\/admin\/dealers\/\$\{dealerId\}\/\$\{section\.route\}` : `#\$\{section\.id\}`/)
 
   for (const id of ids) {
     assert.match(styles, new RegExp(`#${id}`))
@@ -48,15 +48,15 @@ test('dealer detail nav exposes the active section and follows scroll', () => {
 test('visible dealer detail sections follow the same access flags as the page', () => {
   assert.deepEqual(
     visibleDealerDetailSections({ canManageDealerCredentials: false, canManageDealerUsers: false }).map((section) => section.id),
-    ['company-details', 'branding', 'door-builder-appearance', 'design', 'door-builder-lead-webhook'],
+    ['company-details', 'branding-studio', 'door-builder-lead-webhook'],
   )
   assert.deepEqual(
     visibleDealerDetailSections({ canManageDealerCredentials: true, canManageDealerUsers: false }).map((section) => section.id),
-    ['company-details', 'branding', 'door-builder-appearance', 'design', 'door-builder-lead-webhook', 'marketing-tools', 'crm-integrations'],
+    ['company-details', 'branding-studio', 'door-builder-lead-webhook', 'marketing-tools', 'crm-integrations'],
   )
   assert.deepEqual(
     visibleDealerDetailSections({ canManageDealerCredentials: false, canManageDealerUsers: true }).map((section) => section.id),
-    ['company-details', 'branding', 'door-builder-appearance', 'design', 'door-builder-lead-webhook', 'dealer-users'],
+    ['company-details', 'branding-studio', 'door-builder-lead-webhook', 'dealer-users'],
   )
 })
 

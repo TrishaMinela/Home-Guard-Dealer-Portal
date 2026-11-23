@@ -80,13 +80,10 @@ test('primary-logo URL validation prevents external fetches and cross-dealer acc
 })
 
 test('Portal light-logo UI preserves custom override and generated fallback controls', async () => {
-  const profile = await readFile(new URL('../src/pages/DealerCompanyProfilePage.tsx', import.meta.url), 'utf8')
-  const detail = await readFile(new URL('../src/pages/DealerDetailPage.tsx', import.meta.url), 'utf8')
-  for (const source of [profile, detail]) {
-    assert.match(source, /logo_light_url \?\? dealer\.logo_generated_light_url/)
-    assert.match(source, /Generate White/)
-    assert.match(source, /Remove Custom Logo/)
-  }
+  const studio = await readFile(new URL('../src/pages/BrandingStudioPage.tsx', import.meta.url), 'utf8')
+  assert.match(studio, /logo_light_url \?\? dealer\.logo_generated_light_url/)
+  assert.match(studio, /Generate White/)
+  assert.match(studio, /Remove Custom Logo/)
 })
 
 test('light logo keeps interior lettering, transparency, and source dimensions', async () => {

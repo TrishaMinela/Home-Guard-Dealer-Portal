@@ -16,19 +16,21 @@ export type SetupDestination = {
   targetLabel: string
   /** When set, the row opens the dealer edit screen and focuses this control. */
   editFocusId?: string
+  /** When set, the row opens this Branding Studio category. */
+  studioSection?: 'logos' | 'placement' | 'colors' | 'typography'
 }
 
 export const dealerSetupDestinations: Record<string, SetupDestination | null> = {
   'company-details': { anchorId: 'company-name', editFocusId: 'company-name', sectionId: 'company', tabLabel: 'Company Details', targetLabel: 'contact information' },
   'door-builder-url': { anchorId: 'dealer-slug', editFocusId: 'dealer-slug', sectionId: 'company', tabLabel: 'Company Details', targetLabel: 'slug and Door Builder URL' },
   'dealer-admin': { anchorId: 'dealer-users', fallbackAnchorId: 'dealer-users', sectionId: 'dealer-users', tabLabel: 'Dealer Users / Access', targetLabel: 'dealer users' },
-  'logo-original': { anchorId: 'logo-original', sectionId: 'branding', tabLabel: 'Branding', targetLabel: 'original logo' },
-  'logo-white': { anchorId: 'logo-white', sectionId: 'branding', tabLabel: 'Branding', targetLabel: 'white logo' },
-  'logo-black': { anchorId: 'logo-black', sectionId: 'branding', tabLabel: 'Branding', targetLabel: 'black logo' },
-  'homepage-logo': { anchorId: 'homepage-logo-selection', sectionId: 'branding', tabLabel: 'Branding', targetLabel: 'homepage logo selection' },
-  'pages-logo': { anchorId: 'pages-logo-selection', sectionId: 'branding', tabLabel: 'Branding', targetLabel: 'normal pages logo selection' },
-  colors: { anchorId: 'primary-color', editFocusId: 'primary-color', sectionId: 'branding', tabLabel: 'Branding', targetLabel: 'brand colors' },
-  typography: { anchorId: 'heading-font-family', editFocusId: 'heading-font-family', sectionId: 'design', tabLabel: 'Typography & Design', targetLabel: 'typography' },
+  'logo-original': { anchorId: 'logo-original', sectionId: 'branding-studio', tabLabel: 'Branding Studio', targetLabel: 'original logo', studioSection: 'logos' },
+  'logo-white': { anchorId: 'logo-white', sectionId: 'branding-studio', tabLabel: 'Branding Studio', targetLabel: 'white logo', studioSection: 'logos' },
+  'logo-black': { anchorId: 'logo-black', sectionId: 'branding-studio', tabLabel: 'Branding Studio', targetLabel: 'black logo', studioSection: 'logos' },
+  'homepage-logo': { anchorId: 'homepage-logo-selection', sectionId: 'branding-studio', tabLabel: 'Branding Studio', targetLabel: 'homepage logo selection', studioSection: 'placement' },
+  'pages-logo': { anchorId: 'pages-logo-selection', sectionId: 'branding-studio', tabLabel: 'Branding Studio', targetLabel: 'normal pages logo selection', studioSection: 'placement' },
+  colors: { anchorId: 'door-builder-appearance', sectionId: 'branding-studio', tabLabel: 'Branding Studio', targetLabel: 'brand colors', studioSection: 'colors' },
+  typography: { anchorId: 'heading-font-family', sectionId: 'branding-studio', tabLabel: 'Branding Studio', targetLabel: 'typography', studioSection: 'typography' },
   marketing: { anchorId: 'marketing-tools', fallbackAnchorId: 'marketing-and-crm', sectionId: 'marketing-tools', tabLabel: 'Marketing Tools', targetLabel: 'marketing tools' },
   workflows: null,
   crm: { anchorId: 'crm-integrations', fallbackAnchorId: 'marketing-and-crm', sectionId: 'crm-integrations', tabLabel: 'CRM Integrations', targetLabel: 'CRM integration' },

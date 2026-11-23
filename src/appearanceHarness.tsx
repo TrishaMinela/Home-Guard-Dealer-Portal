@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import type { AdminDealer } from './types/admin'
 import { DoorBuilderAppearanceSettings } from './components/DoorBuilderAppearanceSettings'
+import { BrandingStudioPage } from './pages/BrandingStudioPage'
 import { DealerCompanyProfilePage } from './pages/DealerCompanyProfilePage'
 import type { DoorBuilderAppearance } from './utils/doorBuilderAppearance'
 
@@ -77,11 +79,13 @@ export function AppearanceHarness() {
 }
 
 export function ProfileNavHarness({ canEditAppearance }: { canEditAppearance: boolean }) {
+  const [current, setCurrent] = useState<AdminDealer>(dealer)
   return (
-    <DealerCompanyProfilePage
-      dealer={dealer}
-      canEditAppearance={canEditAppearance}
-      onDealerUpdated={() => {}}
-    />
+    <MemoryRouter initialEntries={['/company']}>
+      <Routes>
+        <Route path="/company" element={<DealerCompanyProfilePage dealer={current} canEditAppearance={canEditAppearance} onDealerUpdated={setCurrent} />} />
+        <Route path="/company/branding" element={<BrandingStudioPage mode="dealer" dealer={current} canEditAppearance={canEditAppearance} backTo="/company" onDealerUpdated={setCurrent} />} />
+      </Routes>
+    </MemoryRouter>
   )
 }

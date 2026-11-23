@@ -88,9 +88,8 @@ test('an already transparent logo is left unchanged and the reason is shown', as
   assert.equal(result.confident, false)
   if (result.confident) return
   assert.match(result.reason, /already has a transparent background/)
-  const detail = await readFile(new URL('../src/pages/DealerDetailPage.tsx', import.meta.url), 'utf8')
-  const profile = await readFile(new URL('../src/pages/DealerCompanyProfilePage.tsx', import.meta.url), 'utf8')
-  for (const page of [detail, profile]) {
+  const studio = await readFile(new URL('../src/pages/BrandingStudioPage.tsx', import.meta.url), 'utf8')
+  for (const page of [studio]) {
     assert.match(page, /setRemovalNotice\(inspected\.confident/)
     assert.match(page, /: inspected\.reason\)/)
     assert.match(page, /role="status">\{removalNotice\}/)

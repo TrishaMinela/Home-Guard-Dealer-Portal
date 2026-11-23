@@ -15,14 +15,18 @@ import '../styles/logoPair.css'
 import '../styles/doorBuilderPreview.css'
 import '../styles/dealerAppearance.css'
 
+type PreviewSurface = 'homepage' | 'builder' | 'find'
+
 type Props = {
   dealer: AdminDealer
   appearance: DoorBuilderAppearance | null
+  surface?: PreviewSurface
+  mobile?: boolean
+  hideToolbar?: boolean
 }
 
 const DESKTOP_WIDTH = 1280
 const MOBILE_WIDTH = 390
-type PreviewSurface = 'homepage' | 'builder' | 'find'
 
 const SURFACE_LOGO: Record<PreviewSurface, DoorBuilderPreviewSurface> = {
   homepage: 'home-header',
@@ -100,9 +104,11 @@ function GlobeIcon() {
   return <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="1.6" /><path d="M4 12h16M12 4c2.5 2.4 2.5 13.6 0 16M12 4c-2.5 2.4-2.5 13.6 0 16" fill="none" stroke="currentColor" strokeWidth="1.6" /></svg>
 }
 
-export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
-  const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 900px)').matches)
-  const [surface, setSurface] = useState<PreviewSurface>('builder')
+export function DoorBuilderAppearancePreview({ dealer, appearance, surface: surfaceProp, mobile: mobileProp, hideToolbar = false }: Props) {
+  const [mobileState, setMobile] = useState(() => window.matchMedia('(max-width: 900px)').matches)
+  const [surfaceState, setSurface] = useState<PreviewSurface>('builder')
+  const mobile = mobileProp ?? mobileState
+  const surface = surfaceProp ?? surfaceState
   const frameRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
@@ -156,7 +162,7 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
 
   return (
     <div className="db-preview-shell">
-      <div className="db-preview-shell__bar">
+      {hideToolbar ? null : <div className="db-preview-shell__bar">
         <strong>Live preview</strong>
         <div className="db-preview-shell__toggle" role="group" aria-label="Preview page">
           {([['homepage', 'Homepage'], ['builder', 'Door Builder'], ['find', 'Find My Door']] as const).map(([value, label]) => (
@@ -167,7 +173,7 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
           <button type="button" className={mobile ? '' : 'is-selected'} aria-pressed={!mobile} onClick={() => setMobile(false)}>Desktop</button>
           <button type="button" className={mobile ? 'is-selected' : ''} aria-pressed={mobile} onClick={() => setMobile(true)}>Mobile</button>
         </div>
-      </div>
+      </div>}
       <div className={`db-preview-frame ${mobile ? 'is-mobile' : 'is-desktop'}`} ref={frameRef}>
         <div className="db-preview-sizer" style={{ height: scaledHeight }}>
           <div className="db-preview-scale" ref={stageRef} style={{ width: designWidth, transform: `scale(${scale})` }}>

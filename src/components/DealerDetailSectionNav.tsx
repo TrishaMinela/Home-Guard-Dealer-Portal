@@ -8,6 +8,7 @@ import {
 } from './dealerDetailSections'
 
 type DealerDetailSectionNavProps = {
+  dealerId?: string
   canManageDealerCredentials: boolean
   canManageDealerUsers: boolean
 }
@@ -91,6 +92,7 @@ function readScrollState(section: HTMLElement | null) {
 }
 
 export function DealerDetailSectionNav({
+  dealerId,
   canManageDealerCredentials,
   canManageDealerUsers,
 }: DealerDetailSectionNavProps) {
@@ -282,9 +284,9 @@ export function DealerDetailSectionNav({
         {sections.map((section) => (
           <a
             key={section.id}
-            href={`#${section.id}`}
+            href={section.route && dealerId ? `/admin/dealers/${dealerId}/${section.route}` : `#${section.id}`}
             aria-current={activeId === section.id ? 'true' : undefined}
-            onClick={(event) => selectSection(event, section.id)}
+            onClick={section.route ? undefined : (event) => selectSection(event, section.id)}
           >
             {section.label}
           </a>

@@ -1,0 +1,44 @@
+.branding-studio { min-height: 100%; display: flex; flex-direction: column; background: #f4f7f6; color: #14201f; }
+.branding-studio__toolbar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 10px 16px; border-bottom: 1px solid #d5dfdc; background: rgba(255,255,255,.96); }
+.branding-studio__back, .branding-studio__live { color: #0d666c; font-size: 13px; font-weight: 700; text-decoration: none; }
+.branding-studio__identity { display: grid; min-width: 0; }
+.branding-studio__identity h1 { margin: 0; font-size: 15px; }
+.branding-studio__identity span { color: #5d6b68; font-size: 12px; }
+.branding-studio__toggles { display: flex; flex-wrap: wrap; gap: 6px; }
+.branding-studio__toggles button, .branding-studio__edit, .branding-studio__sheet-bar button, .branding-studio__back-section { min-height: 36px; border: 1px solid #d5dfdc; border-radius: 8px; background: #fff; color: #243034; font: inherit; font-size: 13px; font-weight: 700; padding: 0 10px; cursor: pointer; }
+.branding-studio__toggles button[aria-pressed="true"] { border-color: #0d666c; background: rgba(13,102,108,.08); color: #0d666c; }
+.branding-studio__status { margin: 0; color: #8a5a00; font-size: 13px; font-weight: 700; }
+.branding-studio__status.is-clean { color: #5d6b68; font-weight: 600; }
+.branding-studio__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.branding-studio__workspace { display: grid; grid-template-columns: minmax(300px, 360px) minmax(0, 1fr); min-height: calc(100dvh - 64px); }
+.branding-studio__settings { min-width: 0; max-height: calc(100dvh - 64px); overflow: auto; padding: 16px; border-right: 1px solid #d5dfdc; background: #fff; }
+.branding-studio__preview { min-width: 0; padding: 16px; }
+.branding-studio__preview .db-preview-shell { min-height: 70vh; }
+.branding-studio__menu { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.branding-studio__menu button, .branding-studio__card { width: 100%; border: 1px solid #d5dfdc; border-radius: 12px; background: #fff; text-align: left; }
+.branding-studio__menu button { min-height: 64px; padding: 12px 14px; cursor: pointer; }
+.branding-studio__menu strong, .branding-studio__card strong { display: block; font-size: 15px; }
+.branding-studio__menu span, .branding-studio__card p { color: #5d6b68; font-size: 12px; }
+.branding-studio__cards { display: grid; gap: 12px; }
+.branding-studio__card { display: grid; gap: 8px; padding: 14px; }
+.branding-studio__card img { width: 100%; max-height: 72px; object-fit: contain; }
+.branding-studio__card .button { justify-self: start; }
+.branding-studio__note, .branding-studio__advanced { color: #5d6b68; font-size: 12px; }
+.branding-studio__advanced { margin-top: 12px; }
+.branding-studio__advanced summary { cursor: pointer; font-weight: 700; color: #14201f; }
+.branding-studio__advanced .upload-button { margin-top: 8px; }
+.branding-studio__message { margin: 0; padding: 8px 16px; background: #fff; }
+.branding-studio__message.is-error { color: #8a2424; }
+.branding-studio .dealer-form__actions { display: none; }
+.branding-studio .logo-display-settings .logo-placement-option strong::before { content: ''; display: block; width: 72px; height: 22px; margin-bottom: 6px; border-radius: 4px; background: linear-gradient(#235176, #235176) 0 0 / 100% 100% no-repeat, #e7eeec; }
+.branding-studio .logo-display-settings label:has(input[value="dual"]) strong::before { background: linear-gradient(#235176, #235176) left / 46% 100% no-repeat, linear-gradient(#8ebb53, #8ebb53) right / 46% 100% no-repeat, #e7eeec; }
+.branding-studio__edit { display: none; }
+.branding-studio__sheet-bar { display: none; }
+@media (max-width: 1023px) {
+  .branding-studio__workspace { grid-template-columns: 1fr; }
+  .branding-studio__settings { display: none; max-height: none; border-right: 0; }
+  .branding-studio__edit { display: inline-flex; }
+  .branding-studio.is-editing .branding-studio__settings { display: flex; position: fixed; z-index: 30; top: var(--studio-sheet-top, 72px); right: 0; bottom: 0; left: 0; flex-direction: column; max-height: none; }
+  .branding-studio.is-editing .branding-studio__sheet-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 0 12px; }
+  .branding-studio__preview .db-preview-shell { min-height: 0; }
+}
