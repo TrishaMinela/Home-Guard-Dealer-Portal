@@ -208,8 +208,10 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
                     </div>
                     <div className="home-hero-visual">
                       <div className="hero-composite">
-                        <img className="home-entryway-image" src="/appearance-preview/hero-entryway.webp" alt="Welcoming home entryway with a customizable door preview" />
-                        <img className="hero-door" src="/appearance-preview/hero-ai-01-navy.webp" alt="" />
+                        <div className="hero-composite-stage">
+                          <img className="home-entryway-image" src="/appearance-preview/hero-entryway.webp" alt="Welcoming home entryway with a customizable door preview" />
+                          <img className="hero-door" src="/appearance-preview/hero-ai-01-navy.webp" alt="" />
+                        </div>
                       </div>
                     </div>
                   </section>

@@ -46,18 +46,19 @@
 .branding-customizer[data-layout="compact"] .branding-customizer__stage.is-open .branding-customizer__menu { grid-column: 1; grid-row: 1; }
 .branding-customizer[data-layout="compact"] .branding-customizer__stage.is-open .branding-customizer__preview { grid-column: 1; grid-row: 2; }
 .branding-customizer[data-layout="compact"] .branding-customizer__stage.is-open .branding-customizer__drawer-slot { grid-column: 2; grid-row: 1 / span 2; }
+.branding-customizer__stage.is-open:not(.is-sheet) { align-items: stretch; }
+.branding-customizer__stage.is-open:not(.is-sheet) .branding-customizer__drawer-slot { align-self: stretch; height: auto; }
 .branding-customizer__stage.is-open:not(.is-sheet) .branding-customizer__drawer {
-  position: fixed;
-  z-index: 4;
+  position: sticky;
+  z-index: 3;
   top: var(--branding-drawer-top, 12px);
-  left: var(--branding-drawer-left, 0px);
-  width: var(--branding-drawer-width, 360px);
+  align-self: start;
   height: var(--branding-drawer-span, calc(100dvh - 120px));
   max-height: var(--branding-drawer-span, calc(100dvh - 120px));
 }
 .branding-customizer[data-layout="sheet"] .branding-customizer__stage.is-open .branding-customizer__drawer {
   position: fixed;
-  z-index: 40;
+  z-index: 80;
   inset: 0;
   left: 0;
   top: 0;

@@ -44,6 +44,25 @@ function layoutForWidth(width: number) {
   return 'wide'
 }
 
+function stickyChrome(root: HTMLElement) {
+  const scroller = scrollParent(root)
+  const portTop = scroller ? scroller.getBoundingClientRect().top : 0
+  let bottom = portTop
+  const nodes = document.body.querySelectorAll<HTMLElement>('*')
+  for (let index = 0; index < nodes.length; index += 1) {
+    const node = nodes[index]
+    if (root.contains(node)) continue
+    const style = getComputedStyle(node)
+    if (style.position !== 'sticky' || style.display === 'none' || style.visibility === 'hidden') continue
+    const top = Number.parseFloat(style.top)
+    if (!Number.isFinite(top)) continue
+    const rect = node.getBoundingClientRect()
+    if (rect.height < 8 || rect.width < 8) continue
+    bottom = Math.max(bottom, portTop + top + rect.height)
+  }
+  return Math.max(0, Math.round(bottom - portTop))
+}
+
 type Props = {
   dealer: AdminDealer
   appearance: DoorBuilderAppearance | null
@@ -92,44 +111,67 @@ export function BrandingAppearanceWorkspace({ dealer, appearance, unsaved, panel
     if (!root) return
     const place = () => {
       const next = layoutForWidth(root.clientWidth)
+      root.dataset.layout = next
       if (next !== layout) {
         setLayout(next)
         return
       }
-      if (!category || layout === 'sheet' || !slotRef.current) return
+      const chrome = stickyChrome(root)
+      const margin = 12
       const scroller = scrollParent(root)
       const view = scroller?.getBoundingClientRect()
       const viewTop = view ? Math.max(view.top, 0) : 0
       const viewBottom = view ? Math.min(view.bottom, window.innerHeight) : window.innerHeight
-      const top = viewTop + 12
-      const box = slotRef.current.getBoundingClientRect()
-      root.style.setProperty('--branding-drawer-top', `${top}px`)
-      root.style.setProperty('--branding-drawer-span', `${Math.max(240, viewBottom - top - 12)}px`)
-      if (box.width > 0) {
-        root.style.setProperty('--branding-drawer-left', `${Math.max(0, box.left)}px`)
-        root.style.setProperty('--branding-drawer-width', `${box.width}px`)
+      const stickLine = viewTop + chrome + margin
+      const cap = Math.max(220, root.getBoundingClientRect().height - margin)
+      const top = `${chrome + margin}px`
+      if (root.style.getPropertyValue('--branding-drawer-top') !== top) root.style.setProperty('--branding-drawer-top', top)
+      const fitted = () => {
+        const currentTop = drawerRef.current?.getBoundingClientRect().top
+        const naturalTop = currentTop === undefined ? stickLine : Math.max(currentTop, stickLine)
+        return `${Math.max(220, Math.min(cap, viewBottom - naturalTop - margin))}px`
       }
+      const span = fitted()
+      if (root.style.getPropertyValue('--branding-drawer-span') !== span) root.style.setProperty('--branding-drawer-span', span)
+      const settled = fitted()
+      if (settled !== span) root.style.setProperty('--branding-drawer-span', settled)
+    }
+    let frame = 0
+    const schedule = () => {
+      place()
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(place)
     }
     place()
-    const observer = new ResizeObserver(place)
+    const observer = new ResizeObserver(schedule)
     observer.observe(root)
+    const bars = document.querySelectorAll<HTMLElement>('.dealer-detail-nav, .admin-topbar, .mobile-header')
+    for (let index = 0; index < bars.length; index += 1) observer.observe(bars[index])
     const scroller = scrollParent(root)
-    scroller?.addEventListener('scroll', place, { passive: true })
-    window.addEventListener('scroll', place, { passive: true })
-    window.addEventListener('resize', place)
+    scroller?.addEventListener('scroll', schedule, { passive: true })
+    window.addEventListener('scroll', schedule, { passive: true })
+    window.addEventListener('resize', schedule)
     return () => {
+      cancelAnimationFrame(frame)
       observer.disconnect()
-      scroller?.removeEventListener('scroll', place)
-      window.removeEventListener('scroll', place)
-      window.removeEventListener('resize', place)
+      scroller?.removeEventListener('scroll', schedule)
+      window.removeEventListener('scroll', schedule)
+      window.removeEventListener('resize', schedule)
     }
   }, [category, layout])
 
   useEffect(() => {
     if (!category || layout !== 'sheet') return
-    const previous = document.body.style.overflow
+    const root = rootRef.current
+    const scroller = root ? scrollParent(root) : null
+    const previousBody = document.body.style.overflow
+    const previousScroller = scroller?.style.overflow ?? ''
     document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = previous }
+    if (scroller) scroller.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousBody
+      if (scroller) scroller.style.overflow = previousScroller
+    }
   }, [category, layout])
 
   useEffect(() => {
@@ -144,7 +186,7 @@ export function BrandingAppearanceWorkspace({ dealer, appearance, unsaved, panel
         setCategory(null)
         return
       }
-      if (event.key !== 'Tab' || !drawer) return
+      if (layout !== 'sheet' || event.key !== 'Tab' || !drawer) return
       const items = focusable()
       if (items.length === 0) return
       const first = items[0]
@@ -162,7 +204,7 @@ export function BrandingAppearanceWorkspace({ dealer, appearance, unsaved, panel
       document.removeEventListener('keydown', onKeyDown)
       previouslyFocused?.focus()
     }
-  }, [category])
+  }, [category, layout])
 
   return (
     <section id="branding-appearance" className={`content-card dealer-management-card branding-customizer${layout === 'sheet' ? ' is-sheet' : ''}`} data-layout={layout} aria-labelledby={titleId} ref={rootRef}>
@@ -195,7 +237,7 @@ export function BrandingAppearanceWorkspace({ dealer, appearance, unsaved, panel
           <DoorBuilderAppearancePreview dealer={dealer} appearance={appearance} />
         </div>
         <div className="branding-customizer__drawer-slot" ref={slotRef} hidden={category === null}>
-        <aside id="branding-customizer-drawer" className="branding-customizer__drawer" ref={drawerRef} role="dialog" aria-modal={category ? true : undefined} aria-labelledby="branding-customizer-drawer-title" hidden={category === null}>
+        <aside id="branding-customizer-drawer" className="branding-customizer__drawer" ref={drawerRef} role={layout === 'sheet' ? 'dialog' : 'region'} aria-modal={layout === 'sheet' ? true : undefined} aria-labelledby="branding-customizer-drawer-title" hidden={category === null}>
           <div className="branding-customizer__drawer-bar">
             <h2 id="branding-customizer-drawer-title">{CATEGORIES.find((item) => item.id === category)?.label ?? 'Settings'}</h2>
             <button type="button" onClick={() => setCategory(null)}>Close</button>

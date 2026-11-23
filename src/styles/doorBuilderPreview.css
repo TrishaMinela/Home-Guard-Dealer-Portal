@@ -138,11 +138,14 @@
 .db-appearance-preview main.db-home,
 .db-appearance-preview main.find-my-door-main { display: block; grid-template-columns: none; min-height: 0; }
 .db-appearance-preview .db-home .home-hero-visual { width: min(1180px, 100%); margin: 0 auto; background: transparent; }
-.db-appearance-preview .db-home .hero-composite { position: relative; width: 100%; margin: 0 auto; }
-.db-appearance-preview .db-home .home-entryway-image { display: block; width: 100%; border-radius: 12px; }
+.db-appearance-preview .db-home .hero-composite { position: relative; width: 100%; margin: 0 auto; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 12px; }
+.db-appearance-preview .db-home .hero-composite-stage { position: absolute; top: 50%; left: 0; width: 100%; aspect-ratio: 1; transform: translateY(-45.375%); }
+.db-appearance-preview .db-home .home-entryway-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
 .db-appearance-preview .db-home .hero-door { position: absolute; left: 45.3%; top: 25.12%; width: 17.86%; height: 40.51%; object-fit: contain; }
 .db-appearance-preview .db-home .home-preview-caption { display: flex; justify-content: space-between; width: min(1180px, 100%); margin: 0 auto; padding: 18px 28px 36px; color: #05040b; }
 .db-appearance-preview .db-home .home-preview-caption p { margin: 0; font-size: 16px; font-weight: 400; }
+.db-appearance-preview.is-mobile .db-home .hero-composite { aspect-ratio: 4 / 3; }
+.db-appearance-preview.is-mobile .db-home .home-preview-caption { flex-direction: column; align-items: flex-start; gap: 8px; }
 .db-appearance-preview .db-find { background: #f7faff; color: #05040b; }
 .db-appearance-preview .db-find .find-my-door-header { display: flex; height: 94px; align-items: center; justify-content: space-between; gap: 16px; padding: 0 28px; background: var(--db-header-background, #05040b); color: var(--db-header-text, #fff); border-bottom: 4px solid var(--db-header-accent, #f8d30e); }
 .db-appearance-preview .db-find .brand { display: flex; align-items: center; gap: 16px; min-width: 0; }

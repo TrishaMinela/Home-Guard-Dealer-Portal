@@ -398,10 +398,11 @@ test('the homepage and find my door previews use the live type, porch, and deale
     const emphasis = heading?.querySelector('em')
     const image = document.querySelector<HTMLImageElement>('.db-home .home-entryway-image')
     const door = document.querySelector<HTMLImageElement>('.db-home .hero-door')
+    const frame = document.querySelector('.db-home .hero-composite')
     const caption = document.querySelector('.db-home .home-preview-caption')
     const firstCaption = caption?.querySelector('p')
     const button = document.querySelector<HTMLElement>('.db-home .start-building')
-    const imageBox = image?.getBoundingClientRect()
+    const frameBox = frame?.getBoundingClientRect()
     const captionBox = caption?.getBoundingClientRect()
     return {
       headingStyle: heading ? getComputedStyle(heading).fontStyle : '',
@@ -410,7 +411,8 @@ test('the homepage and find my door previews use the live type, porch, and deale
       emphasisWeight: emphasis ? getComputedStyle(emphasis).fontWeight : '',
       image: image?.getAttribute('src') ?? '',
       door: door?.getAttribute('src') ?? '',
-      captionBelow: !!imageBox && !!captionBox && captionBox.top >= imageBox.bottom - 2 && captionBox.left >= imageBox.left - 2 && captionBox.right <= imageBox.right + 2,
+      aspect: frameBox && frameBox.height > 0 ? frameBox.width / frameBox.height : 0,
+      captionBelow: !!frameBox && !!captionBox && captionBox.top >= frameBox.bottom - 2 && captionBox.left >= frameBox.left - 2 && captionBox.right <= frameBox.right + 2,
       captionWeight: firstCaption ? getComputedStyle(firstCaption).fontWeight : '',
       button: button ? getComputedStyle(button).backgroundColor : '',
     }
@@ -422,8 +424,21 @@ test('the homepage and find my door previews use the live type, porch, and deale
   assert.equal(home.image, '/appearance-preview/hero-entryway.webp')
   assert.equal(home.door, '/appearance-preview/hero-ai-01-navy.webp')
   assert.equal(home.captionBelow, true)
+  assert.ok(home.aspect > 1.7 && home.aspect < 1.85, `desktop photo ratio ${home.aspect}`)
   assert.equal(Number(home.captionWeight) < 600, true)
   assert.equal(home.button, 'rgb(35, 81, 118)')
+  await page.getByRole('button', { name: 'Mobile', exact: true }).click()
+  const mobileHome = await page.evaluate(() => {
+    const frame = document.querySelector('.db-home .hero-composite')?.getBoundingClientRect()
+    const captions = [...document.querySelectorAll('.db-home .home-preview-caption p')].map((item) => item.getBoundingClientRect())
+    return {
+      aspect: frame && frame.height > 0 ? frame.width / frame.height : 0,
+      stacked: captions.length === 2 && captions[1].top >= captions[0].bottom - 2,
+    }
+  })
+  assert.ok(mobileHome.aspect > 1.25 && mobileHome.aspect < 1.42, `mobile photo ratio ${mobileHome.aspect}`)
+  assert.equal(mobileHome.stacked, true)
+  await page.getByRole('button', { name: 'Desktop', exact: true }).click()
   await page.getByRole('button', { name: 'Find My Door', exact: true }).click()
   const find = await page.evaluate(() => {
     const upload = document.querySelector<HTMLElement>('.find-door-upload')
@@ -455,15 +470,19 @@ test('the open drawer stays inside the portal column from 1000 to 1300', async (
     await page.addStyleTag({ content: `.page-content{margin-left:${role.rail}px !important;margin-right:0 !important;width:calc(100% - ${role.rail}px) !important;max-width:none !important;box-sizing:border-box}` })
     await page.getByRole('button', { name: 'Colors', exact: true }).click()
     await page.locator('#branding-customizer-drawer-title').waitFor()
+    await page.locator('#branding-appearance').evaluate((element) => element.scrollIntoView({ block: 'start' }))
     for (let width = 1000; width <= 1300; width += 20) {
       await page.setViewportSize({ width, height: 900 })
+      await page.locator('#branding-appearance').evaluate((element) => element.scrollIntoView({ block: 'start' }))
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)))
       await page.waitForFunction((rail) => {
         const menu = document.querySelector('.branding-customizer__menu')?.getBoundingClientRect()
         const drawer = document.getElementById('branding-customizer-drawer')?.getBoundingClientRect()
         const layout = document.querySelector('.branding-customizer')?.getAttribute('data-layout')
         if (!menu || !drawer) return false
-        if (layout === 'sheet') return drawer.left >= -1 && drawer.right <= window.innerWidth + 1
-        return menu.left >= rail - 1 && menu.right <= drawer.left + 1 && drawer.right <= window.innerWidth + 1
+        const inside = drawer.left >= -1 && drawer.right <= window.innerWidth + 1 && drawer.top >= -1 && drawer.bottom <= window.innerHeight + 1
+        if (layout === 'sheet') return inside
+        return inside && menu.left >= rail - 1 && menu.right <= drawer.left + 1
       }, role.rail)
       const fit = await page.evaluate((rail) => {
         const scroller = document.querySelector('.portal-main') || document.scrollingElement || document.documentElement
@@ -492,43 +511,93 @@ test('the open drawer stays inside the portal column from 1000 to 1300', async (
   }
 })
 
-test('the drawer keeps Close and Save on screen at the top, middle, and bottom', async () => {
-  for (const viewport of [{ width: 1024, height: 768 }, { width: 1440, height: 900 }] as const) {
-    const page = await browser!.newPage({ viewport })
+test('Close and Save stay clickable inside the customizer and the drawer leaves with it', async () => {
+  for (const role of ['dealer', 'admin'] as const) {
+    const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } })
     await page.goto(`http://127.0.0.1:${port}/?role=admin#profile-nav-harness`, { waitUntil: 'networkidle' })
-    await page.addStyleTag({ content: '.page-content{margin-left:276px !important;margin-right:0 !important;width:calc(100% - 276px) !important;max-width:none !important;box-sizing:border-box}' })
+    if (role === 'admin') {
+      await page.evaluate(() => {
+        const pageContent = document.querySelector('.page-content')
+        const header = document.createElement('header')
+        header.className = 'admin-topbar'
+        header.textContent = 'Dealer Portal'
+        const nav = document.createElement('nav')
+        nav.className = 'dealer-detail-nav'
+        nav.innerHTML = '<a href="#company-details">Company Details</a><a href="#door-builder-lead-webhook">Lead Webhook</a>'
+        pageContent?.prepend(nav)
+        pageContent?.prepend(header)
+      })
+    }
     await page.getByRole('button', { name: 'Colors', exact: true }).click()
     await page.getByRole('button', { name: 'Save Appearance' }).waitFor()
-    const stops = await page.evaluate(() => {
-      const scrolling = document.scrollingElement || document.documentElement
-      const max = Math.max(0, scrolling.scrollHeight - scrolling.clientHeight)
-      return [0, Math.round(max / 2), max]
+    await page.evaluate(() => {
+      const spacer = document.createElement('section')
+      spacer.id = 'after-customizer'
+      spacer.style.height = '1600px'
+      spacer.textContent = 'Colors and website'
+      document.getElementById('branding-appearance')?.insertAdjacentElement('afterend', spacer)
     })
-    for (const top of stops) {
-      await page.evaluate((next) => window.scrollTo(0, next), top)
-      const visible = await page.evaluate(() => {
-        const drawer = document.getElementById('branding-customizer-drawer')?.getBoundingClientRect()
-        const close = document.querySelector<HTMLElement>('#branding-customizer-drawer .branding-customizer__drawer-bar button')?.getBoundingClientRect()
-        const buttons = [...document.querySelectorAll<HTMLElement>('#branding-customizer-drawer button')]
-        let save: DOMRect | undefined
-        for (let index = 0; index < buttons.length; index += 1) {
-          if ((buttons[index].textContent || '').includes('Save Appearance')) save = buttons[index].getBoundingClientRect()
-        }
-        const drawerInside = !!drawer && drawer.top >= -1 && drawer.bottom <= window.innerHeight + 1 && drawer.left >= -1 && drawer.right <= window.innerWidth + 1 && drawer.width > 8
-        const closeInside = !!close && close.top >= -1 && close.bottom <= window.innerHeight + 1 && close.left >= -1 && close.right <= window.innerWidth + 1 && close.width > 8
-        const saveInside = !!save && save.top >= -1 && save.bottom <= window.innerHeight + 1 && save.left >= -1 && save.right <= window.innerWidth + 1 && save.width > 8
-        return {
-          drawer: drawerInside,
-          close: closeInside,
-          save: saveInside,
-          drawerHeight: drawer ? Math.round(drawer.height) : 0,
-          viewport: window.innerHeight,
-        }
+    const widths = [768]
+    for (let width = 1000; width <= 1440; width += 20) widths.push(width)
+    for (const width of widths) {
+      const rail = role === 'admin' ? (width <= 960 ? 0 : 252) : (width <= 760 ? 0 : 276)
+      await page.setViewportSize({ width, height: 900 })
+      await page.addStyleTag({ content: `.page-content{margin-left:${rail}px !important;margin-right:0 !important;width:${rail ? `calc(100% - ${rail}px)` : 'auto'} !important;max-width:none !important;box-sizing:border-box}` })
+      await page.evaluate(() => {
+        const header = document.querySelector<HTMLElement>('.admin-topbar')
+        const nav = document.querySelector<HTMLElement>('.dealer-detail-nav')
+        const headerHeight = header && getComputedStyle(header).display !== 'none' ? Math.ceil(header.getBoundingClientRect().height) : 0
+        if (nav) nav.style.top = `${headerHeight}px`
+        window.dispatchEvent(new Event('resize'))
       })
-      assert.equal(visible.drawer, true, `${viewport.width}x${viewport.height} ${top} drawer`)
-      assert.equal(visible.close, true, `${viewport.width}x${viewport.height} ${top} close`)
-      assert.equal(visible.save, true, `${viewport.width}x${viewport.height} ${top} save`)
-      assert.ok(visible.drawerHeight < visible.viewport, `${viewport.width} drawer height ${visible.drawerHeight}`)
+      const stops = await page.evaluate(() => {
+        const section = document.getElementById('branding-appearance')
+        if (!section) return []
+        const scrolling = document.scrollingElement || document.documentElement
+        const chrome = Number.parseFloat(getComputedStyle(section).getPropertyValue('--branding-drawer-top')) || 0
+        const top = Math.max(0, scrolling.scrollTop + section.getBoundingClientRect().top - chrome)
+        const bottom = Math.max(top, scrolling.scrollTop + section.getBoundingClientRect().bottom - window.innerHeight)
+        return [top, Math.round((top + bottom) / 2), bottom]
+      })
+      for (const top of stops) {
+        await page.evaluate((next) => window.scrollTo(0, next), top)
+        await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)))
+        const hit = await page.evaluate(() => {
+          const close = document.querySelector<HTMLElement>('#branding-customizer-drawer .branding-customizer__drawer-bar button')
+          const buttons = [...document.querySelectorAll<HTMLElement>('#branding-customizer-drawer button')]
+          let save: HTMLElement | null = null
+          for (let index = 0; index < buttons.length; index += 1) {
+            if ((buttons[index].textContent || '').includes('Save Appearance')) save = buttons[index]
+          }
+          const closeBox = close?.getBoundingClientRect()
+          const saveBox = save?.getBoundingClientRect()
+          const closeTarget = closeBox ? document.elementFromPoint(closeBox.left + closeBox.width / 2, closeBox.top + closeBox.height / 2) : null
+          const saveTarget = saveBox ? document.elementFromPoint(saveBox.left + saveBox.width / 2, saveBox.top + saveBox.height / 2) : null
+          return {
+            close: close && closeTarget && (closeTarget === close || close.contains(closeTarget)) ? 'hit' : (closeTarget?.className?.toString?.() || 'miss'),
+            save: save && saveTarget && (saveTarget === save || save.contains(saveTarget)) ? 'hit' : `${saveTarget?.className?.toString?.().slice(0, 48) || 'miss'} save ${saveBox ? Math.round(saveBox.top) : 'x'}-${saveBox ? Math.round(saveBox.bottom) : 'x'} drawer ${document.getElementById('branding-customizer-drawer')?.getBoundingClientRect().top.toFixed(0)}-${document.getElementById('branding-customizer-drawer')?.getBoundingClientRect().bottom.toFixed(0)}`,
+            layout: document.querySelector('.branding-customizer')?.getAttribute('data-layout'),
+          }
+        })
+        assert.equal(hit.close, 'hit', `${role} ${width}px ${top} close ${hit.close}`)
+        assert.equal(hit.save, 'hit', `${role} ${width}px ${top} save ${hit.save}`)
+      }
+      const covered = await page.evaluate(() => {
+        const section = document.getElementById('branding-appearance')
+        const scrolling = document.scrollingElement || document.documentElement
+        if (!section) return { layout: '', visible: true, covered: 'missing section' }
+        window.scrollTo(0, scrolling.scrollTop + section.getBoundingClientRect().bottom + 80)
+        const drawer = document.getElementById('branding-customizer-drawer')?.getBoundingClientRect()
+        const layout = document.querySelector('.branding-customizer')?.getAttribute('data-layout') || ''
+        const visible = !!drawer && drawer.bottom > 1 && drawer.top < window.innerHeight - 1 && drawer.right > 1 && drawer.left < window.innerWidth - 1 && drawer.width > 8 && drawer.height > 8
+        const target = document.elementFromPoint(Math.min(window.innerWidth - 8, Math.max(8, window.innerWidth / 2)), Math.min(window.innerHeight - 8, 120))
+        const drawerNode = document.getElementById('branding-customizer-drawer')
+        return { layout, visible, covered: drawerNode && target && drawerNode.contains(target) ? 'drawer' : 'clear' }
+      })
+      if (covered.layout !== 'sheet') {
+        assert.equal(covered.visible, false, `${role} ${width}px drawer still visible after leaving the customizer`)
+        assert.equal(covered.covered, 'clear', `${role} ${width}px drawer covers another section`)
+      }
     }
     await page.close()
   }
