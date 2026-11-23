@@ -1,0 +1,117 @@
+.branding-studio { display: flex; flex-direction: column; height: 100dvh; max-height: 100dvh; min-height: 0; overflow: hidden; background: #f4f7f6; color: #14201f; }
+.portal-main > .branding-studio { height: 100%; max-height: 100%; }
+.portal-shell:not(.portal-shell--billing-client) .portal-main:has(> .branding-studio) { margin-bottom: 0; }
+.branding-studio__tabs { display: flex; gap: 8px; align-items: center; min-height: 44px; padding: 0 16px; overflow: auto; background: #fff; border-bottom: 1px solid #d5dfdc; }
+.branding-studio__tabs a, .branding-studio__tabs span { color: #5d6b68; font-size: 13px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.branding-studio__tabs [aria-current="page"] { color: #0d666c; }
+.branding-studio__toolbar { display: grid; grid-template-columns: auto minmax(220px, 1fr) minmax(0, max-content) minmax(0, max-content); grid-template-rows: 48px 40px; flex: 0 0 88px; align-items: center; column-gap: 12px; height: 88px; padding: 0 16px; overflow: hidden; background: #fff; border-bottom: 1px solid #d5dfdc; }
+.branding-studio__toolbar .branding-studio__back { grid-column: 1; grid-row: 1; }
+.branding-studio__toolbar .branding-studio__identity { grid-column: 2; grid-row: 1 / span 2; }
+.branding-studio__toolbar .branding-studio__live-status { grid-column: 3; grid-row: 1; }
+.branding-studio__toolbar .branding-studio__status { grid-column: 3; grid-row: 2; }
+.branding-studio__toolbar .branding-studio__live { grid-column: 4; grid-row: 2; justify-self: end; }
+.branding-studio__toolbar .branding-studio__actions { grid-column: 4; grid-row: 1; margin-left: 0; }
+.branding-studio__back { flex: none; color: #0d666c; font-size: 13px; font-weight: 700; text-decoration: none; }
+.branding-studio__identity { min-width: 0; overflow: hidden; }
+.branding-studio__identity h1,
+.branding-studio__identity p { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.branding-studio__identity h1 { font-size: 22px; line-height: 1.2; }
+.branding-studio__identity p { margin-top: 2px; color: #5d6b68; font-size: 13px; }
+.branding-studio__live-status,
+.branding-studio__status,
+.branding-studio__live { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.branding-studio__live-status { display: flex; align-items: center; gap: 8px; margin: 0; color: #146c43; font-size: 13px; font-weight: 700; }
+.branding-studio__live-dot { flex: none; width: 8px; height: 8px; border-radius: 99px; background: #1f9d55; }
+.branding-studio__live-copy { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.branding-studio__status { margin: 0; color: #8a5a00; font-size: 13px; font-weight: 700; }
+.branding-studio__status.is-clean { color: #5d6b68; font-weight: 600; }
+.branding-studio__live { color: #0d666c; font-size: 13px; font-weight: 700; }
+.branding-studio__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.branding-studio__workspace { display: grid; grid-template-columns: 96px minmax(0, 1fr) clamp(300px, 22vw, 340px); grid-template-rows: minmax(0, 1fr); flex: 1 1 auto; height: 0; min-height: 0; overflow: hidden; }
+.branding-studio__nav { display: grid; align-content: start; gap: 6px; padding: 12px 8px; background: #fff; border-right: 1px solid #d5dfdc; overflow: auto; }
+.branding-studio__nav button { display: grid; justify-items: center; gap: 4px; min-height: 64px; padding: 8px 4px; border: 0; border-radius: 12px; background: transparent; color: #243034; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+.branding-studio__nav button[aria-current="page"] { background: rgba(13,102,108,.12); color: #0d666c; }
+.branding-studio__nav, .branding-studio__preview, .branding-studio__editor { min-width: 0; min-height: 0; height: 100%; }
+.branding-studio__preview { padding: 12px; overflow: hidden; }
+.branding-studio__preview-card { display: flex; flex-direction: column; width: 100%; height: 100%; overflow: hidden; border: 1px solid #d5dfdc; border-radius: 16px; background: #fff; }
+.branding-studio__preview-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid #e4ecea; }
+.branding-studio__preview-bar strong { margin-right: auto; }
+.branding-studio__preview .db-preview-shell,
+.branding-studio__preview .db-preview-frame,
+.branding-studio__preview .db-preview-sizer { width: 100%; max-width: none; }
+.branding-studio__preview .db-preview-shell { display: block; position: static; top: auto; flex: 1 1 auto; align-self: stretch; min-height: 0; height: auto; max-height: none; overflow: auto; }
+.branding-studio__preview .db-preview-frame { height: auto; max-height: none; overflow: visible; box-sizing: border-box; padding-bottom: 88px; }
+.branding-studio__preview .db-preview-frame.is-mobile { width: min(390px, 100%); margin: 0 auto; }
+.branding-studio__toggles { display: flex; gap: 4px; }
+.branding-studio__toggles button, .branding-studio__edit, .branding-studio__sheet-bar button, .branding-studio__back-section { min-height: 32px; border: 1px solid #d5dfdc; border-radius: 8px; background: #fff; color: #243034; font: inherit; font-size: 12px; font-weight: 700; padding: 0 8px; cursor: pointer; }
+.branding-studio__toggles button[aria-pressed="true"] { border-color: #0d666c; background: rgba(13,102,108,.08); color: #0d666c; }
+.branding-studio__preview .db-appearance-preview { display: flex; flex-direction: column; box-sizing: border-box; }
+.branding-studio__preview .db-appearance-preview > footer { margin-top: auto; }
+.branding-studio__editor { display: flex; flex-direction: column; min-height: 0; overflow: auto; background: #fff; border-left: 1px solid #d5dfdc; padding: 12px; padding-bottom: calc(16px + var(--notification-clearance, 96px)); }
+.branding-studio__editor > *,
+.branding-studio__editor .content-card,
+.branding-studio__editor .dealer-form { flex-shrink: 0; }
+.branding-studio__editor .content-card,
+.branding-studio__editor .dealer-management-card,
+.branding-studio__editor .dealer-typography-card,
+.branding-studio__editor .dealer-form { overflow: visible; }
+.branding-studio__preview .db-preview-shell { scroll-padding-bottom: var(--notification-clearance, 96px); }
+.branding-studio__editor-head h2 { margin: 0; font-size: 18px; }
+.branding-studio__editor-head p, .branding-studio__note { margin: 4px 0 10px; color: #5d6b68; font-size: 12px; }
+.studio-logo, .studio-brand, .studio-links { display: grid; gap: 8px; margin-bottom: 12px; padding: 10px; border: 1px solid #d5dfdc; border-radius: 12px; }
+.studio-logo__row { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 8px; align-items: start; }
+.studio-logo__thumb { display: grid; place-items: center; width: 72px; height: 72px; border-radius: 8px; overflow: hidden; background: repeating-conic-gradient(#e7eeec 0% 25%, #fff 0% 50%) 50% / 16px 16px; }
+.studio-logo__thumb img { max-width: 100%; max-height: 72px; object-fit: contain; }
+.studio-logo__actions { display: grid; gap: 4px; }
+.studio-logo__actions .button, .studio-logo > .button { min-height: 28px; padding: 0 8px; font-size: 12px; }
+.studio-logo__meta { margin: 0; color: #5d6b68; font-size: 11px; }
+.studio-logo__hint { margin: 0; color: #5d6b68; font-size: 12px; font-weight: 600; }
+.studio-logo__variant { width: 48px; height: 24px; object-fit: contain; }
+.studio-links label, .studio-brand label { display: grid; gap: 4px; font-size: 12px; font-weight: 700; }
+.studio-links input, .studio-brand input, .branding-studio__editor select { width: 100%; min-width: 0; }
+.branding-studio__message { margin: 0; padding: 8px 16px; background: #fff; }
+.branding-studio__message.is-error { color: #8a2424; }
+.branding-studio__editor .typography-settings-grid,
+.branding-studio__editor .dealer-form,
+.branding-studio__editor fieldset,
+.branding-studio__editor label { min-width: 0; max-width: 100%; }
+.branding-studio__editor label,
+.branding-studio__editor .logo-placement-option > span { overflow-wrap: anywhere; min-width: 0; }
+.branding-studio__editor .typography-settings-grid { grid-template-columns: 1fr; }
+.branding-studio__editor .typography-settings-grid legend,
+.branding-studio__editor .typography-settings-grid label { overflow-wrap: anywhere; }
+.branding-studio__editor .content-card { width: auto; max-width: 100%; margin: 0; padding: 0; box-shadow: none; }
+.branding-studio .dealer-form__actions, .branding-studio__variants .logo-website-field, .branding-studio__sheet-actions, .branding-studio__edit, .branding-studio__sheet-bar { display: none; }
+@media (max-width: 1280px) {
+  .branding-studio__identity h1 { font-size: 18px; }
+  .branding-studio__live-status { max-width: 168px; font-size: 12px; }
+  .branding-studio__actions .button { padding: 0 8px; font-size: 12px; }
+}
+@media (max-width: 1179px) {
+  .branding-studio__live-status { display: none; }
+  .branding-studio__toolbar { grid-template-columns: minmax(0, 132px) minmax(220px, 1fr) max-content max-content; column-gap: 8px; }
+  .branding-studio__back { white-space: normal; line-height: 1.15; }
+  .branding-studio__identity h1 { font-size: 16px; }
+}
+.branding-studio__advanced { margin-top: 12px; color: #5d6b68; font-size: 12px; }
+.branding-studio__advanced summary { cursor: pointer; font-weight: 700; color: #14201f; }
+@media (max-width: 1023px) {
+  .branding-studio { height: 100dvh; max-height: 100dvh; overflow: hidden; }
+  .branding-studio__toolbar { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; height: auto; max-height: none; overflow: visible; padding: 10px 16px; }
+  .branding-studio__toolbar .branding-studio__back,
+  .branding-studio__toolbar .branding-studio__identity,
+  .branding-studio__toolbar .branding-studio__live-status,
+  .branding-studio__toolbar .branding-studio__status,
+  .branding-studio__toolbar .branding-studio__live,
+  .branding-studio__toolbar .branding-studio__actions { grid-column: auto; grid-row: auto; }
+  .branding-studio__workspace { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); height: 0; overflow: hidden; }
+  .branding-studio__nav { display: flex; gap: 6px; height: auto; overflow: auto; border-right: 0; border-bottom: 1px solid #d5dfdc; }
+  .branding-studio__nav button { min-width: 84px; }
+  .branding-studio__editor { display: none; }
+  .branding-studio__edit { display: inline-flex; }
+  .branding-studio.is-editing .branding-studio__editor { display: flex; position: fixed; z-index: 180; top: 0; right: 0; bottom: 0; left: 0; width: auto; height: auto; border-left: 0; }
+  .branding-studio.is-editing .branding-studio__sheet-bar, .branding-studio.is-editing .branding-studio__sheet-actions { display: flex; position: sticky; z-index: 2; justify-content: space-between; gap: 8px; background: #fff; }
+  .branding-studio.is-editing .branding-studio__sheet-bar { top: 0; }
+  .branding-studio.is-editing .branding-studio__sheet-actions { bottom: var(--notification-clearance, 96px); }
+  .branding-studio__preview { min-height: 0; height: 100%; }
+}

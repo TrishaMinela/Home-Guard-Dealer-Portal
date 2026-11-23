@@ -5,6 +5,7 @@ import { DashboardPage } from '../pages/DashboardPage'
 import { LeadsPage } from '../pages/LeadsPage'
 import { MarketingToolsPage } from '../pages/MarketingToolsPage'
 import { DealerCompanyProfilePage } from '../pages/DealerCompanyProfilePage'
+import { BrandingStudioPage } from '../pages/BrandingStudioPage'
 import { DealerSettingsPage } from '../pages/DealerSettingsPage'
 import type { DealerAccount } from '../types/account'
 import { NavIcon } from './NavIcon'
@@ -151,6 +152,18 @@ export function PortalLayout({
               <DealerCompanyProfilePage
                 dealer={dealer}
                 canEditAppearance={dealerRole === 'dealer_admin'}
+                onDealerUpdated={onDealerUpdated}
+              />
+            }
+          />
+          <Route
+            path="/company/branding"
+            element={
+              <BrandingStudioPage
+                mode="dealer"
+                dealer={dealer}
+                canEditAppearance={dealerRole === 'dealer_admin'}
+                backTo="/company"
                 onDealerUpdated={onDealerUpdated}
               />
             }

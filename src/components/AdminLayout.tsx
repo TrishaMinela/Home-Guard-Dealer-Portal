@@ -17,6 +17,7 @@ import { AdminInventoryReviewPage } from '../pages/AdminInventoryReviewPage'
 import { AdminDoorStylesPage } from '../pages/AdminDoorStylesPage'
 import { AdminDoorStyleDetailPage } from '../pages/AdminDoorStyleDetailPage'
 import { DealerDetailPage } from '../pages/DealerDetailPage'
+import { AdminBrandingStudioRoute } from '../pages/BrandingStudioPage'
 import { AdminMarketingBannersPage } from '../pages/AdminMarketingBannersPage'
 import { EditDealerPage } from '../pages/EditDealerPage'
 import type { AdminDealer } from '../types/admin'
@@ -326,6 +327,10 @@ export function AdminLayout({ email, displayName = '', isInternalBillingAdmin, i
           <Route
             path="/admin/dealers/new"
             element={<AddDealerPage onCreated={handleDealerCreated} />}
+          />
+          <Route
+            path="/admin/dealers/:dealerId/branding"
+            element={<AdminBrandingStudioRoute dealers={adminData.dealers} onDealerUpdated={handleDealerDetailUpdated} />}
           />
           <Route
             path="/admin/dealers/:dealerId"

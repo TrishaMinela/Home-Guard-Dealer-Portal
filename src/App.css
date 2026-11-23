@@ -220,6 +220,9 @@ input:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,102
 .portal-shell:not(.portal-shell--billing-client) .portal-main {
   flex: 1 1 auto; min-height: 0; height: auto; margin-bottom: var(--notification-clearance); overflow-y: auto;
 }
+.portal-shell:not(.portal-shell--billing-client) .portal-main:has(> .branding-studio) {
+  margin-bottom: 0;
+}
 .page-content { width: min(100%, 1280px); margin: 0 auto; padding: 56px clamp(28px,5vw,72px) 72px; }
 .page-header { margin-bottom: 32px; }
 .page-header--with-action { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
@@ -576,7 +579,7 @@ select:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,10
 @media (prefers-reduced-motion: reduce) { .dealer-setup-target { animation: none; box-shadow: inset 0 0 0 3px #f8d30e; } }
 .profile-section-note { margin: 8px 0 0; color: var(--color-muted); font-size: 13px; line-height: 1.5; }
 .dealer-detail-page { --dealer-section-scroll-offset: 76px; }
-.dealer-detail-page :is(#company-details, #branding, #design, #door-builder-appearance, #door-builder-lead-webhook, #marketing-tools, #crm-integrations, #dealer-users, #add-dealer-user, #setup, #website-address) {
+.dealer-detail-page :is(#company-details, #branding-studio, #door-builder-lead-webhook, #marketing-tools, #crm-integrations, #dealer-users, #add-dealer-user, #setup, #website-address) {
   scroll-margin-top: var(--dealer-section-scroll-offset);
 }
 .dealer-detail-nav-sentinel { height: 1px; pointer-events: none; }

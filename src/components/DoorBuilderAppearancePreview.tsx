@@ -15,14 +15,18 @@ import '../styles/logoPair.css'
 import '../styles/doorBuilderPreview.css'
 import '../styles/dealerAppearance.css'
 
+type PreviewSurface = 'homepage' | 'builder' | 'find'
+
 type Props = {
   dealer: AdminDealer
   appearance: DoorBuilderAppearance | null
+  surface?: PreviewSurface
+  mobile?: boolean
+  hideToolbar?: boolean
 }
 
 const DESKTOP_WIDTH = 1280
 const MOBILE_WIDTH = 390
-type PreviewSurface = 'homepage' | 'builder' | 'find'
 
 const SURFACE_LOGO: Record<PreviewSurface, DoorBuilderPreviewSurface> = {
   homepage: 'home-header',
@@ -100,11 +104,14 @@ function GlobeIcon() {
   return <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="1.6" /><path d="M4 12h16M12 4c2.5 2.4 2.5 13.6 0 16M12 4c-2.5 2.4-2.5 13.6 0 16" fill="none" stroke="currentColor" strokeWidth="1.6" /></svg>
 }
 
-export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
-  const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 900px)').matches)
-  const [surface, setSurface] = useState<PreviewSurface>('builder')
+export function DoorBuilderAppearancePreview({ dealer, appearance, surface: surfaceProp, mobile: mobileProp, hideToolbar = false }: Props) {
+  const [mobileState, setMobile] = useState(() => window.matchMedia('(max-width: 900px)').matches)
+  const [surfaceState, setSurface] = useState<PreviewSurface>('builder')
+  const mobile = mobileProp ?? mobileState
+  const surface = surfaceProp ?? surfaceState
   const frameRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
+  const [doorView, setDoorView] = useState<'Exterior' | 'Interior' | 'Both'>('Exterior')
   const [scale, setScale] = useState(1)
   const [scaledHeight, setScaledHeight] = useState(640)
   const brand = resolvedBrandColors({ primaryColor: dealer.primary_color, secondaryColor: dealer.secondary_color })
@@ -141,7 +148,11 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
     if (!frame || !stage) return
     const measure = () => {
       const available = frame.clientWidth
+      const shell = frame.closest<HTMLElement>('.db-preview-shell')
+      const visible = shell?.clientHeight ?? frame.clientHeight
       const nextScale = available > 0 ? available / designWidth : 1
+      const page = stage.querySelector<HTMLElement>('.db-appearance-preview')
+      if (page && nextScale > 0 && visible > 0) page.style.minHeight = `${Math.ceil(visible / nextScale)}px`
       setScale(nextScale)
       setScaledHeight(Math.ceil(stage.offsetHeight * nextScale))
     }
@@ -156,7 +167,7 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
 
   return (
     <div className="db-preview-shell">
-      <div className="db-preview-shell__bar">
+      {hideToolbar ? null : <div className="db-preview-shell__bar">
         <strong>Live preview</strong>
         <div className="db-preview-shell__toggle" role="group" aria-label="Preview page">
           {([['homepage', 'Homepage'], ['builder', 'Door Builder'], ['find', 'Find My Door']] as const).map(([value, label]) => (
@@ -167,7 +178,7 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
           <button type="button" className={mobile ? '' : 'is-selected'} aria-pressed={!mobile} onClick={() => setMobile(false)}>Desktop</button>
           <button type="button" className={mobile ? 'is-selected' : ''} aria-pressed={mobile} onClick={() => setMobile(true)}>Mobile</button>
         </div>
-      </div>
+      </div>}
       <div className={`db-preview-frame ${mobile ? 'is-mobile' : 'is-desktop'}`} ref={frameRef}>
         <div className="db-preview-sizer" style={{ height: scaledHeight }}>
           <div className="db-preview-scale" ref={stageRef} style={{ width: designWidth, transform: `scale(${scale})` }}>
@@ -265,11 +276,26 @@ export function DoorBuilderAppearancePreview({ dealer, appearance }: Props) {
                 </nav>
                 <div className="preview-toolbar">
                   <button className="preview-reset-design" type="button">Restart Build</button>
+                  <div className="preview-view-toggle" role="group" aria-label="Preview view">
+                    {(['Exterior', 'Interior', 'Both'] as const).map((item) => (
+                      <button key={item} type="button" className={doorView === item ? 'active' : ''} aria-pressed={doorView === item} onClick={() => setDoorView(item)}>{item}</button>
+                    ))}
+                  </div>
                 </div>
               </div>
               <main>
                 <div className="mobile-live-preview" aria-hidden={mobile ? undefined : true}>
-                  <img src="/appearance-preview/single-door.webp" alt="" />
+                  <div className="preview-view-toggle mobile-preview-view-toggle" role="group" aria-label="Preview view">
+                    {(['Exterior', 'Interior', 'Both'] as const).map((item) => (
+                      <button key={item} type="button" className={doorView === item ? 'active' : ''} aria-pressed={doorView === item} onClick={() => setDoorView(item)}>{item}</button>
+                    ))}
+                  </div>
+                  {doorView === 'Both' ? (
+                    <div className="preview-comparison" aria-label="Exterior and interior door previews">
+                      <img src="/appearance-preview/single-door.webp" alt="Exterior door preview" />
+                      <img src="/appearance-preview/single-door.webp" alt="Interior door preview" />
+                    </div>
+                  ) : <img src="/appearance-preview/single-door.webp" alt={`${doorView} door preview`} />}
                   <button className="preview-reset-design" type="button">Restart Build</button>
                 </div>
                 <section className="builder-panel configuration-step">

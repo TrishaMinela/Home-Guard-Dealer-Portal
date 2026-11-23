@@ -207,10 +207,10 @@ test('every color row stays inside its card at every checked width', async () =>
 test('the admin dealer nav scrolls to the existing appearance section', async () => {
   const page = await browser!.newPage({ viewport: { width: 1100, height: 700 } })
   await page.goto(`http://127.0.0.1:${port}/#admin-nav-harness`, { waitUntil: 'networkidle' })
-  await page.getByRole('link', { name: 'Door Builder Appearance' }).click()
+  await page.getByRole('link', { name: 'Branding Studio' }).click()
   await page.waitForFunction(() => {
-    const section = document.getElementById('door-builder-appearance')
-    return window.location.hash === '#door-builder-appearance' && !!section && section.getBoundingClientRect().top < 180
+    const section = document.getElementById('branding-studio')
+    return window.location.hash === '#branding-studio' && !!section && section.getBoundingClientRect().top < 180
   })
   await page.close()
 })
@@ -327,18 +327,18 @@ test('the preview stays on screen while the footer group is edited', async () =>
   await page.close()
 })
 
-test('the branding workspace keeps the preview visible and moves the homepage logo between header and hero', async () => {
-  const page = await browser!.newPage({ viewport: { width: 1440, height: 900 } })
-  await page.goto(`http://127.0.0.1:${port}/?role=admin#profile-nav-harness`, { waitUntil: 'networkidle' })
+async function openStudio(page: Page, role: 'admin' | 'member' = 'admin') {
+  await page.goto(`http://127.0.0.1:${port}/?role=${role}#profile-nav-harness`, { waitUntil: 'networkidle' })
+  await page.getByRole('link', { name: 'Customize Door Builder' }).click()
   await page.getByRole('heading', { name: 'Branding & Appearance' }).waitFor()
-  for (const width of [320, 390, 768, 1024, 1440]) {
-    await page.setViewportSize({ width, height: 900 })
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
-    assert.ok(overflow <= 1, `${width}px horizontal overflow ${overflow}`)
-  }
-  await page.setViewportSize({ width: 1440, height: 900 })
-  await page.getByRole('button', { name: 'Logo Display & Placement' }).click()
+}
+
+test('the branding studio keeps a large preview and moves the homepage logo between header and hero', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1440, height: 900 } })
+  await openStudio(page)
+  await page.getByRole('button', { name: 'Logo Display' }).click()
   await page.getByRole('radio', { name: /Hero/ }).check()
+  assert.equal(await page.locator('.branding-studio__status').innerText(), 'Unsaved changes')
   await page.getByRole('button', { name: 'Homepage', exact: true }).click()
   assert.equal(await page.locator('.db-appearance-preview header .logo-pair, .db-appearance-preview header .dealer-brand-mark').count(), 0)
   assert.equal(await page.locator('.dealer-hero-logo img').count() > 0, true)
@@ -347,51 +347,55 @@ test('the branding workspace keeps the preview visible and moves the homepage lo
   await page.getByRole('radio', { name: /Header/ }).check()
   assert.equal(await page.locator('.db-appearance-preview header img').count() > 0, true)
   assert.equal(await page.locator('.dealer-hero-logo').count(), 0)
-  await page.keyboard.press('Escape')
-  assert.equal(await page.locator('#branding-customizer-drawer').getAttribute('hidden'), '')
   await page.getByRole('button', { name: 'Colors', exact: true }).click()
   await page.getByRole('button', { name: 'Typography', exact: true }).click()
-  assert.equal(await page.locator('#heading-font-family, select').count() > 0, true)
+  await page.locator('#heading-font-family').selectOption({ index: 1 })
+  const chosenFont = await page.locator('#heading-font-family').inputValue()
+  await page.getByRole('button', { name: 'Logos', exact: true }).click()
+  await page.getByRole('button', { name: 'Typography', exact: true }).click()
+  assert.equal(await page.locator('#heading-font-family').inputValue(), chosenFont)
+  assert.equal(await page.locator('.branding-studio__status').innerText(), 'Unsaved changes')
   await page.close()
 })
 
-test('branding hash links open the matching customizer panel', async () => {
+test('old branding links open the matching studio category', async () => {
   const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } })
   await page.goto(`http://127.0.0.1:${port}/?role=admin#profile-nav-harness`, { waitUntil: 'networkidle' })
-  await page.getByRole('link', { name: 'Door Builder Appearance' }).click()
-  const colors = page.locator('#branding-customizer-drawer')
-  await colors.getByRole('heading', { name: 'Door Builder Appearance' }).waitFor()
-  assert.equal(await page.evaluate(() => document.getElementById('branding-customizer-drawer')?.contains(document.activeElement) ?? false), true)
-  await page.getByRole('link', { name: 'Door Builder Branding' }).click()
-  await colors.getByText('Where each logo appears').waitFor()
+  await page.evaluate(() => { window.location.hash = 'door-builder-appearance' })
+  await page.getByRole('heading', { name: 'Door Builder Appearance' }).waitFor()
+  await page.getByRole('link', { name: 'Company Details', exact: true }).click()
+  await page.getByRole('link', { name: 'Company Details', exact: true }).waitFor()
   await page.evaluate(() => { window.location.hash = 'heading-font-family' })
   await page.locator('#heading-font-family').waitFor()
-  assert.equal(await page.locator('#branding-customizer-drawer-title').innerText(), 'Typography')
   await page.close()
 })
 
 test('the mobile branding sheet stays above the page and can be closed', async () => {
   const page = await browser!.newPage({ viewport: { width: 390, height: 844 } })
-  await page.goto(`http://127.0.0.1:${port}/?role=admin#profile-nav-harness`, { waitUntil: 'networkidle' })
-  await page.getByRole('button', { name: 'Colors', exact: true }).click()
+  await openStudio(page)
+  await page.getByRole('button', { name: 'Edit Settings' }).click()
   const close = page.getByRole('button', { name: 'Close', exact: true })
   const hit = await close.evaluate((element) => {
     const box = element.getBoundingClientRect()
     const target = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
-    return { top: box.top, locked: document.body.style.overflow, hit: target === element || element.contains(target) }
+    const save = document.querySelector<HTMLElement>('.branding-studio__actions .button--primary')?.getBoundingClientRect()
+    return {
+      top: box.top,
+      hit: target === element || element.contains(target),
+      saveVisible: !!save && save.bottom > 0 && save.top < window.innerHeight,
+    }
   })
-  assert.equal(hit.locked, 'hidden')
   assert.equal(hit.hit, true)
+  assert.equal(hit.saveVisible, true)
   assert.ok(hit.top >= 0, `close button at ${hit.top}`)
   await close.click()
-  assert.equal(await page.locator('#branding-customizer-drawer').getAttribute('hidden'), '')
+  assert.equal(await page.locator('.branding-studio').getAttribute('class'), 'branding-studio')
   await page.close()
 })
 
 test('the homepage and find my door previews use the live type, porch, and dealer color', async () => {
   const page = await browser!.newPage({ viewport: { width: 1440, height: 900 } })
-  await page.goto(`http://127.0.0.1:${port}/?role=admin#profile-nav-harness`, { waitUntil: 'networkidle' })
-  await page.getByRole('heading', { name: 'Branding & Appearance' }).waitFor()
+  await openStudio(page)
   await page.getByRole('button', { name: 'Homepage', exact: true }).click()
   const home = await page.evaluate(() => {
     const heading = document.querySelector('.db-home h1')
@@ -463,184 +467,388 @@ test('the homepage and find my door previews use the live type, porch, and deale
   await page.close()
 })
 
-test('the open drawer stays inside the portal column from 1000 to 1300', async () => {
-  for (const role of [{ name: 'dealer', rail: 276 }, { name: 'admin', rail: 252 }] as const) {
-    const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } })
-    await page.goto(`http://127.0.0.1:${port}/?role=admin#profile-nav-harness`, { waitUntil: 'networkidle' })
-    await page.addStyleTag({ content: `.page-content{margin-left:${role.rail}px !important;margin-right:0 !important;width:calc(100% - ${role.rail}px) !important;max-width:none !important;box-sizing:border-box}` })
-    await page.getByRole('button', { name: 'Colors', exact: true }).click()
-    await page.locator('#branding-customizer-drawer-title').waitFor()
-    await page.locator('#branding-appearance').evaluate((element) => element.scrollIntoView({ block: 'start' }))
-    for (let width = 1000; width <= 1300; width += 20) {
-      await page.setViewportSize({ width, height: 900 })
-      await page.locator('#branding-appearance').evaluate((element) => element.scrollIntoView({ block: 'start' }))
-      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)))
-      await page.waitForFunction((rail) => {
-        const menu = document.querySelector('.branding-customizer__menu')?.getBoundingClientRect()
-        const drawer = document.getElementById('branding-customizer-drawer')?.getBoundingClientRect()
-        const layout = document.querySelector('.branding-customizer')?.getAttribute('data-layout')
-        if (!menu || !drawer) return false
-        const inside = drawer.left >= -1 && drawer.right <= window.innerWidth + 1 && drawer.top >= -1 && drawer.bottom <= window.innerHeight + 1
-        if (layout === 'sheet') return inside
-        return inside && menu.left >= rail - 1 && menu.right <= drawer.left + 1
-      }, role.rail)
-      const fit = await page.evaluate((rail) => {
-        const scroller = document.querySelector('.portal-main') || document.scrollingElement || document.documentElement
-        const drawer = document.getElementById('branding-customizer-drawer')?.getBoundingClientRect()
-        const close = document.querySelector<HTMLElement>('#branding-customizer-drawer .branding-customizer__drawer-bar button')?.getBoundingClientRect()
-        const menu = document.querySelector('.branding-customizer__menu')?.getBoundingClientRect()
-        const layout = document.querySelector('.branding-customizer')?.getAttribute('data-layout')
-        const drawerInside = !!drawer && drawer.left >= -1 && drawer.right <= window.innerWidth + 1 && drawer.top >= -1 && drawer.bottom <= window.innerHeight + 1 && drawer.width > 8 && drawer.height > 8
-        const closeInside = !!close && close.left >= -1 && close.right <= window.innerWidth + 1 && close.top >= -1 && close.bottom <= window.innerHeight + 1 && close.width > 8 && close.height > 8
-        return {
-          overflow: scroller.scrollWidth - scroller.clientWidth,
-          layout,
-          drawer: drawerInside,
-          close: closeInside,
-          menu: layout === 'sheet' || (!!menu && !!drawer && menu.left >= rail - 1 && menu.right <= drawer.left + 1),
-          drawerRight: drawer ? Math.round(drawer.right) : -1,
-          closeRight: close ? Math.round(close.right) : -1,
-        }
-      }, role.rail)
-      assert.ok(fit.overflow <= 1, `${role.name} ${width}px overflow ${fit.overflow}`)
-      assert.equal(fit.drawer, true, `${role.name} ${width}px drawer ends ${fit.drawerRight}`)
-      assert.equal(fit.close, true, `${role.name} ${width}px close ends ${fit.closeRight}`)
-      assert.equal(fit.menu, true, `${role.name} ${width}px menu layout ${fit.layout}`)
-    }
-    await page.close()
-  }
-})
-
-test('Close and Save stay clickable inside the customizer and the drawer leaves with it', async () => {
-  for (const role of ['dealer', 'admin'] as const) {
-    const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } })
-    await page.goto(`http://127.0.0.1:${port}/?role=admin#profile-nav-harness`, { waitUntil: 'networkidle' })
-    if (role === 'admin') {
-      await page.evaluate(() => {
-        const pageContent = document.querySelector('.page-content')
-        const header = document.createElement('header')
-        header.className = 'admin-topbar'
-        header.textContent = 'Dealer Portal'
-        const nav = document.createElement('nav')
-        nav.className = 'dealer-detail-nav'
-        nav.innerHTML = '<a href="#company-details">Company Details</a><a href="#door-builder-lead-webhook">Lead Webhook</a>'
-        pageContent?.prepend(nav)
-        pageContent?.prepend(header)
-      })
-    }
-    await page.getByRole('button', { name: 'Colors', exact: true }).click()
-    await page.getByRole('button', { name: 'Save Appearance' }).waitFor()
-    await page.evaluate(() => {
-      const spacer = document.createElement('section')
-      spacer.id = 'after-customizer'
-      spacer.style.height = '1600px'
-      spacer.textContent = 'Colors and website'
-      document.getElementById('branding-appearance')?.insertAdjacentElement('afterend', spacer)
-    })
-    const widths = [768]
-    for (let width = 1000; width <= 1440; width += 20) widths.push(width)
-    for (const width of widths) {
-      const rail = role === 'admin' ? (width <= 960 ? 0 : 252) : (width <= 760 ? 0 : 276)
-      await page.setViewportSize({ width, height: 900 })
-      await page.addStyleTag({ content: `.page-content{margin-left:${rail}px !important;margin-right:0 !important;width:${rail ? `calc(100% - ${rail}px)` : 'auto'} !important;max-width:none !important;box-sizing:border-box}` })
-      await page.evaluate(() => {
-        const header = document.querySelector<HTMLElement>('.admin-topbar')
-        const nav = document.querySelector<HTMLElement>('.dealer-detail-nav')
-        const headerHeight = header && getComputedStyle(header).display !== 'none' ? Math.ceil(header.getBoundingClientRect().height) : 0
-        if (nav) nav.style.top = `${headerHeight}px`
-        window.dispatchEvent(new Event('resize'))
-      })
-      const stops = await page.evaluate(() => {
-        const section = document.getElementById('branding-appearance')
-        if (!section) return []
-        const scrolling = document.scrollingElement || document.documentElement
-        const chrome = Number.parseFloat(getComputedStyle(section).getPropertyValue('--branding-drawer-top')) || 0
-        const top = Math.max(0, scrolling.scrollTop + section.getBoundingClientRect().top - chrome)
-        const bottom = Math.max(top, scrolling.scrollTop + section.getBoundingClientRect().bottom - window.innerHeight)
-        return [top, Math.round((top + bottom) / 2), bottom]
-      })
-      for (const top of stops) {
-        await page.evaluate((next) => window.scrollTo(0, next), top)
-        await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)))
-        const hit = await page.evaluate(() => {
-          const close = document.querySelector<HTMLElement>('#branding-customizer-drawer .branding-customizer__drawer-bar button')
-          const buttons = [...document.querySelectorAll<HTMLElement>('#branding-customizer-drawer button')]
-          let save: HTMLElement | null = null
-          for (let index = 0; index < buttons.length; index += 1) {
-            if ((buttons[index].textContent || '').includes('Save Appearance')) save = buttons[index]
-          }
-          const closeBox = close?.getBoundingClientRect()
-          const saveBox = save?.getBoundingClientRect()
-          const closeTarget = closeBox ? document.elementFromPoint(closeBox.left + closeBox.width / 2, closeBox.top + closeBox.height / 2) : null
-          const saveTarget = saveBox ? document.elementFromPoint(saveBox.left + saveBox.width / 2, saveBox.top + saveBox.height / 2) : null
-          return {
-            close: close && closeTarget && (closeTarget === close || close.contains(closeTarget)) ? 'hit' : (closeTarget?.className?.toString?.() || 'miss'),
-            save: save && saveTarget && (saveTarget === save || save.contains(saveTarget)) ? 'hit' : `${saveTarget?.className?.toString?.().slice(0, 48) || 'miss'} save ${saveBox ? Math.round(saveBox.top) : 'x'}-${saveBox ? Math.round(saveBox.bottom) : 'x'} drawer ${document.getElementById('branding-customizer-drawer')?.getBoundingClientRect().top.toFixed(0)}-${document.getElementById('branding-customizer-drawer')?.getBoundingClientRect().bottom.toFixed(0)}`,
-            layout: document.querySelector('.branding-customizer')?.getAttribute('data-layout'),
-          }
-        })
-        assert.equal(hit.close, 'hit', `${role} ${width}px ${top} close ${hit.close}`)
-        assert.equal(hit.save, 'hit', `${role} ${width}px ${top} save ${hit.save}`)
-      }
-      const covered = await page.evaluate(() => {
-        const section = document.getElementById('branding-appearance')
-        const scrolling = document.scrollingElement || document.documentElement
-        if (!section) return { layout: '', visible: true, covered: 'missing section' }
-        window.scrollTo(0, scrolling.scrollTop + section.getBoundingClientRect().bottom + 80)
-        const drawer = document.getElementById('branding-customizer-drawer')?.getBoundingClientRect()
-        const layout = document.querySelector('.branding-customizer')?.getAttribute('data-layout') || ''
-        const visible = !!drawer && drawer.bottom > 1 && drawer.top < window.innerHeight - 1 && drawer.right > 1 && drawer.left < window.innerWidth - 1 && drawer.width > 8 && drawer.height > 8
-        const target = document.elementFromPoint(Math.min(window.innerWidth - 8, Math.max(8, window.innerWidth / 2)), Math.min(window.innerHeight - 8, 120))
-        const drawerNode = document.getElementById('branding-customizer-drawer')
-        return { layout, visible, covered: drawerNode && target && drawerNode.contains(target) ? 'drawer' : 'clear' }
-      })
-      if (covered.layout !== 'sheet') {
-        assert.equal(covered.visible, false, `${role} ${width}px drawer still visible after leaving the customizer`)
-        assert.equal(covered.covered, 'clear', `${role} ${width}px drawer covers another section`)
-      }
-    }
-    await page.close()
-  }
-})
-
-test('every drawer and sheet button stays inside the panel', async () => {
+test('the branding studio fits the preview and settings at every requested width', async () => {
   const page = await browser!.newPage({ viewport: { width: 1440, height: 900 } })
-  await page.goto(`http://127.0.0.1:${port}/?role=admin#profile-nav-harness`, { waitUntil: 'networkidle' })
-  for (const width of [320, 390, 768, 1024, 1440]) {
+  await openStudio(page)
+  for (const width of [320, 390, 768, 1024, 1280, 1440]) {
     await page.setViewportSize({ width, height: 900 })
-    for (const name of ['Logo Display & Placement', 'Typography', 'Colors', 'Logos']) {
-      await page.getByRole('button', { name, exact: name !== 'Logo Display & Placement' }).click()
-      if (name === 'Logo Display & Placement') await page.getByRole('radio', { name: /2 Logos/ }).check()
-      const escaped = await page.evaluate(() => {
-        const drawer = document.getElementById('branding-customizer-drawer')
-        if (!drawer) return ['missing drawer']
-        const buttons = [...drawer.querySelectorAll('button')]
-        const found: string[] = []
-        for (let index = 0; index < buttons.length; index += 1) {
-          const button = buttons[index]
-          button.scrollIntoView({ block: 'nearest', inline: 'nearest' })
-          const box = button.getBoundingClientRect()
-          const bounds = drawer.getBoundingClientRect()
-          if (box.width < 2 || box.height < 2) continue
-          if (box.left < bounds.left - 1 || box.right > bounds.right + 1 || box.top < bounds.top - 1 || box.bottom > bounds.bottom + 1) {
-            found.push(`${(button.textContent || '').trim()} at ${Math.round(box.left)},${Math.round(box.top)}`)
-          }
-        }
-        return found
-      })
-      assert.deepEqual(escaped, [], `${width}px ${name} ${escaped.join('; ')}`)
-      await page.getByRole('button', { name: 'Close', exact: true }).click()
+    if (width < 1024) await page.getByRole('button', { name: 'Edit Settings' }).click()
+    const fit = await page.evaluate((narrow) => {
+      const preview = document.querySelector('.branding-studio__preview')?.getBoundingClientRect()
+      const settings = document.querySelector('.branding-studio__editor')?.getBoundingClientRect()
+      const nav = document.querySelector('.branding-studio__nav')?.getBoundingClientRect()
+      const save = document.querySelector<HTMLElement>(narrow ? '.branding-studio__sheet-actions .button--primary' : '.branding-studio__actions .button--primary')
+      const saveBox = save?.getBoundingClientRect()
+      const saveTarget = saveBox ? document.elementFromPoint(saveBox.left + saveBox.width / 2, saveBox.top + saveBox.height / 2) : null
+      const upload = document.querySelector('.studio-logo__actions .button')?.getBoundingClientRect()
+      return {
+        overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        preview: preview ? Math.round(preview.width) : 0,
+        settings: settings ? Math.round(settings.width) : 0,
+        nav: nav ? Math.round(nav.width) : 0,
+        overlap: !!(preview && settings && settings.width > 8 && preview.width > 8 && settings.right > preview.left + 8 && settings.left < preview.right - 8 && settings.bottom > preview.top + 8 && settings.top < preview.bottom - 8),
+        save: !!(save && saveTarget && (saveTarget === save || save.contains(saveTarget))),
+        uploadTop: upload ? Math.round(upload.top) : -1,
+      }
+    }, width < 1024)
+    assert.ok(fit.overflow <= 1, `${width}px overflow ${fit.overflow}`)
+    assert.ok(fit.preview >= Math.min(280, width - 40), `${width}px preview ${fit.preview}`)
+    if (width >= 1024) {
+      assert.ok(fit.nav >= 90 && fit.nav <= 110, `${width}px nav ${fit.nav}`)
+      assert.ok(fit.settings >= 300 && fit.settings <= 340, `${width}px editor ${fit.settings}`)
+      assert.equal(fit.overlap, false, `${width}px editor overlaps the preview`)
+      assert.ok(fit.uploadTop >= 0 && fit.uploadTop < 700, `${width}px upload at ${fit.uploadTop}`)
     }
+    assert.equal(fit.save, true, `${width}px save is covered`)
+    if (width < 1024) await page.getByRole('button', { name: 'Close', exact: true }).click()
   }
   await page.close()
 })
 
-test('a dealer member does not see the appearance link or controls', async () => {
+test('studio drafts survive categories and discard, and a partial save names the failed piece', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } })
+  await page.route('**/*', async (route) => {
+    const url = route.request().url()
+    if (!url.includes('example.supabase.co')) {
+      await route.continue()
+      return
+    }
+    if (url.includes('update_my_dealer_door_builder_appearance')) {
+      await route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ message: 'colors rejected', code: 'P0001' }) })
+      return
+    }
+    await route.fulfill({ status: 200, contentType: 'application/json', body: 'null' })
+  })
+  const writes: string[] = []
+  page.on('request', (request) => {
+    if (request.method() !== 'GET' && request.url().includes('example.supabase.co')) writes.push(request.url())
+  })
+  await openStudio(page)
+  await page.getByRole('button', { name: 'Homepage', exact: true }).click()
+  await page.getByRole('button', { name: 'Mobile', exact: true }).click()
+  assert.deepEqual(writes, [])
+  await page.getByRole('button', { name: 'Logo Display' }).click()
+  await page.getByRole('radio', { name: /Hero/ }).check()
+  await page.getByRole('button', { name: 'Colors', exact: true }).click()
+  await page.locator('#appearance-headerBackground').click()
+  await page.locator('#appearance-headerBackground-hex').fill('#ff0000')
+  await page.locator('.appearance-popover__done').click()
+  assert.equal(await page.locator('.branding-studio__status').innerText(), 'Unsaved changes')
+  await page.getByRole('button', { name: 'Save Changes' }).click()
+  await page.getByRole('alert').waitFor()
+  const alert = await page.getByRole('alert').innerText()
+  assert.match(alert, /Saved Logo Display & Placement/)
+  assert.match(alert, /Colors failed: colors rejected/)
+  page.once('dialog', (dialog) => void dialog.accept())
+  await page.getByRole('button', { name: 'Discard' }).click()
+  assert.equal(await page.locator('.branding-studio__status').innerText(), 'All changes saved')
+  await page.close()
+})
+
+test('leaving the studio with unsaved changes asks first and Back returns to the dealer', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } })
+  await openStudio(page)
+  await page.getByRole('button', { name: 'Logo Display' }).click()
+  await page.getByRole('radio', { name: /Hero/ }).check()
+  let asked = false
+  page.once('dialog', (dialog) => { asked = true; void dialog.dismiss() })
+  await page.getByRole('link', { name: 'Company Details', exact: true }).click()
+  assert.equal(asked, true)
+  assert.equal(await page.locator('.branding-studio').count(), 1)
+  page.once('dialog', (dialog) => void dialog.accept())
+  await page.getByRole('link', { name: 'Company Details', exact: true }).click()
+  await page.getByRole('link', { name: 'Company Details', exact: true }).waitFor()
+  await page.close()
+})
+
+test('a dealer member does not see appearance controls', async () => {
   const page = await browser!.newPage({ viewport: { width: 1100, height: 800 } })
-  await page.goto(`http://127.0.0.1:${port}/?role=member#profile-nav-harness`, { waitUntil: 'networkidle' })
-  await page.getByRole('link', { name: 'Company Details' }).waitFor()
-  assert.equal(await page.getByRole('link', { name: 'Door Builder Appearance' }).count(), 0)
-  assert.equal(await page.getByRole('button', { name: 'Default', exact: true }).count(), 0)
+  await openStudio(page, 'member')
+  await page.getByRole('button', { name: 'Colors', exact: true }).click()
+  await page.getByRole('heading', { name: 'Brand colors' }).waitFor()
   assert.equal(await page.getByRole('heading', { name: 'Door Builder Appearance' }).count(), 0)
+  await page.getByRole('button', { name: 'Logos', exact: true }).waitFor()
+  await page.close()
+})
+
+test('one logo and an admin studio still show both upload actions', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } })
+  await page.goto(`http://127.0.0.1:${port}/?role=admin&studio=admin&logos=single#profile-nav-harness`, { waitUntil: 'networkidle' })
+  await page.getByRole('link', { name: 'Customize Door Builder' }).click()
+  await page.getByRole('heading', { name: 'Branding & Appearance' }).waitFor()
+  assert.equal(await page.getByText('Upload Original').count(), 1)
+  await page.getByText('Add Second Logo').waitFor()
+  await page.getByRole('button', { name: 'Colors', exact: true }).click()
+  await page.getByRole('heading', { name: 'Door Builder Appearance' }).waitFor()
+  await page.close()
+})
+
+test('a dealer with no logo still opens the studio and the preview', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } })
+  await page.goto(`http://127.0.0.1:${port}/?role=admin&logos=none#profile-nav-harness`, { waitUntil: 'networkidle' })
+  await page.getByRole('link', { name: 'Customize Door Builder' }).click()
+  await page.getByRole('heading', { name: 'Branding & Appearance' }).waitFor()
+  await page.getByText('Add Second Logo').waitFor()
+  assert.equal(await page.getByRole('button', { name: 'Generate White' }).first().isDisabled(), true)
+  assert.match(await page.locator('#logo-original').innerText(), /Upload a logo first/)
+  assert.equal(await page.getByRole('button', { name: 'Manage Variants' }).count(), 0)
+  assert.doesNotMatch(await page.locator('#logo-original').innerText(), /Logo 1 · Active/)
+  assert.match(await page.locator('.db-appearance-preview header').innerText(), /Diligent Exterior Remodeling/)
+  await page.close()
+})
+
+test('the preview fills the studio and scrolls to Restart Build', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1440, height: 900 } })
+  await openStudio(page)
+  for (const width of [1024, 1280, 1440]) {
+    await page.setViewportSize({ width, height: 900 })
+    for (const name of ['Homepage', 'Door Builder', 'Find My Door']) {
+      await page.getByRole('button', { name, exact: true }).click()
+      const gap = await page.evaluate(() => {
+        const shell = document.querySelector('.branding-studio__preview .db-preview-shell')?.getBoundingClientRect()
+        const footer = document.querySelector('.db-appearance-preview footer')?.getBoundingClientRect()
+        const studio = document.querySelector('.branding-studio')?.getBoundingClientRect()
+        return {
+          underFooter: shell && footer ? Math.round(shell.bottom - footer.bottom) : 999,
+          underStudio: studio ? Math.round(window.innerHeight - studio.bottom) : 999,
+        }
+      })
+      assert.ok(gap.underFooter < 24, `${width}px ${name} gap under the preview ${gap.underFooter}`)
+      assert.ok(gap.underStudio < 24, `${width}px gap under the studio ${gap.underStudio}`)
+    }
+  }
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.getByRole('button', { name: 'Door Builder', exact: true }).click()
+  await page.getByRole('button', { name: 'Mobile', exact: true }).click()
+  const reached = await page.evaluate(() => {
+    const shell = document.querySelector<HTMLElement>('.branding-studio__preview .db-preview-shell')
+    if (!shell || shell.scrollHeight <= shell.clientHeight + 8) return false
+    const buttons = [...document.querySelectorAll<HTMLElement>('.preview-reset-design')]
+    const button = buttons.find((item) => (item.textContent || '').includes('Restart Build') && getComputedStyle(item).display !== 'none' && item.getBoundingClientRect().height > 0)
+    if (!button) return false
+    const shellBox = shell.getBoundingClientRect()
+    const box = button.getBoundingClientRect()
+    shell.scrollTop += box.top - shellBox.top - 12
+    const next = button.getBoundingClientRect()
+    const nextShell = shell.getBoundingClientRect()
+    const bottom = shell.scrollHeight - shell.clientHeight
+    shell.scrollTop = bottom
+    return next.top >= nextShell.top - 2 && next.bottom <= nextShell.bottom + 2 && shell.scrollTop > 40
+  })
+  assert.equal(reached, true)
+  const underline = await page.locator('.section-heading h1').evaluate((element) => getComputedStyle(element, '::after').backgroundColor)
+  assert.equal(underline, 'rgb(35, 81, 118)')
+  const popular = await page.locator('.popular-styles h2').evaluate((element) => getComputedStyle(element, '::after').backgroundColor)
+  assert.equal(popular, 'rgb(248, 211, 14)')
+  await page.setViewportSize({ width: 1024, height: 900 })
+  const overlap = await page.evaluate(() => {
+    const name = document.querySelector('.branding-studio__identity p')?.getBoundingClientRect()
+    const status = document.querySelector('.branding-studio__status')?.getBoundingClientRect()
+    const title = document.querySelector('.branding-studio__identity h1')?.getBoundingClientRect()
+    const live = document.querySelector('.branding-studio__live-status')?.getBoundingClientRect()
+    const hits = (left?: DOMRect, right?: DOMRect) => !!left && !!right && left.right > right.left + 1 && left.left < right.right - 1 && left.bottom > right.top + 1 && left.top < right.bottom - 1
+    return { nameStatus: hits(name, status), titleLive: hits(title, live) }
+  })
+  assert.equal(overlap.nameStatus, false)
+  assert.equal(overlap.titleLive, false)
+  const clipped = await page.evaluate(() => {
+    const title = document.querySelector<HTMLElement>('.branding-studio__identity h1')
+    const name = document.querySelector<HTMLElement>('.branding-studio__identity p')
+    return {
+      title: !!title && title.scrollWidth > title.clientWidth + 1,
+      name: !!name && name.scrollWidth > name.clientWidth + 1,
+    }
+  })
+  assert.equal(clipped.title, false)
+  assert.equal(clipped.name, false)
+  await page.getByRole('button', { name: 'Mobile', exact: true }).click()
+  const header = await page.evaluate(() => {
+    const logo = document.querySelector<HTMLElement>('.db-appearance-preview.is-mobile header img')
+    const link = document.querySelector<HTMLElement>('.db-appearance-preview.is-mobile .dealer-website-link')
+    if (!logo || !link) return null
+    const logoBox = logo.getBoundingClientRect()
+    const linkBox = link.getBoundingClientRect()
+    return { beside: linkBox.left >= logoBox.right - 1, text: (link.textContent || '').includes('Visit Our Website') }
+  })
+  assert.equal(header?.beside, true)
+  assert.equal(header?.text, true)
+  await page.addStyleTag({ content: '.portal-shell:not(.portal-shell--billing-client) .portal-main { margin-bottom: 96px; }' })
+  const cleared = await page.evaluate(() => {
+    const studio = document.querySelector('.branding-studio')
+    if (!studio?.parentElement) return ''
+    const shell = document.createElement('div')
+    shell.className = 'portal-shell'
+    const main = document.createElement('main')
+    main.className = 'portal-main'
+    studio.parentElement.insertBefore(shell, studio)
+    shell.appendChild(main)
+    main.appendChild(studio)
+    return getComputedStyle(main).marginBottom
+  })
+  assert.equal(cleared, '0px')
+  await page.close()
+})
+
+test('each branding category scrolls its last control into view', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1440, height: 900 } })
+  await openStudio(page)
+  for (const size of [{ width: 1024, height: 768 }, { width: 1440, height: 900 }]) {
+    await page.setViewportSize(size)
+    for (const name of ['Logos', 'Logo Display', 'Colors', 'Typography']) {
+      await page.getByRole('button', { name, exact: true }).click()
+      const editor = page.locator('.branding-studio__editor')
+      const box = await editor.boundingBox()
+      assert.ok(box, `${name} editor box`)
+      await page.mouse.move(box.x + box.width / 2, box.y + Math.min(80, box.height / 2))
+      for (let step = 0; step < 40; step += 1) {
+        const atEnd = await editor.evaluate((element) => element.scrollTop + element.clientHeight >= element.scrollHeight - 2)
+        if (atEnd) break
+        await page.mouse.wheel(0, 500)
+      }
+      const result = await editor.evaluate((element) => {
+        const cards = [...element.querySelectorAll<HTMLElement>('.content-card, .studio-logo, .studio-brand, .studio-links')]
+        const clipped = cards
+          .filter((card) => card.scrollHeight > card.clientHeight + 1)
+          .map((card) => `${card.className} ${card.clientHeight}/${card.scrollHeight}`)
+        const controls = [...element.querySelectorAll<HTMLElement>('button, a, input, select, summary, textarea')]
+          .filter((control) => !(control instanceof HTMLInputElement && control.type === 'file'))
+          .filter((control) => control.getClientRects().length > 0 && getComputedStyle(control).visibility !== 'hidden')
+        const last = controls.at(-1)
+        if (!last) return { clipped, clickable: false, label: 'none' }
+        const rect = last.getBoundingClientRect()
+        const editorRect = element.getBoundingClientRect()
+        const visible = rect.top >= editorRect.top - 1 && rect.bottom <= editorRect.bottom + 1 && rect.width > 0 && rect.height > 0
+        const x = Math.min(Math.max(rect.left + 12, editorRect.left + 4), editorRect.right - 4)
+        const y = Math.min(Math.max(rect.top + rect.height / 2, editorRect.top + 4), editorRect.bottom - 4)
+        const target = document.elementFromPoint(x, y)
+        const clickable = !!target && (target === last || last.contains(target) || target.contains(last))
+        return { clipped, clickable: visible && clickable, label: (last.textContent || last.getAttribute('aria-label') || last.tagName).replace(/\s+/g, ' ').trim().slice(0, 60), scroll: `${element.scrollTop}/${element.scrollHeight - element.clientHeight}`, visible, top: Math.round(rect.top), bottom: Math.round(rect.bottom), editorTop: Math.round(editorRect.top), editorBottom: Math.round(editorRect.bottom), hit: target?.tagName ?? 'none' }
+      })
+      assert.deepEqual(result.clipped, [], `${size.width}x${size.height} ${name} clips ${result.clipped.join(', ')}`)
+      assert.equal(result.clickable, true, `${size.width}x${size.height} ${name} last control ${result.label} scroll ${result.scroll} visible ${result.visible} rect ${result.top}-${result.bottom} editor ${result.editorTop}-${result.editorBottom} hit ${result.hit}`)
+      if (size.width === 1024 || size.width === 1440) {
+        const overflow = await editor.evaluate((element) => [...element.querySelectorAll<HTMLElement>('.content-card, .studio-logo, .studio-brand, .studio-links')].flatMap((card) => {
+          const cardRight = card.getBoundingClientRect().right
+          return [...card.querySelectorAll<HTMLElement>('p, span, small, strong, label, h2, h3, legend, li, button, a')]
+            .filter((node) => node.clientWidth > 0 && (node.scrollWidth > node.clientWidth + 1 || node.getBoundingClientRect().right > cardRight + 1))
+            .map((node) => `${node.tagName} ${(node.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 48)} ${node.clientWidth}/${node.scrollWidth}`)
+        }))
+        assert.deepEqual(overflow, [], `${size.width} ${name} text overflows ${overflow.join(', ')}`)
+      }
+    }
+  }
+  await page.setViewportSize({ width: 1024, height: 768 })
+  await page.evaluate(() => {
+    const studio = document.querySelector<HTMLElement>('.branding-studio')
+    if (studio) studio.style.width = '748px'
+  })
+  const titleFit = await page.evaluate(() => {
+    const title = document.querySelector<HTMLElement>('.branding-studio__identity h1')
+    const status = document.querySelector<HTMLElement>('.branding-studio__live-status')
+    const copy = document.querySelector<HTMLElement>('.branding-studio__live-copy')
+    const hidden = !!status && getComputedStyle(status).display === 'none'
+    const ellipsized = !!copy && getComputedStyle(copy).textOverflow === 'ellipsis' && getComputedStyle(copy).overflowX === 'hidden'
+    return {
+      title: title?.textContent?.trim() ?? '',
+      fits: !!title && title.scrollWidth <= title.clientWidth + 1,
+      statusOk: hidden || ellipsized,
+    }
+  })
+  assert.equal(titleFit.title, 'Branding & Appearance')
+  assert.equal(titleFit.fits, true)
+  assert.equal(titleFit.statusOk, true)
+  await page.evaluate(() => {
+    const studio = document.querySelector<HTMLElement>('.branding-studio')
+    if (studio) studio.style.width = ''
+  })
+  await page.setViewportSize({ width: 768, height: 900 })
+  await page.evaluate(() => {
+    const bell = document.createElement('button')
+    bell.id = 'test-notification-bell'
+    bell.textContent = 'Notifications'
+    bell.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:100;width:56px;height:56px;'
+    document.body.append(bell)
+    const shell = document.querySelector<HTMLElement>('.branding-studio__preview .db-preview-shell')
+    if (shell) shell.scrollTop = shell.scrollHeight
+  })
+  const footerClear = await page.evaluate(() => {
+    const link = document.querySelector<HTMLElement>('.site-footer-contact a')
+    const bell = document.getElementById('test-notification-bell')
+    if (!link || !bell) return false
+    const linkBox = link.getBoundingClientRect()
+    const bellBox = bell.getBoundingClientRect()
+    return linkBox.bottom <= bellBox.top + 1 || linkBox.right <= bellBox.left + 1
+  })
+  assert.equal(footerClear, true)
+  await page.close()
+})
+
+test('the preview box stays the same across categories and Save stays clickable', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1440, height: 900 } })
+  await openStudio(page)
+  const box = () => page.evaluate(() => {
+    const preview = document.querySelector('.branding-studio__preview')?.getBoundingClientRect()
+    const toolbar = document.querySelector('.branding-studio__toolbar')?.getBoundingClientRect()
+    return {
+      preview: preview ? [Math.round(preview.x), Math.round(preview.y), Math.round(preview.width), Math.round(preview.height)] : [],
+      toolbar: toolbar ? [Math.round(toolbar.x), Math.round(toolbar.y), Math.round(toolbar.width), Math.round(toolbar.height)] : [],
+    }
+  })
+  const first = await box()
+  for (const name of ['Logo Display', 'Colors', 'Typography', 'Logos']) {
+    await page.getByRole('button', { name, exact: true }).click()
+    assert.deepEqual(await box(), first, name)
+  }
+  await page.getByRole('button', { name: 'Logo Display' }).click()
+  await page.getByRole('radio', { name: /Hero/ }).check()
+  const save = page.getByRole('button', { name: 'Save Changes' }).first()
+  const hit = await save.evaluate((element) => {
+    const rect = element.getBoundingClientRect()
+    const target = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+    return target === element || element.contains(target)
+  })
+  assert.equal(hit, true)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.getByRole('button', { name: 'Edit Settings' }).click()
+  await page.evaluate(() => {
+    const bell = document.createElement('button')
+    bell.textContent = 'Notifications'
+    bell.style.position = 'fixed'
+    bell.style.right = '18px'
+    bell.style.bottom = '18px'
+    bell.style.zIndex = '100'
+    bell.style.width = '56px'
+    bell.style.height = '56px'
+    document.body.append(bell)
+  })
+  const mobileSave = page.locator('.branding-studio__sheet-actions .button--primary')
+  const mobileHit = await mobileSave.evaluate((element) => {
+    const rect = element.getBoundingClientRect()
+    const target = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+    return target === element || element.contains(target)
+  })
+  assert.equal(mobileHit, true)
+  await page.close()
+})
+
+test('the preview and editor keep the same size while the editor scrolls', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } })
+  await openStudio(page)
+  const read = () => page.evaluate(() => {
+    const preview = document.querySelector('.branding-studio__preview')?.getBoundingClientRect()
+    const editor = document.querySelector('.branding-studio__editor')?.getBoundingClientRect()
+    return {
+      preview: preview ? [Math.round(preview.x), Math.round(preview.y), Math.round(preview.width), Math.round(preview.height)] : [],
+      editor: editor ? [Math.round(editor.x), Math.round(editor.y), Math.round(editor.width), Math.round(editor.height)] : [],
+    }
+  })
+  const top = await read()
+  await page.locator('.branding-studio__editor').evaluate((element) => { element.scrollTop = element.scrollHeight / 2 })
+  const middle = await read()
+  await page.locator('.branding-studio__editor').evaluate((element) => { element.scrollTop = element.scrollHeight })
+  const bottom = await read()
+  assert.deepEqual(middle, top)
+  assert.deepEqual(bottom, top)
+  assert.ok(top.preview[2] > 400, `preview width ${top.preview[2]}`)
   await page.close()
 })

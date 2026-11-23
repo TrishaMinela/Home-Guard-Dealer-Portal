@@ -8,11 +8,17 @@ type Props = {
   onSave: (placement: DealerLogoPlacement) => Promise<AdminDealer>
   onUpdated: (dealer: AdminDealer) => void
   onDraftChange?: (placement: DealerLogoPlacement) => void
+  value?: DealerLogoPlacement
 }
 
-export function DealerLogoPlacementSettings({ dealer, onSave, onUpdated, onDraftChange }: Props) {
+export function DealerLogoPlacementSettings({ dealer, onSave, onUpdated, onDraftChange, value }: Props) {
   const current = dealer.logo_placement === 'header' ? 'header' : 'hero'
-  const [placement, setPlacement] = useState<DealerLogoPlacement>(current)
+  const [uncontrolled, setUncontrolled] = useState<DealerLogoPlacement>(current)
+  const placement = value ?? uncontrolled
+  const setPlacement = (next: DealerLogoPlacement) => {
+    if (value === undefined) setUncontrolled(next)
+    onDraftChange?.(next)
+  }
   const [isSaving, setIsSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -44,7 +50,7 @@ export function DealerLogoPlacementSettings({ dealer, onSave, onUpdated, onDraft
       <div className="logo-placement-options" role="radiogroup" aria-label="Dealer logo placement">
         <label className={`logo-placement-option ${placement === 'header' ? 'is-selected' : ''}`}>
           <input type="radio" name={`logo-placement-${dealer.id}`} value="header" checked={placement === 'header'} onChange={() => { setPlacement('header'); onDraftChange?.('header') }} />
-          <span><strong>Header</strong><small>Show the dealer logo in the top navigation/header.</small></span>
+          <span><strong>Header</strong><small>Show the dealer logo in the top navigation / header.</small></span>
         </label>
         <label className={`logo-placement-option ${placement === 'hero' ? 'is-selected' : ''}`}>
           <input type="radio" name={`logo-placement-${dealer.id}`} value="hero" checked={placement === 'hero'} onChange={() => { setPlacement('hero'); onDraftChange?.('hero') }} />

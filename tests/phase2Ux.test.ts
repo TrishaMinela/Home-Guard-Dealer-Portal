@@ -61,7 +61,7 @@ test('new dealers open their setup page and marketing explains the website steps
   assert.ok(intro > -1 && intro < libraryAt && libraryAt < visualizer)
   assert.match(library, /Download PNG/)
   assert.match(library, /Download JPG/)
-  for (const id of ['company-details', 'logos', 'door-builder-branding', 'colors-and-typography', 'website-address']) {
+  for (const id of ['company-details', 'branding-studio', 'colors-and-typography', 'website-address']) {
     assert.match(profile, new RegExp(`id="${id}"`))
   }
   assert.match(profile, /Cancel/)

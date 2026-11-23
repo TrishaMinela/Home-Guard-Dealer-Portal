@@ -3,12 +3,12 @@ import { supabase } from '../lib/supabase'
 import type { AdminDealer } from '../types/admin'
 import { dealerFontOptions, dealerFontWeights, dealerTypographyValues, fontStacks, type DealerTypographyValues } from '../utils/dealerTypography'
 
-type Props = { dealer: AdminDealer; onSave: (values: DealerTypographyValues) => Promise<AdminDealer>; onUpdated: (dealer: AdminDealer) => void; embedded?: boolean; onDraftChange?: (values: DealerTypographyValues) => void }
+type Props = { dealer: AdminDealer; onSave: (values: DealerTypographyValues) => Promise<AdminDealer>; onUpdated: (dealer: AdminDealer) => void; embedded?: boolean; draft?: DealerTypographyValues | null; onDraftChange?: (values: DealerTypographyValues) => void }
 type FontTarget = 'heading' | 'body'
 const maxFontBytes = 2 * 1024 * 1024
 
-export function DealerTypographySettings({ dealer, onSave, onUpdated, embedded = false, onDraftChange }: Props) {
-  const [values,setValues] = useState(() => dealerTypographyValues(dealer))
+export function DealerTypographySettings({ dealer, onSave, onUpdated, embedded = false, draft = null, onDraftChange }: Props) {
+  const [values,setValues] = useState(() => draft ?? dealerTypographyValues(dealer))
   const [saving,setSaving] = useState(false)
   const [uploading,setUploading] = useState<FontTarget|null>(null)
   const [message,setMessage] = useState('')
@@ -54,10 +54,15 @@ export function DealerTypographySettings({ dealer, onSave, onUpdated, embedded =
         <label>Font Family<select id={target==='heading'?'heading-font-family':undefined} value={values[`${prefix}FontFamily`]} onChange={e=>set(`${prefix}FontFamily`,e.target.value)}><option value="">HGI Default</option>{dealerFontOptions.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
         <label>Font Weight<select value={values[`${prefix}FontWeight`]} onChange={e=>set(`${prefix}FontWeight`,e.target.value)}><option value="">HGI Default</option>{dealerFontWeights.map(weight=><option key={weight} value={weight}>{weight} — {weight===300?'Light':weight===400?'Regular':weight===500?'Medium':weight===600?'Semi Bold':weight===700?'Bold':'Extra Bold'}</option>)}</select></label>
         <label>Base Size <span className="typography-size-input"><input type="number" min={target==='heading'?24:14} max={target==='heading'?72:22} value={values[`${prefix}FontSize`]} onChange={e=>set(`${prefix}FontSize`,e.target.value)}/><span>px</span></span></label>
-        <label className="button button--outline upload-button">{uploading===target?'Uploading...':`Upload Custom ${target==='heading'?'Heading':'Body'} Font`}<input type="file" accept=".woff2,.woff,font/woff2,font/woff" disabled={uploading!==null} onChange={e=>void upload(e,target)}/></label>
       </fieldset>})}
     </div>
-    <p className="typography-license-note">Only upload fonts you are licensed or authorized to use. WOFF2 or WOFF, maximum 2 MB.</p>
+    <details className="branding-studio__advanced">
+      <summary>Advanced / Custom Fonts</summary>
+      <p className="typography-license-note">Only upload fonts you are licensed or authorized to use. WOFF2 or WOFF, maximum 2 MB. A custom font file is saved immediately.</p>
+      {(['heading','body'] as const).map((target) => (
+        <label key={target} className="button button--outline upload-button">{uploading===target?'Uploading...':`Upload Custom ${target==='heading'?'Heading':'Body'} Font`}<input type="file" accept=".woff2,.woff,font/woff2,font/woff" disabled={uploading!==null} onChange={e=>void upload(e,target)}/></label>
+      ))}
+    </details>
     {!embedded && <div className="typography-preview" style={{'--preview-heading-font':headingFamily||'var(--font-heading)','--preview-heading-weight':values.headingFontWeight||'700','--preview-heading-size':`${values.headingFontSize||42}px`,'--preview-body-font':bodyFamily||'var(--font-body)','--preview-body-weight':values.bodyFontWeight||'400','--preview-body-size':`${values.bodyFontSize||16}px`} as React.CSSProperties}><p className="eyebrow">Typography Preview</p><h3>Build a Door Made for Your Home.</h3><p>Choose your door style, finish, glass, and hardware.</p><button type="button">Start Building Your Door</button></div>}
     </div><div className="dealer-form__actions"><button type="button" className="button button--outline" disabled={saving} onClick={() => setValues(dealerTypographyValues(dealer))}>Cancel</button><button type="button" className="button button--outline" disabled={saving} onClick={reset}>Reset Typography to Default</button><button type="button" className="button button--primary" disabled={saving} onClick={()=>void save()}>{saving?'Saving...':'Save Typography'}</button></div>
   </section>

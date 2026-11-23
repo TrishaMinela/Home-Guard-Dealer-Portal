@@ -1,22 +1,10 @@
-import { useRef, useState, type ChangeEvent, type ReactNode } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { AdminDealer } from '../types/admin'
 import { getDealerVisualizerDisplayUrl } from '../config/visualizer'
 import { DealerUserAccess } from '../components/DealerUserAccess'
-import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
-import { DealerLogoPlacementSettings, type DealerLogoPlacement } from '../components/DealerLogoPlacementSettings'
-import { DoorBuilderAppearanceSettings } from '../components/DoorBuilderAppearanceSettings'
-import { BrandingAppearanceWorkspace } from '../components/BrandingAppearanceWorkspace'
-import { DealerTypographySettings } from '../components/DealerTypographySettings'
-import { appearanceEquals, appearanceUpdate, type DoorBuilderAppearance } from '../utils/doorBuilderAppearance'
-import { dealerTypographyValues, typographyPayload, type DealerTypographyValues } from '../utils/dealerTypography'
-import { normalizeLogoDisplay } from '../utils/dealerLogoVariants'
-import { DealerLogoVariantSettings } from '../components/DealerLogoVariantSettings'
-import { DealerLogoDisplaySettings } from '../components/DealerLogoDisplaySettings'
-import { LogoBackgroundDialog } from '../components/LogoBackgroundDialog'
-import { readLogoForRemoval } from '../utils/readLogoForRemoval'
-import { generatedLightLogoMessage, lightLogoEyebrow, logoVariantSavePlan, type DealerLogoDisplay, type DealerLogoVariant } from '../utils/dealerLogoVariants'
+import { isLegacyBrandingTarget, studioSectionFromValue } from '../features/branding-studio/sections'
 import { AdminDealerMarketingTools } from '../components/AdminDealerMarketingTools'
 import { DealerSectionHeader } from '../components/DealerSectionHeader'
 import { DealerDetailSectionNav } from '../components/DealerDetailSectionNav'
@@ -24,13 +12,6 @@ import { DealerCrmIntegrations } from '../components/DealerCrmIntegrations'
 import { DoorBuilderLeadWebhook } from '../components/DoorBuilderLeadWebhook'
 import { DealerSetupChecklist } from '../components/DealerSetupChecklist'
 import { DisableDealerDialog } from '../components/DisableDealerDialog'
-
-const logoExtensions: Record<string, string> = {
-  'image/png': 'png',
-  'image/jpeg': 'jpg',
-  'image/webp': 'webp',
-  'image/svg+xml': 'svg',
-}
 
 type DealerDetailPageProps = {
   dealers: AdminDealer[]
@@ -75,16 +56,26 @@ export function DealerDetailPage({
   canManageDealerCredentials,
 }: DealerDetailPageProps) {
   const { dealerId } = useParams()
+  const navigate = useNavigate()
   const [isConfirmingDisable, setIsConfirmingDisable] = useState(false)
   const disableButtonRef = useRef<HTMLButtonElement>(null)
   const [actionError, setActionError] = useState('')
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [isReviewingSlug, setIsReviewingSlug] = useState(false)
-  const [uploadingLogo, setUploadingLogo] = useState<'primary' | 'light' | 'black' | null>(null)
-  const [removal, setRemoval] = useState<{ file: File; originalUrl: string; removedUrl: string; reason: string; png: Blob } | null>(null)
-  const [removalNotice, setRemovalNotice] = useState('')
-  const [isGeneratingLightLogo, setIsGeneratingLightLogo] = useState(false)
   const dealer = dealers.find((item) => item.id === dealerId)
+
+  useEffect(() => {
+    if (!dealer) return
+    const redirect = () => {
+      if (!isLegacyBrandingTarget(window.location.hash)) return
+      const section = studioSectionFromValue(window.location.hash)
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
+      navigate(`/admin/dealers/${dealer.id}/branding${section ? `?section=${section}` : ''}`, { replace: true })
+    }
+    redirect()
+    window.addEventListener('hashchange', redirect)
+    return () => window.removeEventListener('hashchange', redirect)
+  }, [dealer, navigate])
 
   async function updateStatus(isActive: boolean) {
     if (!dealer) return
@@ -146,329 +137,6 @@ export function DealerDetailPage({
     setIsReviewingSlug(false)
   }
 
-  async function saveRemovedBackground(file: File, png: Blob, reason: string) {
-    if (!dealer) return false
-    setUploadingLogo('primary')
-    const sourceExtension = logoExtensions[file.type] ?? 'png'
-    const sourcePath = `${dealer.id}/logo-source.${sourceExtension}`
-    const transparentPath = `${dealer.id}/logo.png`
-    const [sourceUpload, transparentUpload] = await Promise.all([
-      supabase.storage.from('dealer-logos').upload(sourcePath, file, { contentType: file.type, upsert: true }),
-      supabase.storage.from('dealer-logos').upload(transparentPath, png, { contentType: 'image/png', upsert: true }),
-    ])
-    if (sourceUpload.error || transparentUpload.error) {
-      setActionError('We could not save the transparent logo. The original was not replaced.')
-      setUploadingLogo(null)
-      return false
-    }
-    const sourceUrl = `${supabase.storage.from('dealer-logos').getPublicUrl(sourcePath).data.publicUrl}?v=${Date.now()}`
-    const transparentUrl = `${supabase.storage.from('dealer-logos').getPublicUrl(transparentPath).data.publicUrl}?v=${Date.now()}`
-    const { error: updateError } = await supabase.from('dealers').update({ logo_url: transparentUrl, logo_source_url: sourceUrl }).eq('id', dealer.id)
-    if (updateError) {
-      setActionError('The files uploaded, but the logo record could not be saved.')
-      setUploadingLogo(null)
-      return false
-    }
-    let updatedDealer: AdminDealer = { ...dealer, logo_url: transparentUrl, logo_source_url: sourceUrl }
-    setIsGeneratingLightLogo(true)
-    const generated = await generateDefaultDealerLightLogo(dealer.id)
-    setIsGeneratingLightLogo(false)
-    setUploadingLogo(null)
-    if (generated.error || !generated.generatedLightLogoUrl) {
-      onDealerUpdated(updatedDealer, 'The transparent logo was saved, but its default light version could not be generated.')
-      setActionError('Use Regenerate Default to retry the light-logo conversion.')
-      return true
-    }
-    updatedDealer = {
-      ...updatedDealer,
-      logo_generated_light_url: generated.generatedLightLogoUrl,
-      logo_generated_light_usable: generated.generatedLightUsable,
-    }
-    onDealerUpdated(updatedDealer, `${reason.replace(/\.$/, '')} removed. ${generatedLightLogoMessage(generated.generatedLightUsable, 'primary')}`)
-    return true
-  }
-
-  async function handleLogoUpload(
-    event: ChangeEvent<HTMLInputElement>,
-    logoType: 'primary' | 'light' | 'black',
-  ) {
-    const file = event.target.files?.[0]
-    event.target.value = ''
-    if (!file || !dealer) return
-
-    setActionError('')
-    const extension = logoExtensions[file.type]
-    if (!extension || file.size > 5 * 1024 * 1024) {
-      setActionError('Choose a PNG, JPEG, WebP, or SVG logo no larger than 5 MB.')
-      return
-    }
-
-    if (logoType === 'primary' && file.type !== 'image/svg+xml') {
-      const inspected = await readLogoForRemoval(file)
-      if (inspected.confident && inspected.png) {
-        setRemovalNotice('')
-        setRemoval({
-          file,
-          originalUrl: URL.createObjectURL(file),
-          removedUrl: URL.createObjectURL(inspected.png),
-          reason: inspected.reason,
-          png: inspected.png,
-        })
-        return
-      }
-      setRemovalNotice(inspected.confident
-        ? 'The background could be removed, but this browser could not save a PNG. The original file was kept.'
-        : inspected.reason)
-    }
-
-    await storeUploadedLogo(file, logoType)
-  }
-
-  async function storeUploadedLogo(file: File, logoType: 'primary' | 'light' | 'black') {
-    if (!dealer) return
-    const extension = logoExtensions[file.type]
-    if (!extension) return
-    setUploadingLogo(logoType)
-    const filename = logoType === 'primary' ? 'logo' : logoType === 'black' ? 'logo-black' : 'logo-light'
-    const objectPath = `${dealer.id}/${filename}.${extension}`
-    const { error: uploadError } = await supabase.storage
-      .from('dealer-logos')
-      .upload(objectPath, file, { contentType: file.type, upsert: true })
-
-    if (uploadError) {
-      console.error('Failed to upload dealer logo as Home Guard Admin.', uploadError)
-      setActionError('We could not upload this dealer logo. Please try again.')
-      setUploadingLogo(null)
-      return
-    }
-
-    const { data: publicUrlData } = supabase.storage
-      .from('dealer-logos')
-      .getPublicUrl(objectPath)
-    const versionedPublicUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`
-    const { data, error: updateError } = await supabase
-      .from('dealers')
-      .update({
-        [logoType === 'primary' ? 'logo_url' : logoType === 'black' ? 'logo_black_url' : 'logo_light_url']: versionedPublicUrl,
-      })
-      .eq('id', dealer.id)
-      .select('id, company_name, slug, logo_url, logo_light_url, logo_generated_light_url, logo_placement, primary_contact_name, email, phone, website, address, city, state, zip, primary_color, secondary_color, is_active, created_at, requested_slug, slug_request_status, slug_requested_at, heading_font_family, heading_font_weight, heading_font_size, body_font_family, body_font_weight, body_font_size, custom_heading_font_url, custom_heading_font_name, custom_heading_font_weight, custom_body_font_url, custom_body_font_name, custom_body_font_weight')
-      .single()
-
-    if (updateError) {
-      console.error('Dealer logo uploaded but URL update failed.', updateError)
-      setActionError('The logo uploaded, but we could not save it to this dealer.')
-      setUploadingLogo(null)
-      return
-    }
-
-    let updatedDealer = data as AdminDealer
-    let generatedUsable: boolean | null = null
-    if (logoType === 'primary') {
-      setIsGeneratingLightLogo(true)
-      const generated = await generateDefaultDealerLightLogo(dealer.id)
-      setIsGeneratingLightLogo(false)
-      if (generated.error || !generated.generatedLightLogoUrl) {
-        onDealerUpdated(updatedDealer, 'Primary logo updated, but the default light version could not be generated.')
-        setActionError('Use Regenerate Default to retry the light-logo conversion.')
-        setUploadingLogo(null)
-        return
-      }
-      generatedUsable = generated.generatedLightUsable
-      updatedDealer = {
-        ...updatedDealer,
-        logo_generated_light_url: generated.generatedLightLogoUrl,
-        logo_generated_light_usable: generated.generatedLightUsable,
-      }
-    }
-    onDealerUpdated(updatedDealer, logoType === 'primary'
-      ? generatedLightLogoMessage(generatedUsable, 'primary')
-      : logoType === 'black' ? 'Custom black logo updated successfully.' : 'Custom white logo updated successfully.')
-    setUploadingLogo(null)
-  }
-
-  async function generateLightLogo() {
-    if (!dealer) return
-    setActionError('')
-    setIsGeneratingLightLogo(true)
-    const result = await generateDefaultDealerLightLogo(dealer.id)
-    setIsGeneratingLightLogo(false)
-    if (result.error || !result.generatedLightLogoUrl) {
-      setActionError(result.error ?? 'We could not generate the default light logo.')
-      return
-    }
-    onDealerUpdated({
-      ...dealer,
-      logo_generated_light_url: result.generatedLightLogoUrl,
-      logo_generated_light_usable: result.generatedLightUsable,
-    }, generatedLightLogoMessage(result.generatedLightUsable, 'regenerate'))
-  }
-
-  async function generateBlackLogo() {
-    if (!dealer) return
-    setActionError('')
-    setIsGeneratingLightLogo(true)
-    const result = await generateDefaultDealerLightLogo(dealer.id, 'black')
-    setIsGeneratingLightLogo(false)
-    if (result.error || !result.generatedLogoUrl) {
-      setActionError(result.error ?? 'We could not generate the black logo.')
-      return
-    }
-    onDealerUpdated({
-      ...dealer,
-      logo_generated_black_url: result.generatedLogoUrl,
-      logo_generated_black_usable: result.generatedLogoUsable,
-    }, result.generatedLogoUsable ? 'Black logo generated.' : 'A black logo was generated, but it is not readable enough to offer.')
-  }
-
-  function dismissRemoval() {
-    if (!removal) return
-    URL.revokeObjectURL(removal.originalUrl)
-    URL.revokeObjectURL(removal.removedUrl)
-    setRemoval(null)
-  }
-
-  async function acceptTransparentLogo() {
-    if (!removal) return
-    const saved = await saveRemovedBackground(removal.file, removal.png, removal.reason)
-    if (saved) dismissRemoval()
-  }
-
-  async function keepOriginalLogo() {
-    if (!removal) return
-    const file = removal.file
-    dismissRemoval()
-    await storeUploadedLogo(file, 'primary')
-  }
-
-  async function restoreOriginalLogo() {
-    if (!dealer?.logo_source_url) return
-    const { error: updateError } = await supabase.from('dealers').update({ logo_url: dealer.logo_source_url }).eq('id', dealer.id)
-    if (updateError) {
-      setActionError('We could not restore the original logo.')
-      return
-    }
-    onDealerUpdated({ ...dealer, logo_url: dealer.logo_source_url }, 'Original logo restored.')
-  }
-
-  async function removeCustomLightLogo() {
-    if (!dealer) return
-    setActionError('')
-    setIsGeneratingLightLogo(true)
-    const { data, error: updateError } = await supabase
-      .from('dealers')
-      .update({ logo_light_url: null })
-      .eq('id', dealer.id)
-      .select('id, company_name, slug, logo_url, logo_light_url, logo_generated_light_url, logo_placement, primary_contact_name, email, phone, website, address, city, state, zip, primary_color, secondary_color, is_active, created_at, requested_slug, slug_request_status, slug_requested_at, heading_font_family, heading_font_weight, heading_font_size, body_font_family, body_font_weight, body_font_size, custom_heading_font_url, custom_heading_font_name, custom_heading_font_weight, custom_body_font_url, custom_body_font_name, custom_body_font_weight')
-      .single()
-    setIsGeneratingLightLogo(false)
-    if (updateError) {
-      setActionError('We could not remove the custom light logo. Please try again.')
-      return
-    }
-    onDealerUpdated({ ...dealer, ...(data as AdminDealer) }, dealer.logo_generated_light_usable === true
-      ? 'Custom light logo removed. The generated default is now in use.'
-      : 'Custom light logo removed.')
-  }
-
-  async function saveLogoVariants(variants: {
-    header: DealerLogoVariant | null
-    pages: DealerLogoVariant | null
-    secondaryHeader: DealerLogoVariant | null
-    secondaryPages: DealerLogoVariant | null
-  }) {
-    if (!dealer) throw new Error('Dealer not found.')
-    const plan = logoVariantSavePlan(dealer.logo_display, variants.header, variants.pages, variants.secondaryHeader, variants.secondaryPages)
-    if (plan.mode === 'primary') {
-      const written = plan.fields
-      const { error: updateError } = await supabase
-        .from('dealers')
-        .update(written)
-        .eq('id', dealer.id)
-      if (updateError) throw updateError
-      return { ...dealer, ...written }
-    }
-    const { error: updateError } = await supabase
-      .from('dealers')
-      .update(plan.fields)
-      .eq('id', dealer.id)
-    if (updateError) throw updateError
-    return { ...dealer, ...plan.fields }
-  }
-
-  async function saveLogoDisplay(display: DealerLogoDisplay) {
-    if (!dealer) throw new Error('Dealer not found.')
-    const { data, error: updateError } = await supabase
-      .from('dealers')
-      .update({ logo_display: display })
-      .eq('id', dealer.id)
-      .select('*')
-      .single()
-    if (updateError) throw updateError
-    return { ...dealer, ...(data as AdminDealer), logo_display: display }
-  }
-
-  async function saveSecondaryLogos(assets: {
-    logo_secondary_url: string | null
-    logo_secondary_source_url: string | null
-    logo_secondary_light_url: string | null
-    logo_secondary_black_url: string | null
-  }) {
-    if (!dealer) throw new Error('Dealer not found.')
-    const { data, error: updateError } = await supabase
-      .from('dealers')
-      .update(assets)
-      .eq('id', dealer.id)
-      .select('*')
-      .single()
-    if (updateError) throw updateError
-    return { ...dealer, ...(data as AdminDealer), ...assets }
-  }
-
-  async function saveLogoWebsite(slot: 'primary' | 'secondary', url: string | null) {
-    if (!dealer) throw new Error('Dealer not found.')
-    const column = slot === 'primary' ? 'logo_website_url' : 'logo_secondary_website_url'
-    const { error: updateError } = await supabase
-      .from('dealers')
-      .update({ [column]: url })
-      .eq('id', dealer.id)
-    if (updateError) throw updateError
-    return { ...dealer, [column]: url }
-  }
-
-  async function saveAppearance(appearance: DoorBuilderAppearance | null) {
-    if (!dealer) throw new Error('Dealer not found.')
-    const { error: updateError } = await supabase.from('dealers').update(appearanceUpdate(appearance)).eq('id', dealer.id)
-    if (updateError) throw updateError
-    onDealerUpdated({ ...dealer, door_builder_appearance: appearance }, successMessage)
-  }
-
-  const [placementDraft, setPlacementDraft] = useState<DealerLogoPlacement | null>(null)
-  const [displayDraft, setDisplayDraft] = useState<DealerLogoDisplay | null>(null)
-  const [variantDraft, setVariantDraft] = useState<Partial<AdminDealer> | null>(null)
-  const [typographyDraft, setTypographyDraft] = useState<DealerTypographyValues | null>(null)
-  const [appearanceDraft, setAppearanceDraft] = useState<DoorBuilderAppearance | null | undefined>(undefined)
-
-  async function saveTypography(values: DealerTypographyValues) {
-    if (!dealer) throw new Error('Dealer not found.')
-    const { data, error: saveError } = await supabase.from('dealers').update(typographyPayload(values)).eq('id', dealer.id).select('*').single()
-    if (saveError) throw saveError
-    onDealerUpdated(data as AdminDealer, 'Typography saved.')
-    return data as AdminDealer
-  }
-
-  async function saveLogoPlacement(placement: DealerLogoPlacement) {
-    if (!dealer) throw new Error('Dealer not found.')
-    const { data, error: updateError } = await supabase
-      .from('dealers')
-      .update({ logo_placement: placement })
-      .eq('id', dealer.id)
-      .select('*')
-      .single()
-    if (updateError) throw updateError
-    return data as AdminDealer
-  }
-
   if (isLoading) {
     return <div className="page-content"><div className="data-state">Loading dealer...</div></div>
   }
@@ -525,6 +193,7 @@ export function DealerDetailPage({
       {actionError && <div className="portal-alert" role="alert">{actionError}</div>}
 
       <DealerDetailSectionNav
+        dealerId={dealer.id}
         canManageDealerCredentials={canManageDealerCredentials}
         canManageDealerUsers={canManageDealerUsers}
       />
@@ -557,170 +226,14 @@ export function DealerDetailPage({
         </div>
       </section>
 
-      <BrandingAppearanceWorkspace
-        dealer={{
-          ...dealer,
-          ...(placementDraft ? { logo_placement: placementDraft } : {}),
-          ...(displayDraft ? { logo_display: displayDraft } : {}),
-          ...(variantDraft ?? {}),
-          ...(typographyDraft ? {
-            heading_font_family: typographyDraft.headingFontFamily || null,
-            heading_font_weight: typographyDraft.headingFontWeight ? Number(typographyDraft.headingFontWeight) : null,
-            heading_font_size: typographyDraft.headingFontSize ? Number(typographyDraft.headingFontSize) : null,
-            body_font_family: typographyDraft.bodyFontFamily || null,
-            body_font_weight: typographyDraft.bodyFontWeight ? Number(typographyDraft.bodyFontWeight) : null,
-            body_font_size: typographyDraft.bodyFontSize ? Number(typographyDraft.bodyFontSize) : null,
-          } : {}),
-        }}
-        appearance={appearanceDraft === undefined ? dealer.door_builder_appearance ?? null : appearanceDraft}
-        unsaved={
-          (placementDraft != null && placementDraft !== (dealer.logo_placement === 'header' ? 'header' : 'hero'))
-          || (displayDraft != null && displayDraft !== normalizeLogoDisplay(dealer.logo_display))
-          || (appearanceDraft !== undefined && !appearanceEquals(appearanceDraft, dealer.door_builder_appearance ?? null))
-          || (typographyDraft != null && JSON.stringify(typographyDraft) !== JSON.stringify(dealerTypographyValues(dealer)))
-          || (variantDraft != null && (
-            (variantDraft.logo_header_variant ?? null) !== (dealer.logo_header_variant ?? null)
-            || (variantDraft.logo_pages_variant ?? null) !== (dealer.logo_pages_variant ?? null)
-            || (variantDraft.logo_secondary_header_variant ?? null) !== (dealer.logo_secondary_header_variant ?? null)
-            || (variantDraft.logo_secondary_pages_variant ?? null) !== (dealer.logo_secondary_pages_variant ?? null)
-          ))
-        }
-        panels={{
-          logos: (
-            <>
-      <section id="branding" className="content-card dealer-management-card dealer-settings-section dealer-branding-panel" aria-labelledby="branding-heading">
-        <DealerSectionHeader eyebrow="Branding" title="Customer-facing Door Builder" headingId="branding-heading" description="Logos are managed here. Brand colors and typography are saved with Edit colors. Marketing banners use the logo and do not recolor the template." actionLabel="Edit colors" actionTo={`/admin/dealers/${dealer.id}/edit#branding`} onActionClick={onClearSuccess} />
-        <p id="branding-colors" className="dealer-setup-anchor" tabIndex={-1}>Brand colors are saved with Edit colors. This section does not contain a second color form.</p>
-        <div className="profile-logo-grid">
-        <section className="profile-logo-card dealer-setup-anchor" id="logo-original" tabIndex={-1}>
-          <div className="profile-logo-preview">
-            {dealer.logo_url ? (
-              <img src={dealer.logo_url} alt={`${dealer.company_name} primary logo`} />
-            ) : (
-              <span>{dealer.company_name.charAt(0).toUpperCase()}</span>
-            )}
-          </div>
-          <div>
-            <p className="eyebrow">Primary Logo</p>
-            <h2>Primary Logo</h2>
-            <p>Upload your standard logo. A flat outer background is detected automatically. Nothing is saved until you accept the transparent PNG or keep the upload.</p>
-          </div>
-          <label className={`button button--outline upload-button ${uploadingLogo ? 'is-disabled' : ''}`}>
-            {uploadingLogo === 'primary' ? 'Uploading...' : 'Upload Primary Logo'}
-            <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" disabled={uploadingLogo !== null} onChange={(event) => void handleLogoUpload(event, 'primary')} />
-          </label>
-          {dealer.logo_source_url && (
-            <button className="button button--outline" type="button" onClick={() => void restoreOriginalLogo()}>Restore Original</button>
-          )}
-          {removalNotice && <p className="logo-helper-note" role="status">{removalNotice}</p>}
-        </section>
-
-        <section className="profile-logo-card dealer-setup-anchor" id="logo-white" tabIndex={-1}>
-          <div className="profile-logo-preview profile-logo-preview--dark">
-            {dealer.logo_light_url || dealer.logo_generated_light_url ? (
-              <img src={dealer.logo_light_url ?? dealer.logo_generated_light_url ?? ''} alt={`${dealer.company_name} light logo`} />
-            ) : (
-              <span>{dealer.company_name.charAt(0).toUpperCase()}</span>
-            )}
-          </div>
-          <div>
-            <p className="eyebrow">{lightLogoEyebrow(dealer)}</p>
-            <h2>White Logo</h2>
-            <p>A white logo is generated from the original. Upload a custom version to replace it.</p>
-            {!dealer.logo_light_url && dealer.logo_generated_light_url && dealer.logo_generated_light_usable !== true && (
-              <p className="logo-helper-note">{dealer.logo_generated_light_usable === false
-                ? 'This generated file is not readable enough to offer as the White/Light logo.'
-                : 'This generated file has not passed the readability check, so it is not offered as the White/Light logo.'}</p>
-            )}
-          </div>
-          <label className={`button button--outline upload-button ${uploadingLogo ? 'is-disabled' : ''}`}>
-            {uploadingLogo === 'light' ? 'Uploading...' : 'Upload White Logo'}
-            <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" disabled={uploadingLogo !== null} onChange={(event) => void handleLogoUpload(event, 'light')} />
-          </label>
-          <div className="page-actions">
-            {dealer.logo_url && (
-              <button className="button button--outline" type="button" disabled={isGeneratingLightLogo || uploadingLogo !== null} onClick={() => void generateLightLogo()}>
-                {isGeneratingLightLogo ? 'Generating...' : 'Generate White'}
-              </button>
-            )}
-            {dealer.logo_light_url && (
-              <button className="button button--danger-outline" type="button" disabled={isGeneratingLightLogo || uploadingLogo !== null} onClick={() => void removeCustomLightLogo()}>
-                Remove Custom Logo
-              </button>
-            )}
-          </div>
-        </section>
-        <section className="profile-logo-card dealer-setup-anchor" id="logo-black" tabIndex={-1}>
-          <div className="profile-logo-preview">
-            {dealer.logo_black_url || (dealer.logo_generated_black_usable && dealer.logo_generated_black_url) ? (
-              <img src={dealer.logo_black_url ?? dealer.logo_generated_black_url ?? ''} alt={`${dealer.company_name} black logo`} />
-            ) : (
-              <span>{dealer.company_name.charAt(0).toUpperCase()}</span>
-            )}
-          </div>
-          <div>
-            <p className="eyebrow">{dealer.logo_black_url ? 'Custom black' : dealer.logo_generated_black_usable ? 'Generated black' : 'Black logo'}</p>
-            <h2>Black Logo</h2>
-            <p>Generate a black version from the original, or upload your own. An unreadable result is not offered.</p>
-          </div>
-          <label className={`button button--outline upload-button ${uploadingLogo ? 'is-disabled' : ''}`}>
-            {uploadingLogo === 'black' ? 'Uploading...' : 'Upload Black Logo'}
-            <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" disabled={uploadingLogo !== null} onChange={(event) => void handleLogoUpload(event, 'black')} />
-          </label>
-          {dealer.logo_url && (
-            <button className="button button--outline" type="button" disabled={isGeneratingLightLogo || uploadingLogo !== null} onClick={() => void generateBlackLogo()}>
-              {isGeneratingLightLogo ? 'Generating...' : 'Generate Black'}
-            </button>
-          )}
-        </section>
+      <section className="content-card dealer-management-card" id="branding-studio">
+        <div className="dealer-form__section-heading">
+          <p className="eyebrow">Door Builder</p>
+          <h2>Branding Studio</h2>
+          <p>Logos, placement, colors, and typography for this dealer’s Door Builder. Marketing banners use the logo and do not recolor the template.</p>
         </div>
-        {removal && (
-          <LogoBackgroundDialog
-            originalUrl={removal.originalUrl}
-            removedUrl={removal.removedUrl}
-            reason={removal.reason}
-            busy={uploadingLogo !== null}
-            onAccept={() => void acceptTransparentLogo()}
-            onKeep={() => void keepOriginalLogo()}
-            onCancel={dismissRemoval}
-          />
-        )}
+        <Link className="button button--primary" to={`/admin/dealers/${dealer.id}/branding`}>Customize Door Builder</Link>
       </section>
-              <DealerLogoVariantSettings
-                dealer={dealer}
-                embedded
-                placement={placementDraft ?? (dealer.logo_placement === 'header' ? 'header' : 'hero')}
-                onDraftChange={setVariantDraft}
-                onSave={saveLogoVariants}
-                onSaveWebsite={saveLogoWebsite}
-                onWebsiteUpdated={(updated) => onDealerUpdated(updated, 'Logo website saved.')}
-                onUpdated={(updated) => onDealerUpdated(updated, 'Door Builder logo choices saved.')}
-                onHydrated={(updated) => onDealerUpdated(updated, successMessage)}
-              />
-            </>
-          ),
-          placement: (
-            <>
-              <DealerLogoDisplaySettings
-                dealer={dealer}
-                embedded
-                onDraftChange={setDisplayDraft}
-                onSaveDisplay={saveLogoDisplay}
-                onSaveSecondary={saveSecondaryLogos}
-                onUpdated={(updated) => onDealerUpdated(updated, 'Logo display saved.')}
-              />
-              <DealerLogoPlacementSettings
-                dealer={dealer}
-                onDraftChange={setPlacementDraft}
-                onSave={saveLogoPlacement}
-                onUpdated={(updated) => onDealerUpdated(updated, 'Dealer logo placement saved.')}
-              />
-            </>
-          ),
-          colors: <DoorBuilderAppearanceSettings dealer={dealer} mode="admin" embedded onDraftChange={setAppearanceDraft} onSave={saveAppearance} />,
-          typography: <div id="design"><DealerTypographySettings dealer={dealer} embedded onDraftChange={setTypographyDraft} onSave={saveTypography} onUpdated={(updated) => onDealerUpdated(updated, 'Typography saved.')} /></div>,
-        }}
-      />
 
       <DoorBuilderLeadWebhook dealerId={dealer.id} />
 

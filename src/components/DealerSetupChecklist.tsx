@@ -24,6 +24,7 @@ function revealTarget(destination: SetupDestination) {
 }
 
 function destinationHref(destination: SetupDestination, dealerId?: string) {
+  if (destination.studioSection && dealerId) return `/admin/dealers/${dealerId}/branding?section=${destination.studioSection}`
   if (destination.editFocusId && dealerId) return `/admin/dealers/${dealerId}/edit#${destination.editFocusId}`
   return `#${destination.anchorId}`
 }
@@ -32,7 +33,7 @@ export function DealerSetupChecklist({ dealer, dealerId }: { dealer: DealerSetup
   const items = dealerSetupChecklist(dealer)
 
   function openDestination(event: MouseEvent<HTMLAnchorElement>, destination: SetupDestination) {
-    if (destination.editFocusId && dealerId) return
+    if ((destination.studioSection || destination.editFocusId) && dealerId) return
     event.preventDefault()
     revealTarget(destination)
   }

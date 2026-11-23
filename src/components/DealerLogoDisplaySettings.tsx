@@ -24,6 +24,7 @@ type Props = {
   onUpdated: (dealer: AdminDealer) => void
   embedded?: boolean
   onDraftChange?: (display: DealerLogoDisplay) => void
+  value?: DealerLogoDisplay
 }
 
 const logoExtensions: Record<string, string> = {
@@ -64,9 +65,14 @@ function LogoPair({
   )
 }
 
-export function DealerLogoDisplaySettings({ dealer, onSaveDisplay, onSaveSecondary, onUpdated, embedded = false, onDraftChange }: Props) {
+export function DealerLogoDisplaySettings({ dealer, onSaveDisplay, onSaveSecondary, onUpdated, embedded = false, onDraftChange, showUploads = true, value }: Props & { showUploads?: boolean }) {
   const saved = normalizeLogoDisplay(dealer.logo_display)
-  const [display, setDisplay] = useState<DealerLogoDisplay>(saved)
+  const [uncontrolled, setUncontrolled] = useState<DealerLogoDisplay>(saved)
+  const display = value ?? uncontrolled
+  const setDisplay = (next: DealerLogoDisplay) => {
+    if (value === undefined) setUncontrolled(next)
+    onDraftChange?.(next)
+  }
   const [isSaving, setIsSaving] = useState(false)
   const [uploading, setUploading] = useState<SecondaryKind | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -232,7 +238,7 @@ export function DealerLogoDisplaySettings({ dealer, onSaveDisplay, onSaveSeconda
           <span><strong>2 Logos</strong><small>Primary logo on the left, second logo on the right, with a thin divider.</small></span>
         </label>
       </div>
-      {showPair && (
+      {showUploads && showPair && (
         <div className="logo-display-uploads">
           <p>Logo 2 can use its own Original, White, or Black choice. Leave that choice unset to follow Logo 1. If the selected file is missing, Door Builder shows only the first logo.</p>
           <div className="page-actions">

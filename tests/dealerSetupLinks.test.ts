@@ -30,13 +30,13 @@ test('every checklist item maps to one destination or an explicit non-link', () 
     'company-details': ['company-name', 'company', 'Company Details', 'company-name'],
     'door-builder-url': ['dealer-slug', 'company', 'Company Details', 'dealer-slug'],
     'dealer-admin': ['dealer-users', 'dealer-users', 'Dealer Users / Access'],
-    'logo-original': ['logo-original', 'branding', 'Branding'],
-    'logo-white': ['logo-white', 'branding', 'Branding'],
-    'logo-black': ['logo-black', 'branding', 'Branding'],
-    'homepage-logo': ['homepage-logo-selection', 'branding', 'Branding'],
-    'pages-logo': ['pages-logo-selection', 'branding', 'Branding'],
-    colors: ['primary-color', 'branding', 'Branding', 'primary-color'],
-    typography: ['heading-font-family', 'design', 'Typography & Design', 'heading-font-family'],
+    'logo-original': ['logo-original', 'branding-studio', 'Branding Studio', undefined, 'logos'],
+    'logo-white': ['logo-white', 'branding-studio', 'Branding Studio', undefined, 'logos'],
+    'logo-black': ['logo-black', 'branding-studio', 'Branding Studio', undefined, 'logos'],
+    'homepage-logo': ['homepage-logo-selection', 'branding-studio', 'Branding Studio', undefined, 'placement'],
+    'pages-logo': ['pages-logo-selection', 'branding-studio', 'Branding Studio', undefined, 'placement'],
+    colors: ['door-builder-appearance', 'branding-studio', 'Branding Studio', undefined, 'colors'],
+    typography: ['heading-font-family', 'branding-studio', 'Branding Studio', undefined, 'typography'],
     marketing: ['marketing-tools', 'marketing-tools', 'Marketing Tools'],
     crm: ['crm-integrations', 'crm-integrations', 'CRM Integrations'],
   } as const
@@ -47,6 +47,8 @@ test('every checklist item maps to one destination or an explicit non-link', () 
     assert.equal(destination.sectionId, sectionId, id)
     assert.equal(destination.tabLabel, tabLabel, id)
     if (focusId) assert.equal(destination.editFocusId, focusId, id)
+    const studio = (expected as Record<string, readonly (string | undefined)[]>)[id][4]
+    if (studio) assert.equal(destination.studioSection, studio, id)
   }
   for (const id of ['workflows', 'lead-routing']) {
     assert.equal(dealerSetupDestination(id), null, id)
@@ -62,9 +64,10 @@ test('opening a destination does not change checklist completion', () => {
   assert.match(component, /Go to \$\{destination\.tabLabel\}: \$\{destination\.targetLabel\}/)
   assert.match(component, /does not mark it complete/)
   assert.doesNotMatch(component, /status:\s*'ready'|setStatus|onComplete/)
-  assert.match(readFileSync('src/pages/DealerDetailPage.tsx', 'utf8'), /id="logo-original"/)
-  assert.match(readFileSync('src/pages/DealerDetailPage.tsx', 'utf8'), /id="logo-white"/)
-  assert.match(readFileSync('src/pages/DealerDetailPage.tsx', 'utf8'), /id="logo-black"/)
+  assert.match(readFileSync('src/pages/BrandingStudioPage.tsx', 'utf8'), /id="logo-original"/)
+  assert.match(readFileSync('src/pages/BrandingStudioPage.tsx', 'utf8'), /id="logo-white"/)
+  assert.match(readFileSync('src/pages/BrandingStudioPage.tsx', 'utf8'), /id="logo-black"/)
+  assert.match(readFileSync('src/components/DealerSetupChecklist.tsx', 'utf8'), /\/admin\/dealers\/\$\{dealerId\}\/branding\?section=/)
   assert.match(readFileSync('src/components/DealerLogoVariantSettings.tsx', 'utf8'), /homepage-logo-selection/)
   assert.match(readFileSync('src/components/DealerLogoVariantSettings.tsx', 'utf8'), /pages-logo-selection/)
 })

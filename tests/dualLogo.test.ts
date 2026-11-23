@@ -111,8 +111,7 @@ test('the second logo matches Door Builder and stays on the selected file', () =
 test('dual logo migration is additive and marketing banners stay on the first logo', () => {
   const migration = readFileSync('supabase/migrations/20261119000000_add_dealer_dual_logo.sql', 'utf8')
   const banners = readFileSync('src/features/marketing-banners/logos.ts', 'utf8')
-  const profile = readFileSync('src/pages/DealerCompanyProfilePage.tsx', 'utf8')
-  const detail = readFileSync('src/pages/DealerDetailPage.tsx', 'utf8')
+  const studio = readFileSync('src/pages/BrandingStudioPage.tsx', 'utf8')
   assert.match(migration, /logo_display text not null default 'single'/)
   assert.match(migration, /logo_display in \('single', 'dual'\)/)
   assert.match(migration, /update_my_dealer_logo_display/)
@@ -134,15 +133,13 @@ test('dual logo migration is additive and marketing banners stay on the first lo
   assert.match(migration, /logo-secondary\(-light\|-black\|-source\)\?/)
   assert.match(migration, /Rollback:/)
   assert.doesNotMatch(banners, /logo_secondary_/)
-  assert.match(profile, /DealerLogoDisplaySettings/)
-  assert.match(detail, /DealerLogoDisplaySettings/)
-  assert.match(profile, /Marketing banners do not use these choices/)
+  assert.match(studio, /DealerLogoDisplaySettings/)
+  assert.match(studio, /Marketing banners do not use these choices/)
 })
 
 test('dual logo choices save together and a failure restores the saved choices', () => {
   const migration = readFileSync('supabase/migrations/20261119000000_add_dealer_dual_logo.sql', 'utf8')
-  const profile = readFileSync('src/pages/DealerCompanyProfilePage.tsx', 'utf8')
-  const detail = readFileSync('src/pages/DealerDetailPage.tsx', 'utf8')
+  const studio = readFileSync('src/pages/BrandingStudioPage.tsx', 'utf8')
   const component = readFileSync('src/components/DealerLogoVariantSettings.tsx', 'utf8')
   const fnStart = migration.indexOf('create or replace function public.update_my_dealer_all_logo_variants')
   const fnEnd = migration.indexOf('revoke all on function public.update_my_dealer_all_logo_variants')
@@ -172,16 +169,13 @@ test('dual logo choices save together and a failure restores the saved choices',
     logo_secondary_pages_variant: null,
   })
 
-  for (const page of [profile, detail]) {
-    assert.match(page, /plan\.mode === 'primary'/)
-    assert.match(page, /logoVariantSavePlan\(dealer\.logo_display, variants\.header, variants\.pages, variants\.secondaryHeader, variants\.secondaryPages\)/)
-    assert.doesNotMatch(page, /update_my_dealer_secondary_logo_variants/)
-  }
-  assert.match(profile, /update_my_dealer_logo_variants/)
-  assert.match(profile, /update_my_dealer_all_logo_variants/)
-  assert.match(detail, /\.update\(written\)/)
-  assert.match(detail, /\.update\(plan\.fields\)/)
-  assert.doesNotMatch(detail, /update_my_dealer_all_logo_variants/)
+  assert.match(studio, /plan\.mode === 'primary'/)
+  assert.match(studio, /logoVariantSavePlan\(current\.logo_display, variants\.header, variants\.pages, variants\.secondaryHeader, variants\.secondaryPages\)/)
+  assert.doesNotMatch(studio, /update_my_dealer_secondary_logo_variants/)
+  assert.match(studio, /update_my_dealer_logo_variants/)
+  assert.match(studio, /update_my_dealer_all_logo_variants/)
+  assert.match(studio, /\.update\(plan\.fields\)/)
+  assert.match(studio, /mode === 'admin'/)
   assert.match(component, /These logo choices were not saved\. The previous choices are unchanged\./)
   assert.match(component, /logoChoicesAfterFailedSave\(dealer\)/)
   const failure = component.slice(component.indexOf('catch (saveError)'), component.indexOf('} finally'))
