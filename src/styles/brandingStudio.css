@@ -25,6 +25,9 @@
 .branding-studio__live-copy { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .branding-studio__status { margin: 0; color: #8a5a00; font-size: 13px; font-weight: 700; }
 .branding-studio__status.is-clean { color: #5d6b68; font-weight: 600; }
+.branding-studio__save-alert { margin: 0; color: #8a2424; font-size: 13px; font-weight: 700; }
+.branding-studio__toolbar .branding-studio__save-alert { grid-column: 1 / -1; grid-row: 3; margin: 0 0 8px; }
+.branding-studio__toolbar:has(.branding-studio__save-alert) { flex-basis: auto; height: auto; max-height: none; overflow: visible; grid-template-rows: 48px 40px auto; }
 .branding-studio__live { color: #0d666c; font-size: 13px; font-weight: 700; }
 .branding-studio__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
 .branding-studio__workspace { display: grid; grid-template-columns: 96px minmax(0, 1fr) clamp(300px, 22vw, 340px); grid-template-rows: minmax(0, 1fr); flex: 1 1 auto; height: 0; min-height: 0; overflow: hidden; }
@@ -123,8 +126,9 @@
   .branding-studio__editor { display: none; }
   .branding-studio__edit { display: inline-flex; }
   .branding-studio.is-editing .branding-studio__editor { display: flex; position: fixed; z-index: 180; top: 0; right: 0; bottom: 0; left: 0; width: auto; height: auto; border-left: 0; }
-  .branding-studio.is-editing .branding-studio__sheet-bar, .branding-studio.is-editing .branding-studio__sheet-actions { display: flex; position: sticky; z-index: 2; justify-content: space-between; gap: 8px; background: #fff; }
+  .branding-studio.is-editing .branding-studio__sheet-bar, .branding-studio.is-editing .branding-studio__sheet-actions { display: flex; flex-wrap: wrap; position: sticky; z-index: 2; justify-content: space-between; gap: 8px; background: #fff; }
   .branding-studio.is-editing .branding-studio__sheet-bar { top: 0; }
+  .branding-studio__sheet-bar .branding-studio__save-alert { flex: 1 0 100%; }
   .branding-studio.is-editing .branding-studio__sheet-actions { bottom: var(--notification-clearance, 96px); }
   .branding-studio__preview { min-height: 0; height: 100%; }
 }
