@@ -5,6 +5,7 @@ import test from 'node:test'
 import { decryptCrmCredentials, encryptCrmCredentials } from '../api/_lib/dealerCrmIntegration.ts'
 import {
   AMERICAS_BEST_DEALER_SLUG,
+  OPTA_LIVE_VALUE,
   OPTA_SUBMIT_URL,
   OPTA_TEST_VALUE,
   buildOptaTestLeadRequest,
@@ -119,11 +120,11 @@ test('network failure is reported and is not a successful delivery', async () =>
   assert.deepEqual(result, { ok: false, disposition: 'network_failure' })
 })
 
-test('only the verified Americas Best slug can be prepared, and live mode never sends', async () => {
-  let called = false
-  const transport: OptaTransport = async () => {
-    called = true
-    return jsonResponse(200, { leadStatus: true, testLead: true })
+test('only the verified Americas Best slug can be prepared, and live mode sends test false', async () => {
+  const calls: string[] = []
+  const transport: OptaTransport = async (_url, init) => {
+    calls.push(init.body)
+    return jsonResponse(200, { leadStatus: true, testLead: false, reason: '', message: 'Success Lead = Accepted' })
   }
   const otherDealer = await deliverOptaTestLead(
     { ...syntheticAmericasBestOptaLead(), dealerSlug: 'wdm' },
@@ -131,9 +132,13 @@ test('only the verified Americas Best slug can be prepared, and live mode never 
     transport,
   )
   const live = await deliverOptaTestLead(syntheticAmericasBestOptaLead(), credentials, transport, 'live')
-  assert.equal(called, false)
-  assert.deepEqual(otherDealer, { ok: false, disposition: 'ineligible', reason: 'dealer_not_eligible' })
-  assert.deepEqual(live, { ok: false, disposition: 'ineligible', reason: 'live_delivery_disabled' })
+  assert.equal(calls.length, 1)
+  assert.equal(JSON.parse(calls[0]).test, 'false')
+  assert.equal(otherDealer.ok, false)
+  assert.equal(live.ok, true)
+  if (!live.ok) return
+  assert.equal(live.disposition, 'live_accepted')
+  assert.equal(live.testLead, false)
   assert.equal(AMERICAS_BEST_DEALER_SLUG, 'americas-best-windows-and-doors')
 })
 
@@ -150,18 +155,22 @@ test('a 200 leadStatus true response without testLead is not accepted', async ()
   assert.equal(result.disposition, 'unexpected_response')
 })
 
-test('Opta delivery stays server-only and cannot request a live lead', () => {
+test('Opta delivery stays server-only and live is an explicit mode', () => {
   const source = readFileSync('api/_lib/optaLeadDelivery.ts', 'utf8')
   const settings = readFileSync('api/dealer-crm-integrations.ts', 'utf8')
   const component = readFileSync('src/components/DealerCrmIntegrations.tsx', 'utf8')
   assert.match(source, /OPTA_TEST_VALUE = 'true'/)
-  assert.doesNotMatch(source, /test\s*[:=]\s*['"]false['"]/)
-  assert.doesNotMatch(source, /test=false/)
+  assert.equal(OPTA_LIVE_VALUE, 'false')
+  assert.equal(OPTA_TEST_VALUE, 'true')
   assert.doesNotMatch(settings, /optaLeadDelivery|abw\.opta\.io/)
-  assert.doesNotMatch(component, /optaLeadDelivery|abw\.opta\.io/)
+  assert.doesNotMatch(component, /optaLeadDelivery|abw\.opta\.io|credentials_ciphertext|CRM_CREDENTIAL_ENCRYPTION_KEY/)
   const prepared = buildOptaTestLeadRequest(syntheticAmericasBestOptaLead(), credentials)
   assert.equal('ready' in prepared, true)
   if (!('ready' in prepared)) return
   assert.equal(prepared.request.body.test, 'true')
   assert.equal('dealerSlug' in prepared.request.body, false)
+  const live = buildOptaTestLeadRequest(syntheticAmericasBestOptaLead(), credentials, 'live')
+  assert.equal('ready' in live, true)
+  if (!('ready' in live)) return
+  assert.equal(live.request.body.test, 'false')
 })

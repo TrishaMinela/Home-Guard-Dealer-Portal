@@ -2,13 +2,21 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createClient } from '@supabase/supabase-js'
 import { authorizeBillingAccessManager } from './_lib/authorizeBillingAccessManager.js'
 import {
+  dealerAllowsOptaDelivery,
+  integrationAuditPlan,
+  OPTA_LIVE_CONFIRMATION_PHRASE,
+  validateIntegrationStateChange,
+} from './_lib/crmIntegrationState.js'
+import {
   CRM_PROVIDERS,
   assertValidFieldMapping,
   encryptCrmCredentials,
   isCrmCredentialEncryptionConfigured,
   validateCrmCredentials,
+  type CrmIntegrationState,
   type CrmProvider,
 } from './_lib/dealerCrmIntegration.js'
+import { redactCredentialPatterns } from './_lib/optaDeliveryPolicy.js'
 
 type JsonResponse = ServerResponse<IncomingMessage> & { json?: (value: unknown) => void }
 type SaveBody = {
@@ -18,6 +26,7 @@ type SaveBody = {
   state?: string
   fieldMapping?: unknown
   credentials?: unknown
+  liveConfirmation?: string
 }
 type IntegrationRow = {
   id: string
@@ -71,6 +80,38 @@ function safeIntegration(row: IntegrationRow) {
   }
 }
 
+function publicDelivery(row: {
+  id: string
+  lead_id: string
+  provider: string
+  delivery_status: string
+  attempt_count: number
+  last_attempted_at: string | null
+  http_status: number | null
+  error_code: string | null
+  error_message: string | null
+  response_metadata: unknown
+  updated_at: string
+}) {
+  const metadata = row.response_metadata && typeof row.response_metadata === 'object' && !Array.isArray(row.response_metadata)
+    ? row.response_metadata as Record<string, unknown>
+    : {}
+  const disposition = typeof metadata.disposition === 'string' && /^[a-z_]{1,40}$/.test(metadata.disposition) ? metadata.disposition : null
+  return {
+    id: row.id,
+    leadId: row.lead_id,
+    provider: row.provider,
+    deliveryStatus: row.delivery_status,
+    attemptCount: row.attempt_count,
+    lastAttemptedAt: row.last_attempted_at,
+    httpStatus: row.http_status,
+    errorCode: row.error_code,
+    errorMessage: typeof row.error_message === 'string' ? redactCredentialPatterns(row.error_message) : null,
+    disposition,
+    updatedAt: row.updated_at,
+  }
+}
+
 function validProvider(value: string | undefined): value is CrmProvider {
   return CRM_PROVIDERS.includes(value as CrmProvider)
 }
@@ -108,14 +149,21 @@ export default async function handler(request: IncomingMessage, response: JsonRe
     const body = request.method === 'POST' ? await readBody(request) : {}
     const dealerId = body.dealerId ?? parsedUrl.searchParams.get('dealerId') ?? ''
     if (!uuidPattern.test(dealerId)) return send(response, 400, { error: 'A valid dealer is required.' })
-    const { data: dealer, error: dealerError } = await admin.from('dealers').select('id,company_name').eq('id', dealerId).maybeSingle()
+    const { data: dealer, error: dealerError } = await admin.from('dealers').select('id,company_name,slug').eq('id', dealerId).maybeSingle()
     if (dealerError) throw dealerError
     if (!dealer) return send(response, 404, { error: 'Dealer not found.' })
 
     let notice: string | undefined
     if (request.method === 'POST') {
       if (body.action !== 'save' || !validProvider(body.provider)) return send(response, 400, { error: 'Choose a supported CRM provider.' })
-      if (body.state !== 'disabled') return send(response, 409, { error: 'CRM delivery activation is not available in this phase. Keep the integration Disabled.' })
+      const stateChange = validateIntegrationStateChange({
+        provider: body.provider,
+        dealerSlug: dealer.slug,
+        requestedState: body.state,
+        liveConfirmation: body.liveConfirmation,
+      })
+      if (!stateChange.ok) return send(response, stateChange.status, { error: stateChange.error })
+      const nextState: CrmIntegrationState = stateChange.state
       let fieldMapping: Record<string, string>
       try { fieldMapping = validatedFieldMapping(body.fieldMapping) } catch { return send(response, 400, { error: 'Review the CRM field mapping and try again.' }) }
 
@@ -148,7 +196,7 @@ export default async function handler(request: IncomingMessage, response: JsonRe
       const values = {
         dealer_id: dealerId,
         provider: body.provider,
-        state: 'disabled',
+        state: nextState,
         field_mapping: fieldMapping,
         updated_by: access.userId,
         updated_at: timestamp,
@@ -164,29 +212,40 @@ export default async function handler(request: IncomingMessage, response: JsonRe
         : await admin.from('dealer_crm_integrations').insert({ ...values, created_by: access.userId }).select('id,dealer_id,provider,state,field_mapping,credentials_ciphertext,created_at,updated_at').single<IntegrationRow>()
       if (result.error) throw result.error
 
-      const auditAction = current ? (encrypted ? 'credentials_updated' : 'configuration_updated') : 'created'
-      const { error: auditError } = await admin.from('dealer_crm_integration_audit_log').insert({
+      const auditActions = integrationAuditPlan({
+        isNew: !current,
+        previousState: current?.state ?? null,
+        nextState,
+        credentialsChanged: Boolean(encrypted),
+      })
+      const { error: auditError } = await admin.from('dealer_crm_integration_audit_log').insert(auditActions.map((action) => ({
         integration_id: result.data.id,
         dealer_id: dealerId,
         actor_user_id: access.userId,
-        action: auditAction,
+        action,
         previous_state: current?.state ?? null,
-        next_state: 'disabled',
-      })
+        next_state: nextState,
+      })))
       if (auditError) throw auditError
-      notice = current ? 'CRM integration settings saved securely.' : 'CRM integration added in Disabled mode.'
+      notice = current
+        ? 'CRM integration settings saved securely.'
+        : nextState === 'disabled'
+          ? 'CRM integration added in Disabled mode.'
+          : 'CRM integration added.'
     }
 
-    const [{ data: integrations, error: integrationsError }, { data: audit, error: auditError }] = await Promise.all([
+    const [{ data: integrations, error: integrationsError }, { data: audit, error: auditError }, { data: deliveries, error: deliveriesError }] = await Promise.all([
       admin.from('dealer_crm_integrations').select('id,dealer_id,provider,state,field_mapping,credentials_ciphertext,created_at,updated_at').eq('dealer_id', dealerId).order('created_at'),
       admin.from('dealer_crm_integration_audit_log').select('id,integration_id,action,previous_state,next_state,created_at').eq('dealer_id', dealerId).order('created_at', { ascending: false }).limit(25),
+      admin.from('dealer_crm_lead_deliveries').select('id,lead_id,provider,delivery_status,attempt_count,last_attempted_at,http_status,error_code,error_message,response_metadata,updated_at').eq('dealer_id', dealerId).order('updated_at', { ascending: false }).limit(20),
     ])
-    if (integrationsError || auditError) throw integrationsError ?? auditError
+    if (integrationsError || auditError || deliveriesError) throw integrationsError ?? auditError ?? deliveriesError
     const safeIntegrations = (integrations as IntegrationRow[] | null ?? []).map(safeIntegration)
     const providerByIntegration = new Map(safeIntegrations.map((integration) => [integration.id, integration.provider]))
     return send(response, 200, {
-      dealer: { id: dealer.id, name: dealer.company_name },
+      dealer: { id: dealer.id, name: dealer.company_name, slug: dealer.slug },
       integrations: safeIntegrations,
+      deliveries: (deliveries ?? []).map(publicDelivery),
       auditHistory: (audit ?? []).map((entry) => ({
         id: entry.id,
         provider: providerByIntegration.get(entry.integration_id) ?? null,
@@ -196,7 +255,9 @@ export default async function handler(request: IncomingMessage, response: JsonRe
         createdAt: entry.created_at,
       })),
       encryptionConfigured: isCrmCredentialEncryptionConfigured(process.env.CRM_CREDENTIAL_ENCRYPTION_KEY),
-      allowedStates: ['disabled'],
+      allowedStates: dealerAllowsOptaDelivery(dealer.slug) ? ['disabled', 'test', 'live'] : ['disabled'],
+      optaDeliveryAvailable: dealerAllowsOptaDelivery(dealer.slug),
+      liveConfirmationPhrase: OPTA_LIVE_CONFIRMATION_PHRASE,
       notice,
     })
   } catch (error) {

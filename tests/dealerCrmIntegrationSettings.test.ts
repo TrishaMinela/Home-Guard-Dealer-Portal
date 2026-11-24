@@ -37,20 +37,23 @@ test('provider-specific credentials are complete and custom webhooks require HTT
   assert.doesNotThrow(() => validateCrmCredentials('gohighlevel', { locationId: 'location', privateIntegrationToken: 'secret' }))
 })
 
-test('Phase 2 settings cannot activate delivery or expose credentials', () => {
-  assert.match(endpoint, /body\.state !== 'disabled'/)
-  assert.match(endpoint, /allowedStates: \['disabled'\]/)
+test('settings can change Opta state only with an audit and a live confirmation phrase', () => {
+  assert.match(endpoint, /validateIntegrationStateChange/)
+  assert.match(endpoint, /integrationAuditPlan/)
+  assert.match(endpoint, /liveConfirmationPhrase: OPTA_LIVE_CONFIRMATION_PHRASE/)
+  assert.match(endpoint, /optaDeliveryAvailable: dealerAllowsOptaDelivery/)
   assert.doesNotMatch(endpoint, /decryptCrmCredentials|\bfetch\s*\([^)]*(opta|gohighlevel|webhook)/i)
   assert.match(endpoint, /hasCredentials: Boolean\(row\.credentials_ciphertext\)/)
   assert.doesNotMatch(endpoint, /credentialsCiphertext:|authenticationKey: row|credentials:\s*row/)
-  assert.match(component, /Test — available in a future phase/)
-  assert.match(component, /Live — unavailable/)
-  assert.match(component, /No delivery will occur/)
+  assert.match(component, /enable live opta delivery/)
+  assert.match(component, /Delivery status/)
+  assert.match(component, /Delivery off/)
+  assert.doesNotMatch(component, /credentials_ciphertext|CRM_CREDENTIAL_ENCRYPTION_KEY/)
 })
 
 test('dealer and field mapping inputs are server validated', () => {
   assert.match(endpoint, /uuidPattern\.test\(dealerId\)/)
-  assert.match(endpoint, /from\('dealers'\).*select\('id,company_name'\)/s)
+  assert.match(endpoint, /from\('dealers'\).*select\('id,company_name,slug'\)/s)
   assert.match(endpoint, /assertValidFieldMapping\(mapping\)/)
   assert.match(endpoint, /\.eq\('dealer_id', dealerId\)/)
   assert.match(endpoint, /expectedProjectRef = 'udbcnpjtwhmjzpjjhoph'/)

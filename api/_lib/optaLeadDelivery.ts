@@ -2,17 +2,18 @@ import { standardLeadFields, validateCrmCredentials, type TrustedLeadRecord } fr
 import { optaDoorConfigurationNotes } from './optaDoorNotes.ts'
 
 /**
- * Server-only Opta test delivery for America's Best Windows & Doors.
+ * Server-only Opta request builder for America's Best Windows & Doors.
  *
- * The campaign instruction document (loaded from the public docs shortcode)
- * specifies POST https://abw.opta.io/ca/submit with Content-Type application/json.
+ * POST https://abw.opta.io/ca/submit with Content-Type application/json.
  * Campaign identifiers are request fields, not URL parameters: compid, pubid,
- * campid, and auth. They are read from the existing encrypted credential record.
- * This module never builds a live request and is not called by lead submission.
+ * campid, and auth. They come from the decrypted credential record and must
+ * stay on the server. Test mode sends test "true". Live mode sends test "false".
+ * Callers gate live sends before using this module. Lead submission does not.
  */
 export const AMERICAS_BEST_DEALER_SLUG = 'americas-best-windows-and-doors'
 export const OPTA_SUBMIT_URL = 'https://abw.opta.io/ca/submit'
 export const OPTA_TEST_VALUE = 'true'
+export const OPTA_LIVE_VALUE = 'false'
 /** America's Best is not charged per lead. Sent only through the configured_default price policy. */
 export const OPTA_DOCUMENTED_SAMPLE_PRICE = '0.0'
 
@@ -56,7 +57,7 @@ export type OptaSubmitBody = {
   pubid: string
   campid: string
   auth: string
-  test: typeof OPTA_TEST_VALUE
+  test: typeof OPTA_TEST_VALUE | typeof OPTA_LIVE_VALUE
   first: string
   last: string
   email: string
@@ -90,6 +91,7 @@ export type OptaTransport = (
 
 export type OptaDeliveryResult =
   | { ok: true; disposition: 'test_accepted'; httpStatus: 200; leadStatus: true; testLead: true; reason: string; message: string }
+  | { ok: true; disposition: 'live_accepted'; httpStatus: 200; leadStatus: true; testLead: boolean | null; reason: string; message: string }
   | { ok: false; disposition: 'rejected'; httpStatus: 200; leadStatus: false; reason: string; message: string }
   | { ok: false; disposition: 'unauthorized'; httpStatus: number }
   | { ok: false; disposition: 'missing_field'; missing: string[]; invalid: string[] }
@@ -148,7 +150,7 @@ export function buildOptaTestLeadRequest(
   mode: OptaDeliveryMode = 'test',
   policy: OptaUnconfirmedFieldPolicy = DEFAULT_OPTA_UNCONFIRMED_POLICY,
 ): { ready: true; request: OptaPreparedRequest } | Exclude<OptaDeliveryResult, { ok: true }> {
-  if (mode !== 'test') return { ok: false, disposition: 'ineligible', reason: 'live_delivery_disabled' }
+  if (mode !== 'test' && mode !== 'live') return { ok: false, disposition: 'ineligible', reason: 'live_delivery_disabled' }
   if (lead.dealerSlug.trim() !== AMERICAS_BEST_DEALER_SLUG) {
     return { ok: false, disposition: 'ineligible', reason: 'dealer_not_eligible' }
   }
@@ -177,12 +179,13 @@ export function buildOptaTestLeadRequest(
     return { ok: false, disposition: missing.length > 0 ? 'missing_field' : 'invalid_field', missing, invalid }
   }
 
+  const testFlag = mode === 'live' ? OPTA_LIVE_VALUE : OPTA_TEST_VALUE
   const body: OptaSubmitBody = {
     compid: stored.companyId,
     pubid: stored.sourceId,
     campid: stored.campaignId,
     auth: stored.authenticationKey,
-    test: OPTA_TEST_VALUE,
+    test: testFlag,
     first,
     last,
     email,
@@ -209,7 +212,7 @@ export function buildOptaTestLeadRequest(
   if (subId2) body.subid2 = subId2
   if (userAgent) body.user_agent = userAgent
   if (ipAddress) body.ip = ipAddress
-  if (body.test !== OPTA_TEST_VALUE) return { ok: false, disposition: 'ineligible', reason: 'live_delivery_disabled' }
+  if (body.test !== testFlag) return { ok: false, disposition: 'ineligible', reason: 'live_delivery_disabled' }
 
   return {
     ready: true,
@@ -231,7 +234,8 @@ export async function deliverOptaTestLead(
 ): Promise<OptaDeliveryResult> {
   const prepared = buildOptaTestLeadRequest(lead, credentials, mode, policy)
   if (!('ready' in prepared)) return prepared
-  if (prepared.request.body.test !== OPTA_TEST_VALUE || prepared.request.url !== OPTA_SUBMIT_URL) {
+  const testFlag = mode === 'live' ? OPTA_LIVE_VALUE : OPTA_TEST_VALUE
+  if (prepared.request.body.test !== testFlag || prepared.request.url !== OPTA_SUBMIT_URL) {
     return { ok: false, disposition: 'ineligible', reason: 'live_delivery_disabled' }
   }
 
@@ -246,10 +250,13 @@ export async function deliverOptaTestLead(
   } catch {
     return { ok: false, disposition: 'network_failure' }
   }
-  return interpretOptaResponse(response)
+  return interpretOptaResponse(response, mode)
 }
 
-async function interpretOptaResponse(response: OptaTransportResponse): Promise<OptaDeliveryResult> {
+export const buildOptaLeadRequest = buildOptaTestLeadRequest
+export const deliverOptaLead = deliverOptaTestLead
+
+export async function interpretOptaResponse(response: OptaTransportResponse, mode: OptaDeliveryMode = 'test'): Promise<OptaDeliveryResult> {
   if (response.status === 401 || response.status === 403) return { ok: false, disposition: 'unauthorized', httpStatus: response.status }
 
   let raw = ''
@@ -271,11 +278,16 @@ async function interpretOptaResponse(response: OptaTransportResponse): Promise<O
   const body = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null
   const leadStatus = body?.leadStatus === true ? true : body?.leadStatus === false ? false : null
   const testLead = body?.testLead === true ? true : body?.testLead === false ? false : null
+  const reason = sanitizedText(body?.reason)
+  const message = sanitizedText(body?.message)
   if (response.status === 200 && leadStatus === false) {
-    return { ok: false, disposition: 'rejected', httpStatus: 200, leadStatus: false, reason: sanitizedText(body?.reason), message: sanitizedText(body?.message) }
+    return { ok: false, disposition: 'rejected', httpStatus: 200, leadStatus: false, reason, message }
+  }
+  if (response.status === 200 && leadStatus === true && mode === 'live') {
+    return { ok: true, disposition: 'live_accepted', httpStatus: 200, leadStatus: true, testLead, reason, message }
   }
   if (response.status === 200 && leadStatus === true && testLead === true) {
-    return { ok: true, disposition: 'test_accepted', httpStatus: 200, leadStatus: true, testLead: true, reason: sanitizedText(body?.reason), message: sanitizedText(body?.message) }
+    return { ok: true, disposition: 'test_accepted', httpStatus: 200, leadStatus: true, testLead: true, reason, message }
   }
   return { ok: false, disposition: 'unexpected_response', httpStatus: response.status, leadStatus, testLead }
 }
