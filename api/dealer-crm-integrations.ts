@@ -16,6 +16,7 @@ import {
   type CrmIntegrationState,
   type CrmProvider,
 } from './_lib/dealerCrmIntegration.js'
+import { handleCrmDeliveryTrigger, handleOptaDeliveryCron, productionWorkerDeps } from './_lib/optaDeliveryHttp.js'
 import { redactCredentialPatterns } from './_lib/optaDeliveryPolicy.js'
 
 type JsonResponse = ServerResponse<IncomingMessage> & { json?: (value: unknown) => void }
@@ -127,6 +128,14 @@ function validatedFieldMapping(value: unknown) {
 
 export default async function handler(request: IncomingMessage, response: JsonResponse) {
   if (request.method !== 'GET' && request.method !== 'POST') return send(response, 405, { error: 'Method not allowed.' })
+  // Hobby allows 12 serverless functions. These routes rewrite onto this existing function.
+  const route = new URL(request.url ?? '/', 'https://portal.local')
+  if (route.searchParams.get('deliveryTrigger') === '1' || route.pathname.endsWith('/crm-delivery-trigger')) {
+    return handleCrmDeliveryTrigger(request, response, productionWorkerDeps())
+  }
+  if (route.searchParams.get('optaSweep') === '1' || route.pathname.endsWith('/cron-opta-delivery')) {
+    return handleOptaDeliveryCron(request, response, productionWorkerDeps())
+  }
   const authorization = Array.isArray(request.headers.authorization) ? request.headers.authorization[0] : request.headers.authorization
   const access = await authorizeBillingAccessManager(authorization)
   if (!access.authorized) return send(response, access.status, { error: access.message })

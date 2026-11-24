@@ -38,6 +38,10 @@ test('provider-specific credentials are complete and custom webhooks require HTT
 })
 
 test('settings can change Opta state only with an audit and a live confirmation phrase', () => {
+  assert.match(endpoint, /deliveryTrigger/)
+  assert.match(endpoint, /optaSweep/)
+  assert.match(endpoint, /handleCrmDeliveryTrigger\(request, response, productionWorkerDeps\(\)\)/)
+  assert.match(readFileSync('vercel.json', 'utf8'), /\/api\/dealer-crm-integrations\?optaSweep=1/)
   assert.match(endpoint, /validateIntegrationStateChange/)
   assert.match(endpoint, /integrationAuditPlan/)
   assert.match(endpoint, /liveConfirmationPhrase: OPTA_LIVE_CONFIRMATION_PHRASE/)
