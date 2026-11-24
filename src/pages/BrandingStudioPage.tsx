@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { BrandColorField } from '../components/BrandColorField'
 import { DoorBuilderAppearancePreview } from '../components/DoorBuilderAppearancePreview'
@@ -92,7 +92,9 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
   const [brandDraft, setBrandDraft] = useState<{ primary: string; secondary: string } | null>(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [saveAlert, setSaveAlert] = useState('')
   const [saving, setSaving] = useState(false)
+  const saveInFlight = useRef(false)
   const [removal, setRemoval] = useState<{ file: File; originalUrl: string; removedUrl: string; reason: string; png: Blob } | null>(null)
   const [removalNotice, setRemovalNotice] = useState('')
   const [uploading, setUploading] = useState(false)
@@ -224,13 +226,17 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
     setDraftEpoch((value) => value + 1)
     setMessage('Draft discarded.')
     setError('')
+    setSaveAlert('')
   }
 
   async function saveAll() {
-    if (!dirty || saving) return
+    if (!dirty || saving || saveInFlight.current) return
+    saveInFlight.current = true
     setSaving(true)
     setMessage('')
     setError('')
+    setSaveAlert('')
+    try {
     let current = dealer
     const tasks: Array<{ id: string; label: string; run: () => Promise<void> }> = []
     if (displayDraft != null && displayDraft !== normalizeLogoDisplay(dealer.logo_display)) {
@@ -277,13 +283,20 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
       setBrandDraft(null)
       setPrimaryLinkDraft(null)
       setSecondaryLinkDraft(null)
+      setDraftEpoch((value) => value + 1)
       setMessage('Changes saved.')
+      setSaveAlert('')
     } else {
       const saved = joinLabels(result.saved.map((id) => tasks.find((task) => task.id === id)?.label ?? id))
       const failed = result.failed.map((item) => `${item.label} failed: ${item.message}`).join(' ')
+      const failedLabels = joinLabels(result.failed.map((item) => item.label))
       setError(`${saved ? `Saved ${saved}. ` : ''}${failed}`)
+      setSaveAlert(saved ? `Saved ${saved}. ${failed}` : `Save failed: ${failedLabels}`)
     }
-    setSaving(false)
+    } finally {
+      saveInFlight.current = false
+      setSaving(false)
+    }
   }
 
   async function saveDisplay(current: AdminDealer, value: DealerLogoDisplay) {
@@ -692,6 +705,7 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
       <div className="branding-studio__sheet-bar">
         <strong>{active[0]}</strong>
         <button type="button" onClick={() => setEditing(false)}>Close</button>
+        {saveAlert ? <p className="branding-studio__save-alert" role="alert">{saveAlert}</p> : null}
       </div>
       <div className="branding-studio__editor-head">
         <h2>{logoView === 'cards' ? active[0] : 'Manage Variants'}</h2>
@@ -829,6 +843,7 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
         </div>
         <p className="branding-studio__live-status"><span className="branding-studio__live-dot" /><span className="branding-studio__live-copy">Live preview updates instantly</span></p>
         <p className={`branding-studio__status${dirty ? '' : ' is-clean'}`} role="status">{dirty ? 'Unsaved changes' : 'All changes saved'}</p>
+        {saveAlert ? <p className="branding-studio__save-alert" role="alert">{saveAlert}</p> : null}
         <a className="branding-studio__live" href={getDealerVisualizerUrl(dealer.slug)} target="_blank" rel="noreferrer">Open Live Website</a>
         <div className="branding-studio__actions">
           <button type="button" className="button button--outline" onClick={discard} disabled={!dirty || saving}>Discard Changes</button>

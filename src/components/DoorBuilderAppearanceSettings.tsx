@@ -101,14 +101,14 @@ export function DoorBuilderAppearanceSettings({
   }, [draft, onDraftChange])
 
   useEffect(() => {
-    if (!dirty) return
+    if (embedded || !dirty) return
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault()
       event.returnValue = ''
     }
     window.addEventListener('beforeunload', onBeforeUnload)
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
-  }, [dirty])
+  }, [dirty, embedded])
 
   if (!canEdit) return null
 
@@ -161,7 +161,7 @@ export function DoorBuilderAppearanceSettings({
       </div>
       {legacyNotice && <div className="portal-alert" role="status">{LEGACY_APPEARANCE_NOTICE}</div>}
       {migrationNeeded && <div className="portal-alert" role="status">Appearance choices can be previewed now. They can be saved after the Door Builder appearance migration is applied.</div>}
-      {dirty && <div className="portal-alert" role="status">Appearance has unsaved changes.</div>}
+      {dirty && !embedded && <div className="portal-alert" role="status">Appearance has unsaved changes.</div>}
       {message && <div className="portal-alert portal-alert--success" role="status">{message}</div>}
       {error && <div className="portal-alert" role="alert">{error}</div>}
       {warnings.length > 0 && (

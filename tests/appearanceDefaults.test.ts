@@ -535,8 +535,8 @@ test('studio drafts survive categories and discard, and a partial save names the
   await page.locator('.appearance-popover__done').click()
   assert.equal(await page.locator('.branding-studio__status').innerText(), 'Unsaved changes')
   await page.getByRole('button', { name: 'Save Changes' }).click()
-  await page.getByRole('alert').waitFor()
-  const alert = await page.getByRole('alert').innerText()
+  await page.locator('.branding-studio__toolbar .branding-studio__save-alert').waitFor()
+  const alert = await page.locator('.branding-studio__toolbar .branding-studio__save-alert').innerText()
   assert.match(alert, /Saved Logo Display & Placement/)
   assert.match(alert, /Colors failed: colors rejected/)
   page.once('dialog', (dialog) => void dialog.accept())
@@ -558,6 +558,119 @@ test('leaving the studio with unsaved changes asks first and Back returns to the
   page.once('dialog', (dialog) => void dialog.accept())
   await page.getByRole('link', { name: 'Company Details', exact: true }).click()
   await page.getByRole('link', { name: 'Company Details', exact: true }).waitFor()
+  await page.close()
+})
+
+async function paintStudioColor(page: playwright.Page) {
+  await page.locator('#appearance-bodyBackground').scrollIntoViewIfNeeded()
+  await page.locator('#appearance-bodyBackground').click()
+  await page.locator('#appearance-bodyBackground-hex').fill('#112233')
+  await page.locator('.appearance-popover__done').click()
+}
+
+async function showColors(page: playwright.Page, width: number) {
+  await page.setViewportSize({ width, height: width >= 1024 ? 900 : 844 })
+  await page.getByRole('button', { name: 'Colors', exact: true }).click()
+  if (width < 1024) {
+    await page.getByRole('button', { name: 'Edit Settings' }).evaluate((element) => {
+      if (element instanceof HTMLButtonElement) element.click()
+    })
+    await page.locator('.branding-studio.is-editing').waitFor()
+  }
+}
+
+function alertInView(page: playwright.Page) {
+  return page.evaluate(() => [...document.querySelectorAll<HTMLElement>('[role="alert"]')].some((node) => {
+    const box = node.getBoundingClientRect()
+    const style = getComputedStyle(node)
+    if (style.display === 'none' || style.visibility === 'hidden' || box.width === 0 || box.height === 0) return false
+    return box.top >= 0 && box.bottom <= window.innerHeight && box.left >= 0 && box.right <= window.innerWidth
+  }))
+}
+
+test('a successful studio save clears the colors draft and keeps the save result in view', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1440, height: 900 } })
+  await page.route('**/*', async (route) => {
+    const url = route.request().url()
+    if (url.includes('example.supabase.co')) {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: 'null' })
+      return
+    }
+    await route.continue()
+  })
+  await openStudio(page)
+  await page.getByRole('button', { name: 'Colors', exact: true }).click()
+  await paintStudioColor(page)
+  await page.getByRole('button', { name: 'Save Changes' }).first().click()
+  await page.locator('.branding-studio__status.is-clean').waitFor()
+  assert.equal(await page.getByText(/unsaved/i).count(), 0)
+  assert.equal(await page.evaluate(() => {
+    const event = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(event)
+    return event.defaultPrevented
+  }), false)
+  assert.match(await page.locator('#appearance-bodyBackground').innerText(), /#112233/i)
+  const appearanceWrites: string[] = []
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && request.url().includes('update_my_dealer_door_builder_appearance')) appearanceWrites.push(request.url())
+  })
+  await page.locator('#appearance-bodyBackground').click()
+  await page.locator('#appearance-bodyBackground-hex').fill('#223344')
+  await page.locator('.appearance-popover__done').click()
+  await page.locator('.branding-studio__actions .button--primary').evaluate((button) => {
+    if (!(button instanceof HTMLButtonElement)) return
+    button.click()
+    button.click()
+    button.click()
+  })
+  await page.locator('.branding-studio__status.is-clean').waitFor()
+  assert.equal(appearanceWrites.length, 1)
+
+  for (const width of [1440, 1024, 390]) {
+    await showColors(page, width)
+    await paintStudioColor(page)
+    await page.locator('.branding-studio__editor').evaluate((element) => { element.scrollTop = element.scrollHeight })
+    await page.unroute('**/*')
+    await page.route('**/*', async (route) => {
+      const url = route.request().url()
+      if (url.includes('update_my_dealer_door_builder_appearance')) {
+        await route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ message: 'colors rejected', code: 'P0001' }) })
+        return
+      }
+      if (url.includes('example.supabase.co')) {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: 'null' })
+        return
+      }
+      await route.continue()
+    })
+    await page.locator('button:visible').filter({ hasText: 'Save Changes' }).last().click()
+    await page.locator('.branding-studio__save-alert').first().waitFor()
+    assert.match(await page.locator('.branding-studio__save-alert').first().innerText(), /Save failed: Colors/)
+    assert.match(await page.locator('.branding-studio__message.is-error').innerText(), /Colors failed: colors rejected/)
+    assert.equal(await alertInView(page), true, `${width}px failed save alert is off screen`)
+    if (width < 1024) await page.getByRole('button', { name: 'Close', exact: true }).click()
+    await page.getByRole('button', { name: 'Typography', exact: true }).click()
+    if (width < 1024) {
+      await page.getByRole('button', { name: 'Edit Settings' }).evaluate((element) => {
+        if (element instanceof HTMLButtonElement) element.click()
+      })
+    }
+    await page.locator('#heading-font-family').evaluate((element, index) => {
+      if (!(element instanceof HTMLSelectElement)) return
+      element.selectedIndex = Number(index)
+      element.dispatchEvent(new Event('change', { bubbles: true }))
+    }, width === 390 ? 3 : width === 1024 ? 2 : 1)
+    if (width < 1024) await page.getByRole('button', { name: 'Close', exact: true }).click()
+    await showColors(page, width)
+    await page.locator('.branding-studio__editor').evaluate((element) => { element.scrollTop = element.scrollHeight })
+    await page.locator('button:visible').filter({ hasText: 'Save Changes' }).last().click()
+    await page.locator('.branding-studio__save-alert').first().waitFor()
+    const partial = await page.locator('.branding-studio__save-alert').first().innerText()
+    assert.match(partial, /Saved Typography/)
+    assert.match(partial, /Colors failed:/)
+    assert.equal(await alertInView(page), true, `${width}px partial save alert is off screen`)
+    if (width < 1024) await page.getByRole('button', { name: 'Close', exact: true }).click()
+  }
   await page.close()
 })
 
