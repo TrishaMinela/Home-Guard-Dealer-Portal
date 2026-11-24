@@ -685,3 +685,23 @@ test('trigger accepts Vercel parsed JSON and rejects missing secrets', async () 
   assert.equal(res.statusCode, 200)
   assert.equal(body.disposition, 'test_accepted')
 })
+
+test('discovery query excludes rows for this integration before applying its limit', async () => {
+  const calls: Array<[string, ...unknown[]]> = []
+  const query = {
+    select: (...args: unknown[]) => { calls.push(['select', ...args]); return query },
+    eq: (...args: unknown[]) => { calls.push(['eq', ...args]); return query },
+    is: (...args: unknown[]) => { calls.push(['is', ...args]); return query },
+    gt: (...args: unknown[]) => { calls.push(['gt', ...args]); return query },
+    order: (...args: unknown[]) => { calls.push(['order', ...args]); return query },
+    limit: (...args: unknown[]) => { calls.push(['limit', ...args]); return query },
+    then: (resolve: (value: unknown) => void) => resolve({ data: [], error: null }),
+  }
+  const store = createSupabaseOptaDeliveryStore({ from: () => query } as unknown as CrmAdminClient, undefined)
+  await store.listLeadsCreatedAfter(DEALER_ID, LIVE_AT, 20, INTEGRATION_ID)
+  assert.match(String(calls.find(call => call[0] === 'select')?.[1]), /delivery:dealer_crm_lead_deliveries!dealer_crm_delivery_lead_fk\(\)/)
+  assert.ok(calls.some(call => call[0] === 'eq' && call[1] === 'delivery.integration_id' && call[2] === INTEGRATION_ID))
+  assert.ok(calls.some(call => call[0] === 'is' && call[1] === 'delivery' && call[2] === null))
+  assert.deepEqual(calls.filter(call => call[0] === 'order').map(call => call[1]), ['created_at', 'id'])
+  assert.equal(calls.at(-1)?.[1], 20)
+})
