@@ -4,9 +4,21 @@
     {
       "path": "/api/cron-openai-provider-sync",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/dealer-crm-integrations?optaSweep=1",
+      "schedule": "15 4 * * *"
     }
   ],
   "rewrites": [
+    {
+      "source": "/api/crm-delivery-trigger",
+      "destination": "/api/dealer-crm-integrations?deliveryTrigger=1"
+    },
+    {
+      "source": "/api/cron-opta-delivery",
+      "destination": "/api/dealer-crm-integrations?optaSweep=1"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"

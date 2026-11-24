@@ -80,7 +80,7 @@ test('wording covers staff sign-in, invite destination, leads, disabled dealers,
   assert.match(dealers, /'Disabled'/)
   assert.doesNotMatch(dealers, /'Inactive'/)
   assert.doesNotMatch(billing, /School Radius|schoolradius/)
-  assert.match(crm, /stays off on purpose/)
+  assert.match(crm, /Delivery status/)
   assert.match(crm, /Delivery off/)
   assert.doesNotMatch(library, /unverified|bundled artwork|Slots without/)
   assert.match(settings, /href="\/auth\/forgot-password"/)

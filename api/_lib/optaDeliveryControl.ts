@@ -42,7 +42,7 @@ export type OptaDeliveryDraft = {
   lead_id: string
   dealer_id: string
   provider: 'opta'
-  delivery_status: 'test_succeeded' | 'test_failed'
+  delivery_status: 'test_succeeded' | 'test_failed' | 'succeeded' | 'failed' | 'dead_letter'
   idempotency_key: string
   http_status: number | null
   response_metadata: { disposition: string; leadStatus: boolean | null; testLead: boolean | null }
@@ -93,7 +93,9 @@ export function optaDeliveryDraft(input: {
     lead_id: input.leadId,
     dealer_id: input.dealerId,
     provider: 'opta',
-    delivery_status: input.result.ok ? 'test_succeeded' : 'test_failed',
+    delivery_status: input.result.ok
+      ? (input.result.disposition === 'live_accepted' ? 'succeeded' : 'test_succeeded')
+      : 'test_failed',
     idempotency_key: input.idempotencyKey,
     http_status: 'httpStatus' in input.result ? input.result.httpStatus : null,
     response_metadata: {
@@ -180,6 +182,7 @@ export async function evaluateOptaDeliveryHook(gateEnabled: boolean, input: {
   return result
 }
 
+/** Legacy hook. Production test and live sends go through the delivery worker, which stays fail-closed. */
 export function automaticOptaDelivery(input: Parameters<typeof evaluateOptaDeliveryHook>[1]) {
   return evaluateOptaDeliveryHook(OPTA_AUTOMATIC_DELIVERY_ENABLED, input)
 }
