@@ -4,6 +4,7 @@ import type { AdminDealer } from './types/admin'
 import { DoorBuilderAppearanceSettings } from './components/DoorBuilderAppearanceSettings'
 import { BrandingStudioPage } from './pages/BrandingStudioPage'
 import { DealerCompanyProfilePage } from './pages/DealerCompanyProfilePage'
+import { LogoFileStatus } from './components/LogoFileStatus'
 import type { DoorBuilderAppearance } from './utils/doorBuilderAppearance'
 
 const squareLogo = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="500" height="518"><rect width="500" height="518" fill="none"/><rect x="40" y="36" width="420" height="420" rx="24" fill="#235176"/><text x="250" y="270" text-anchor="middle" fill="#fff" font-size="64" font-family="Arial">DER</text></svg>')}`
@@ -78,6 +79,9 @@ export function AppearanceHarness() {
   )
 }
 
+const longLogoName = `${'very-long-dealer-logo-file-name-'.repeat(6)}logo.webp`
+const longLogo = `https://cdn.example.com/dealer-logos/${longLogoName}`
+
 export function ProfileNavHarness({ canEditAppearance }: { canEditAppearance: boolean }) {
   const params = new URLSearchParams(window.location.search)
   const logos = params.get('logos')
@@ -85,11 +89,34 @@ export function ProfileNavHarness({ canEditAppearance }: { canEditAppearance: bo
     ? { ...dealer, logo_url: null, logo_light_url: null, logo_secondary_url: null, logo_display: 'single' }
     : logos === 'single'
       ? { ...dealer, logo_display: 'single', logo_secondary_url: null }
+      : logos === 'long'
+        ? {
+          ...dealer,
+          logo_url: longLogo,
+          logo_light_url: null,
+          logo_generated_light_url: 'https://cdn.example.com/dealer-logos/white-unreadable.webp',
+          logo_generated_light_usable: false,
+          logo_black_url: null,
+          logo_generated_black_url: 'https://cdn.example.com/dealer-logos/black-pending.webp',
+          logo_generated_black_usable: null,
+          logo_secondary_url: longLogo,
+          logo_secondary_light_url: 'https://cdn.example.com/dealer-logos/second-white.webp',
+          logo_secondary_black_url: null,
+        }
       : dealer
   const [current, setCurrent] = useState<AdminDealer>(initial)
   const mode = params.get('studio') === 'admin' ? 'admin' : 'dealer'
   return (
     <MemoryRouter initialEntries={['/company']}>
+      {params.get('logoStatus') === 'gallery' && (
+        <div data-testid="logo-status-gallery">
+          <LogoFileStatus state="saved" name="logo.webp" />
+          <LogoFileStatus state="unsaved" name="pending.webp" />
+          <LogoFileStatus state="generating" name="logo.webp" />
+          <LogoFileStatus state="failed" name="logo.webp" />
+          <LogoFileStatus state="unavailable" />
+        </div>
+      )}
       <Routes>
         <Route path="/company" element={<DealerCompanyProfilePage dealer={current} canEditAppearance={canEditAppearance} onDealerUpdated={setCurrent} />} />
         <Route path="/company/branding" element={<BrandingStudioPage mode={mode} dealer={current} canEditAppearance={mode === 'admin' || canEditAppearance} backTo="/company" onDealerUpdated={setCurrent} />} />

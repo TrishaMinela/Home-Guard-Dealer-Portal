@@ -64,7 +64,20 @@
 .studio-logo__thumb img { max-width: 100%; max-height: 72px; object-fit: contain; }
 .studio-logo__actions { display: grid; gap: 4px; }
 .studio-logo__actions .button, .studio-logo > .button { min-height: 28px; padding: 0 8px; font-size: 12px; }
-.studio-logo__meta { margin: 0; color: #5d6b68; font-size: 11px; }
+.studio-logo { min-width: 0; }
+.studio-logo__files { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; min-width: 0; }
+.studio-logo__files li { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; align-items: center; min-width: 0; }
+.studio-logo__kind { color: #243034; font-size: 11px; font-weight: 700; }
+.studio-logo__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; margin: 0; color: #5d6b68; font-size: 11px; }
+.studio-logo__status { flex: none; display: inline-flex; align-items: center; gap: 4px; min-height: 18px; padding: 0 7px; border-radius: 999px; font-weight: 700; }
+.studio-logo__status--saved { color: #146c43; background: rgba(20, 108, 67, .12); }
+.studio-logo__status--unsaved { color: #8a5a00; background: rgba(138, 90, 0, .12); }
+.studio-logo__status--generating { color: #0d666c; background: rgba(13, 102, 108, .12); }
+.studio-logo__status--failed { color: #8a2424; background: rgba(138, 36, 36, .12); }
+.studio-logo__status--unavailable { color: #5d6b68; background: #eef2f1; }
+.studio-logo__sep { flex: none; }
+.studio-logo__name { flex: 1 1 10ch; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.studio-logo__size { flex: none; }
 .studio-logo__hint { margin: 0; color: #5d6b68; font-size: 12px; font-weight: 600; }
 .studio-logo__variant { width: 48px; height: 24px; object-fit: contain; }
 .studio-links label, .studio-brand label { display: grid; gap: 4px; font-size: 12px; font-weight: 700; }
