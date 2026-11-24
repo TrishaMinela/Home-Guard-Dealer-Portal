@@ -85,7 +85,7 @@ async function deliverPortalLead(deps: OptaWorkerDeps, lead: OptaPortalLead): Pr
     leadCreatedAt: lead.createdAt,
     liveEnabledAt,
   })
-  if (!decision.send) {
+  if (decision.send === false) {
     logSafe(deps, { event: 'opta_delivery', disposition: 'skipped', reason: decision.reason, mode: null }, [])
     return { httpStatus: 200, body: { ok: false, disposition: 'skipped', reason: decision.reason } }
   }
@@ -196,7 +196,7 @@ async function retryExisting(deps: OptaWorkerDeps, row: StoredDelivery, now: Dat
     leadCreatedAt: lead?.createdAt,
     liveEnabledAt,
   })
-  if (!lead || !gate.send) {
+  if (!lead || gate.send === false) {
     const recoverable = gate.send === false && (gate.reason === 'integration_disabled' || gate.reason === 'live_delivery_disabled' || gate.reason === 'live_enable_time_unknown' || gate.reason === 'lead_before_live_enable')
     if (lead && recoverable) {
       report.skipped += 1
@@ -209,7 +209,7 @@ async function retryExisting(deps: OptaWorkerDeps, row: StoredDelivery, now: Dat
       httpStatus: null,
       errorCode: 'INELIGIBLE',
       errorMessage: null,
-      responseMetadata: { disposition: 'ineligible', reason: !lead || gate.send ? 'not_found' : gate.reason },
+      responseMetadata: { disposition: 'ineligible', reason: gate.send === false ? gate.reason : 'not_found' },
     })
     report.deadLettered += 1
     return
