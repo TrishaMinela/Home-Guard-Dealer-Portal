@@ -1,6 +1,6 @@
-import { dealerAllowsOptaDelivery } from './crmIntegrationState.ts'
-import { leadDeliveryIdempotencyKey } from './dealerCrmIntegration.ts'
-import { optaPolicyFromFieldMapping } from './optaDeliveryControl.ts'
+import { dealerAllowsOptaDelivery } from './crmIntegrationState.js'
+import { leadDeliveryIdempotencyKey } from './dealerCrmIntegration.js'
+import { optaPolicyFromFieldMapping } from './optaDeliveryControl.js'
 import {
   credentialSecretValues,
   decideOptaDelivery,
@@ -9,8 +9,8 @@ import {
   redactSensitiveText,
   retryDecision,
   settleOptaAttempt,
-} from './optaDeliveryPolicy.ts'
-import type { OptaDeliveryStore, OptaPortalLead, StoredDelivery } from './optaDeliveryStore.ts'
+} from './optaDeliveryPolicy.js'
+import type { OptaDeliveryStore, OptaPortalLead, StoredDelivery } from './optaDeliveryStore.js'
 import {
   AMERICAS_BEST_DEALER_SLUG,
   buildOptaLeadRequest,
@@ -18,7 +18,7 @@ import {
   type OptaDeliveryLead,
   type OptaDeliveryMode,
   type OptaTransport,
-} from './optaLeadDelivery.ts'
+} from './optaLeadDelivery.js'
 
 export type OptaWorkerDeps = {
   store: OptaDeliveryStore
@@ -270,7 +270,7 @@ async function discoverUnsent(deps: OptaWorkerDeps, report: { sent: number; skip
   if (integration.state === 'live' && !liveDeliveryEnabled(deps.env)) return
   const enabledAt = await deps.store.latestStateEnabledAt(integration.id, integration.state)
   if (!enabledAt) return
-  const leads = await deps.store.listLeadsCreatedAfter(dealer.id, enabledAt, DISCOVERY_LIMIT)
+  const leads = await deps.store.listLeadsCreatedAfter(dealer.id, enabledAt, DISCOVERY_LIMIT, integration.id)
   const existing = new Set(await deps.store.listDeliveryLeadIds(integration.id, leads.map((lead) => lead.id)))
   for (const lead of leads) {
     if (existing.has(lead.id)) continue

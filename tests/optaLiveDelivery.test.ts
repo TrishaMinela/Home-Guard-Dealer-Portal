@@ -12,7 +12,7 @@ import {
 } from '../api/_lib/crmIntegrationState.ts'
 import { encryptCrmCredentials, leadDeliveryIdempotencyKey } from '../api/_lib/dealerCrmIntegration.ts'
 import { createOptaFetchTransport, handleCrmDeliveryTrigger, handleOptaDeliveryCron } from '../api/_lib/optaDeliveryHttp.ts'
-import { OPTA_MAX_ATTEMPTS, OPTA_RETRY_DELAYS_MS } from '../api/_lib/optaDeliveryPolicy.ts'
+import { OPTA_RETRY_DELAYS_MS } from '../api/_lib/optaDeliveryPolicy.ts'
 import {
   createSupabaseOptaDeliveryStore,
   type CrmAdminClient,
@@ -143,8 +143,9 @@ class MemoryStore {
     row.responseMetadata = input.responseMetadata
   }
 
-  async listLeadsCreatedAfter(dealerId: string, createdAfter: string) {
-    return this.leads.filter((lead) => lead.dealerId === dealerId && lead.createdAt > createdAfter)
+  async listLeadsCreatedAfter(dealerId: string, createdAfter: string, limit: number, integrationId: string) {
+    return this.leads.filter((lead) => lead.dealerId === dealerId && lead.createdAt > createdAfter && !this.deliveries.some(row => row.integrationId === integrationId && row.leadId === lead.id))
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id)).slice(0, limit)
   }
 
   async listDeliveryLeadIds(integrationId: string, leadIds: string[]) {
@@ -202,7 +203,7 @@ function harness(input?: {
   const transport: OptaTransport = async (url, init) => {
     calls.push({ url, body: init.body })
     if (input?.transport) return input.transport(url, init)
-    return { status: 200, text: async () => JSON.stringify({ leadStatus: true, testLead: true, reason: '', message: 'Success Lead = Accepted' }) }
+    return { status: 200, text: async () => JSON.stringify({ leadStatus: true, testLead: JSON.parse(init.body).test === 'true', reason: '', message: 'Success Lead = Accepted' }) }
   }
   const env: Record<string, string | undefined> = {
     OPTA_LIVE_DELIVERY_ENABLED: input && 'envLive' in input ? input.envLive : 'true',
@@ -281,7 +282,7 @@ test('test sends true and live sends false with the existing field mapping', asy
     transport: async () => ({ status: 200, text: async () => JSON.stringify({ leadStatus: true, message: 'Success Lead = Accepted' }) }),
   })
   const acceptedLive = await deliverSubmittedLead(withoutTestFlag.deps, { submissionId: '66666666-6666-4666-8666-666666666666' })
-  assert.equal(acceptedLive.body.disposition, 'live_accepted')
+  assert.equal(acceptedLive.body.disposition, 'dead_letter')
   assert.equal(responseBody(withoutTestFlag.calls).test, 'false')
   assertHidden(JSON.stringify(sent.body))
   assertHidden(live.logs.join('\n'))
@@ -350,49 +351,13 @@ test('door notes keep the labeled summary and shorten the customer note first', 
   assert.equal(optaDoorConfigurationNotes(syntheticAmericasBestOptaLead().doorConfiguration, 'Call after five.')?.includes('Customer note: Call after five.'), true)
 })
 
-test('transient failures retry on the schedule and then dead-letter; permanent rejects do not retry', async () => {
-  let nowMs = Date.parse('2026-11-24T16:00:00.000Z')
-  const transient = harness({
-    transport: async () => ({ status: 503, text: async () => JSON.stringify({ message: 'unavailable' }) }),
-  })
-  transient.deps.now = () => new Date(nowMs)
-  await deliverSubmittedLead(transient.deps, { submissionId: SUBMISSION_ID })
-  assert.equal(transient.calls.length, 1)
-  assert.equal(transient.store.deliveries[0].status, 'failed')
-  assert.equal(transient.store.deliveries[0].errorCode, 'SERVER_ERROR')
-
-  for (const delay of OPTA_RETRY_DELAYS_MS) {
-    nowMs += delay - 1
-    await sweepOptaDeliveries(transient.deps)
-    assert.equal(transient.calls.length, transient.store.deliveries[0].attemptCount)
-    nowMs += 1
-    await sweepOptaDeliveries(transient.deps)
-  }
-  assert.equal(transient.calls.length, OPTA_MAX_ATTEMPTS)
-  assert.equal(transient.store.deliveries[0].status, 'dead_letter')
-  assert.equal(transient.store.deliveries[0].errorCode, 'ATTEMPTS_EXHAUSTED')
-  const afterDead = transient.calls.length
-  nowMs += 24 * 60 * 60_000
-  await sweepOptaDeliveries(transient.deps)
-  assert.equal(transient.calls.length, afterDead)
-
-  const rateLimited = harness({
-    transport: async () => ({ status: 429, text: async () => '{"message":"slow down"}' }),
-  })
-  let rateNow = Date.parse('2026-11-24T16:00:00.000Z')
-  rateLimited.deps.now = () => new Date(rateNow)
-  await deliverSubmittedLead(rateLimited.deps, { submissionId: SUBMISSION_ID })
-  assert.equal(rateLimited.store.deliveries[0].errorCode, 'RATE_LIMITED')
-  rateNow += OPTA_RETRY_DELAYS_MS[0]
-  await sweepOptaDeliveries(rateLimited.deps)
-  assert.equal(rateLimited.calls.length, 2)
-
-  const network = harness({
-    transport: async () => { throw new Error(`socket ${SECRET}`) },
-  })
+test('uncertain outcomes are never automatically retried; rejects are terminal', async () => {
+  const network = harness({ transport: async () => { throw new Error(`socket ${SECRET}`) } })
   await deliverSubmittedLead(network.deps, { submissionId: SUBMISSION_ID })
-  assert.equal(network.store.deliveries[0].status, 'failed')
+  assert.equal(network.store.deliveries[0].status, 'dead_letter')
   assert.equal(network.store.deliveries[0].errorCode, 'NETWORK_FAILURE')
+  await sweepOptaDeliveries(network.deps)
+  assert.equal(network.calls.length, 1)
   assertHidden(network.logs.join('\n'))
   assertHidden(JSON.stringify(network.store.deliveries))
 
@@ -440,7 +405,7 @@ test('a duplicate claim is skipped and a paused kill switch does not retry a liv
       started += 1
       markStarted()
       await gate
-      return { status: 200, text: async () => JSON.stringify({ leadStatus: true, message: 'Success Lead = Accepted' }) }
+      return { status: 200, text: async () => JSON.stringify({ leadStatus: true, testLead: false, message: 'Success Lead = Accepted' }) }
     },
   })
   const first = deliverSubmittedLead(racing.deps, { submissionId: SUBMISSION_ID })
@@ -464,7 +429,7 @@ test('a duplicate claim is skipped and a paused kill switch does not retry a liv
   pausedNow += OPTA_RETRY_DELAYS_MS[0]
   await sweepOptaDeliveries(paused.deps)
   assert.equal(paused.calls.length, 1)
-  assert.equal(paused.store.deliveries[0].status, 'failed')
+  assert.equal(paused.store.deliveries[0].status, 'dead_letter')
 
   paused.store.dealers[0].slug = 'uhr'
   paused.env.OPTA_LIVE_DELIVERY_ENABLED = 'true'
@@ -677,3 +642,46 @@ async function invoke(
 }
 
 type JsonResponse = Parameters<typeof handleCrmDeliveryTrigger>[1]
+
+test('bounded sweeps discover all 125 leads without delivered rows blocking later leads', async () => {
+  const h = harness({ state: 'test', envLive: undefined })
+  h.store.leads = Array.from({ length: 125 }, (_, n) => lead({
+    id: `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`,
+    submissionId: `10000000-0000-4000-8000-${String(n).padStart(12, '0')}`,
+    createdAt: '2026-11-24T15:00:00.000Z',
+  }))
+  for (let n = 0; n < 7; n++) await sweepOptaDeliveries(h.deps)
+  assert.equal(h.calls.length, 125)
+  assert.equal(new Set(h.store.deliveries.map(row => row.leadId)).size, 125)
+  await sweepOptaDeliveries(h.deps)
+  assert.equal(h.calls.length, 125)
+})
+
+test('live responses classified as test or missing test classification remain unconfirmed', async () => {
+  for (const testLead of [true, undefined]) {
+    const h = harness({ transport: async () => ({ status: 200, text: async () => JSON.stringify({ leadStatus: true, testLead }) }) })
+    await deliverSubmittedLead(h.deps, { submissionId: SUBMISSION_ID })
+    assert.equal(h.store.deliveries[0].status, 'dead_letter')
+    await sweepOptaDeliveries(h.deps)
+    assert.equal(h.calls.length, 1)
+  }
+})
+
+test('interrupted attempts and legacy failed attempts are not automatically resent', async () => {
+  for (const status of ['attempting', 'failed'] as const) {
+    const h = harness()
+    await h.store.insertDelivery({ integrationId: INTEGRATION_ID, leadId: LEAD_ID, dealerId: DEALER_ID, idempotencyKey: leadDeliveryIdempotencyKey(INTEGRATION_ID, LEAD_ID), status, attemptCount: 1, now: '2026-01-01T00:00:00Z', mode: 'live' })
+    await sweepOptaDeliveries(h.deps)
+    assert.equal(h.calls.length, 0)
+  }
+})
+
+test('trigger accepts Vercel parsed JSON and rejects missing secrets', async () => {
+  const h = harness({ state: 'test' })
+  const req = Object.assign(Readable.from([]), { method: 'POST', headers: { 'x-crm-delivery-secret': h.env.CRM_DELIVERY_TRIGGER_SECRET }, body: { submissionId: SUBMISSION_ID } }) as unknown as IncomingMessage
+  let body: Record<string, unknown> = {}
+  const res = { statusCode: 0, setHeader() { return this }, end() {}, json(value: Record<string, unknown>) { body = value } }
+  await handleCrmDeliveryTrigger(req, res as unknown as JsonResponse, h.deps)
+  assert.equal(res.statusCode, 200)
+  assert.equal(body.disposition, 'test_accepted')
+})

@@ -1,6 +1,6 @@
-import { dealerAllowsOptaDelivery } from './crmIntegrationState.ts'
-import type { CrmIntegrationState } from './dealerCrmIntegration.ts'
-import type { OptaDeliveryMode, OptaDeliveryResult } from './optaLeadDelivery.ts'
+import { dealerAllowsOptaDelivery } from './crmIntegrationState.js'
+import type { CrmIntegrationState } from './dealerCrmIntegration.js'
+import type { OptaDeliveryMode, OptaDeliveryResult } from './optaLeadDelivery.js'
 
 /** Waits before retry 2, 3, 4, 5, and 6. The sixth transient failure is dead-lettered. */
 export const OPTA_RETRY_DELAYS_MS = [
@@ -76,29 +76,14 @@ export function retryDecision(row: {
   lastAttemptedAt: string | null
   updatedAt: string
 }, nowMs: number): RetryDecision {
-  if (row.status === 'succeeded' || row.status === 'test_succeeded' || row.status === 'dead_letter') return 'ignore'
-  if (row.attemptCount >= OPTA_MAX_ATTEMPTS) {
-    if (row.status === 'attempting') {
-      const updated = Date.parse(row.updatedAt)
-      if (Number.isFinite(updated) && nowMs - updated < OPTA_ATTEMPT_STALE_MS) return 'ignore'
-    }
-    return 'dead'
-  }
-  if (row.status === 'attempting') {
-    const updated = Date.parse(row.updatedAt)
-    if (!Number.isFinite(updated) || nowMs - updated >= OPTA_ATTEMPT_STALE_MS) return 'send'
-    return 'ignore'
-  }
-  if (row.status !== 'pending' && row.status !== 'failed' && row.status !== 'test_failed') return 'ignore'
-  if (row.status === 'pending' || row.attemptCount <= 0) return 'send'
-  const delay = OPTA_RETRY_DELAYS_MS[row.attemptCount - 1]
-  if (delay == null) return 'dead'
-  const last = Date.parse(row.lastAttemptedAt ?? row.updatedAt)
-  if (!Number.isFinite(last)) return 'send'
-  return nowMs >= last + delay ? 'send' : 'wait'
+  // An attempted request may have reached Opta even if the response was lost.
+  // Never automatically resend an attempted or failed row without reconciliation.
+  if (row.status === 'pending' && row.attemptCount === 0) return 'send'
+  void nowMs
+  return 'ignore'
 }
 
-const TRANSIENT_DISPOSITIONS = new Set(['network_failure', 'unexpected_response'])
+const TRANSIENT_DISPOSITIONS = new Set<string>()
 
 export function optaFailureIsTransient(result: OptaDeliveryResult) {
   return !result.ok && TRANSIENT_DISPOSITIONS.has(result.disposition)

@@ -1,5 +1,5 @@
-import { standardLeadFields, validateCrmCredentials, type TrustedLeadRecord } from './dealerCrmIntegration.ts'
-import { optaDoorConfigurationNotes } from './optaDoorNotes.ts'
+import { standardLeadFields, validateCrmCredentials, type TrustedLeadRecord } from './dealerCrmIntegration.js'
+import { optaDoorConfigurationNotes } from './optaDoorNotes.js'
 
 /**
  * Server-only Opta request builder for America's Best Windows & Doors.
@@ -283,10 +283,10 @@ export async function interpretOptaResponse(response: OptaTransportResponse, mod
   if (response.status === 200 && leadStatus === false) {
     return { ok: false, disposition: 'rejected', httpStatus: 200, leadStatus: false, reason, message }
   }
-  if (response.status === 200 && leadStatus === true && mode === 'live') {
+  if (response.status === 200 && leadStatus === true && mode === 'live' && testLead === false) {
     return { ok: true, disposition: 'live_accepted', httpStatus: 200, leadStatus: true, testLead, reason, message }
   }
-  if (response.status === 200 && leadStatus === true && testLead === true) {
+  if (response.status === 200 && leadStatus === true && mode === 'test' && testLead === true) {
     return { ok: true, disposition: 'test_accepted', httpStatus: 200, leadStatus: true, testLead: true, reason, message }
   }
   return { ok: false, disposition: 'unexpected_response', httpStatus: response.status, leadStatus, testLead }
