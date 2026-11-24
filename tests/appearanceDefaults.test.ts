@@ -730,7 +730,13 @@ test('each branding category scrolls its last control into view', async () => {
         const overflow = await editor.evaluate((element) => [...element.querySelectorAll<HTMLElement>('.content-card, .studio-logo, .studio-brand, .studio-links')].flatMap((card) => {
           const cardRight = card.getBoundingClientRect().right
           return [...card.querySelectorAll<HTMLElement>('p, span, small, strong, label, h2, h3, legend, li, button, a')]
-            .filter((node) => node.clientWidth > 0 && (node.scrollWidth > node.clientWidth + 1 || node.getBoundingClientRect().right > cardRight + 1))
+            .filter((node) => {
+              if (node.clientWidth <= 0) return false
+              const pastCard = node.getBoundingClientRect().right > cardRight + 1
+              const wider = node.scrollWidth > node.clientWidth + 1
+              const ellipsizedName = node.classList.contains('studio-logo__name') && getComputedStyle(node).textOverflow === 'ellipsis' && !pastCard
+              return !ellipsizedName && (wider || pastCard)
+            })
             .map((node) => `${node.tagName} ${(node.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 48)} ${node.clientWidth}/${node.scrollWidth}`)
         }))
         assert.deepEqual(overflow, [], `${size.width} ${name} text overflows ${overflow.join(', ')}`)
@@ -850,5 +856,85 @@ test('the preview and editor keep the same size while the editor scrolls', async
   assert.deepEqual(middle, top)
   assert.deepEqual(bottom, top)
   assert.ok(top.preview[2] > 400, `preview width ${top.preview[2]}`)
+  await page.close()
+})
+
+test('logo status text stays separate from the filename', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1440, height: 900 } })
+  const longName = `${'very-long-dealer-logo-file-name-'.repeat(6)}logo.webp`
+  await page.goto(`http://127.0.0.1:${port}/?role=admin&logoStatus=gallery&logos=long#profile-nav-harness`, { waitUntil: 'networkidle' })
+  await page.getByRole('link', { name: 'Customize Door Builder' }).click()
+  await page.getByRole('heading', { name: 'Branding & Appearance' }).waitFor()
+  const gallery = await page.getByTestId('logo-status-gallery').evaluate((element) => [...element.querySelectorAll<HTMLElement>('.studio-logo__meta')].map((row) => {
+    const status = row.querySelector<HTMLElement>('[role="status"]')
+    const mark = status?.querySelector<HTMLElement>('[aria-hidden="true"]')
+    return {
+      label: status?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
+      mark: mark?.textContent ?? '',
+      markHidden: mark?.getAttribute('aria-hidden') ?? '',
+      separator: row.querySelector('.studio-logo__sep')?.textContent ?? '',
+      title: row.querySelector('.studio-logo__name')?.getAttribute('title') ?? '',
+      color: status ? getComputedStyle(status).color : '',
+    }
+  }))
+  assert.deepEqual(gallery.map((row) => row.label), ['✓ Saved', 'Unsaved', 'Generating', 'Failed', 'Unavailable'])
+  assert.deepEqual(gallery.map((row) => row.separator), ['·', '·', '·', '·', ''])
+  assert.equal(gallery[0]?.mark, '✓ ')
+  assert.equal(gallery[0]?.markHidden, 'true')
+  assert.equal(gallery[0]?.title, 'logo.webp')
+  assert.equal(gallery[1]?.title, 'pending.webp')
+  assert.equal(gallery[4]?.title, '')
+  assert.equal(gallery[0]?.color, 'rgb(20, 108, 67)')
+  assert.equal(gallery[1]?.color, 'rgb(138, 90, 0)')
+  assert.equal(gallery[2]?.color, 'rgb(13, 102, 108)')
+  assert.equal(gallery[3]?.color, 'rgb(138, 36, 36)')
+  assert.equal(gallery[4]?.color, 'rgb(93, 107, 104)')
+  const primary = await page.locator('#logo-original').innerText()
+  assert.match(primary, /Saved/)
+  assert.match(primary, new RegExp(longName))
+  assert.match(primary, /Failed/)
+  assert.match(primary, /white-unreadable\.webp/)
+  assert.match(primary, /Unsaved/)
+  assert.match(primary, /black-pending\.webp/)
+  assert.doesNotMatch(primary, /Savedlogo|Savedvery/)
+  const secondary = await page.locator('#logo-secondary').innerText()
+  assert.match(secondary, /Saved/)
+  assert.match(secondary, /second-white\.webp/)
+  assert.match(secondary, /Unavailable/)
+  for (const width of [1024, 1440, 768, 390]) {
+    await page.setViewportSize({ width, height: width >= 1024 ? 900 : 844 })
+    if (width < 1024) {
+      await page.getByRole('button', { name: 'Edit Settings' }).evaluate((element) => {
+        if (!(element instanceof HTMLButtonElement)) return
+        element.scrollIntoView({ block: 'center' })
+        element.click()
+      })
+      await page.locator('.branding-studio.is-editing').waitFor()
+    }
+    const fit = await page.locator('#logo-original, #logo-secondary').evaluateAll((cards) => cards.map((card) => ({
+      id: card.id,
+      overflow: card.scrollWidth <= card.clientWidth + 1,
+      name: [...card.querySelectorAll<HTMLElement>('.studio-logo__name')].every((node) => getComputedStyle(node).textOverflow === 'ellipsis' && getComputedStyle(node).whiteSpace === 'nowrap' && node.scrollWidth > 0),
+    })))
+    for (const card of fit) assert.equal(card.overflow, true, `${width} ${card.id} overflows`)
+    assert.equal(await page.locator('#logo-original .studio-logo__name').first().getAttribute('title'), longName)
+  }
+  await page.goto(`http://127.0.0.1:${port}/?role=admin&logos=single#profile-nav-harness`, { waitUntil: 'networkidle' })
+  await page.getByRole('link', { name: 'Customize Door Builder' }).click()
+  await page.getByRole('heading', { name: 'Branding & Appearance' }).waitFor()
+  assert.match(await page.locator('#logo-original').innerText(), /✓\s*Saved\s*·\s*Current logo/)
+  assert.match(await page.locator('#logo-secondary').innerText(), /Unavailable/)
+  assert.doesNotMatch(await page.locator('#logo-secondary').innerText(), /Saved/)
+  await page.goto(`http://127.0.0.1:${port}/?role=admin#profile-nav-harness`, { waitUntil: 'networkidle' })
+  await page.getByRole('link', { name: 'Customize Door Builder' }).click()
+  await page.getByRole('heading', { name: 'Branding & Appearance' }).waitFor()
+  assert.match(await page.locator('#logo-original').innerText(), /Saved\s*·\s*Current logo/)
+  assert.match(await page.locator('#logo-secondary').innerText(), /Saved\s*·\s*Current logo/)
+  await page.goto(`http://127.0.0.1:${port}/?role=admin&logos=none#profile-nav-harness`, { waitUntil: 'networkidle' })
+  await page.getByRole('link', { name: 'Customize Door Builder' }).click()
+  await page.getByRole('heading', { name: 'Branding & Appearance' }).waitFor()
+  assert.match(await page.locator('#logo-original').innerText(), /Unavailable/)
+  assert.match(await page.locator('#logo-secondary').innerText(), /Unavailable/)
+  assert.doesNotMatch(await page.locator('#logo-original').innerText(), /Saved/)
   await page.close()
 })

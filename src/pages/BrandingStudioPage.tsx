@@ -8,6 +8,7 @@ import { DealerLogoPlacementSettings, type DealerLogoPlacement } from '../compon
 import { DealerLogoVariantSettings } from '../components/DealerLogoVariantSettings'
 import { DealerTypographySettings } from '../components/DealerTypographySettings'
 import { LogoBackgroundDialog } from '../components/LogoBackgroundDialog'
+import { LogoFileStatus, type LogoFileStatusState } from '../components/LogoFileStatus'
 import { getDealerVisualizerUrl } from '../config/visualizer'
 import { STUDIO_SECTIONS, isLegacyBrandingTarget, runBrandingSave, studioSectionFromValue, type StudioSectionId } from '../features/branding-studio/sections'
 import { supabase } from '../lib/supabase'
@@ -672,10 +673,18 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
   const active = sectionMeta[panel]
 
   function logoName(url: string | null | undefined) {
-    if (!url) return 'No file yet'
+    if (!url) return ''
     if (url.startsWith('data:')) return 'Current logo'
     const path = url.split('?')[0] ?? url
     return decodeURIComponent(path.split('/').pop() || 'logo')
+  }
+
+  function variantFile(customUrl: string | null | undefined, generatedUrl: string | null | undefined, usable: boolean | null | undefined): { state: LogoFileStatusState; name: string } {
+    if (customUrl) return { state: 'saved', name: logoName(customUrl) }
+    if (!generatedUrl) return { state: 'unavailable', name: '' }
+    if (usable === false) return { state: 'failed', name: logoName(generatedUrl) }
+    if (usable == null) return { state: 'unsaved', name: logoName(generatedUrl) }
+    return { state: 'saved', name: logoName(generatedUrl) }
   }
 
   const editor = (
@@ -694,6 +703,7 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
       {panel === 'logos' && logoView === 'cards' && (
         <div className="branding-studio__cards">
           <p className="branding-studio__note">Logo files and generated variants save immediately. Website links stay in the draft until you save.</p>
+          {uploading ? <LogoFileStatus state="generating" /> : null}
           {dealer.logo_url ? (
           <article className="studio-logo" id="logo-original">
             <strong>Logo 1 · Active</strong>
@@ -705,7 +715,11 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
                 <span id="logo-black"><button type="button" className="button button--outline" onClick={() => void generateBlackLogo()}>Generate Black</button></span>
               </div>
             </div>
-            <p className="studio-logo__meta"><span className="studio-logo__ok">Saved</span>{logoName(dealer.logo_url)}{logoSize.primary ? ` · ${logoSize.primary}` : ''}</p>
+            <ul className="studio-logo__files">
+              <li><span className="studio-logo__kind">Original</span><LogoFileStatus state="saved" name={logoName(dealer.logo_url)} detail={logoSize.primary} /></li>
+              <li><span className="studio-logo__kind">White</span><LogoFileStatus {...variantFile(dealer.logo_light_url, dealer.logo_generated_light_url, dealer.logo_generated_light_usable)} /></li>
+              <li><span className="studio-logo__kind">Black</span><LogoFileStatus {...variantFile(dealer.logo_black_url, dealer.logo_generated_black_url, dealer.logo_generated_black_usable)} /></li>
+            </ul>
             {(dealer.logo_light_url || dealer.logo_generated_light_url) && <img className="studio-logo__variant" src={dealer.logo_light_url ?? dealer.logo_generated_light_url ?? ''} alt="" />}
             <button type="button" className="button button--outline" onClick={() => setLogoView('primary-variants')}>Manage Variants</button>
             {dealer.logo_light_url && <button type="button" className="button button--outline" onClick={() => void removeCustomLightLogo()}>Remove Custom Logo</button>}
@@ -716,6 +730,11 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
           <article className="studio-logo" id="logo-original">
             <strong>Logo 1</strong>
             <p>No file yet.</p>
+            <ul className="studio-logo__files">
+              <li><span className="studio-logo__kind">Original</span><LogoFileStatus state="unavailable" /></li>
+              <li><span className="studio-logo__kind">White</span><LogoFileStatus state="unavailable" /></li>
+              <li><span className="studio-logo__kind">Black</span><LogoFileStatus state="unavailable" /></li>
+            </ul>
             <label className="button button--outline">Upload Original<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onChange={(event) => void uploadLogo(event, 'primary')} /></label>
             <p className="studio-logo__hint">Upload a logo first</p>
             <button type="button" className="button button--outline" disabled title="Upload a logo first">Generate White</button>
@@ -733,13 +752,22 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
                   <button type="button" className="button button--outline" onClick={() => void generateSecondary('black')}>Generate Black</button>
                 </div>
               </div>
-              <p className="studio-logo__meta"><span className="studio-logo__ok">Saved</span>{logoName(dealer.logo_secondary_url)}{logoSize.secondary ? ` · ${logoSize.secondary}` : ''}</p>
+              <ul className="studio-logo__files">
+                <li><span className="studio-logo__kind">Original</span><LogoFileStatus state="saved" name={logoName(dealer.logo_secondary_url)} detail={logoSize.secondary} /></li>
+                <li><span className="studio-logo__kind">White</span><LogoFileStatus {...variantFile(dealer.logo_secondary_light_url, dealer.logo_secondary_generated_light_url, dealer.logo_secondary_generated_light_usable)} /></li>
+                <li><span className="studio-logo__kind">Black</span><LogoFileStatus {...variantFile(dealer.logo_secondary_black_url, dealer.logo_secondary_generated_black_url, dealer.logo_secondary_generated_black_usable)} /></li>
+              </ul>
               <button type="button" className="button button--outline" onClick={() => setLogoView('secondary-variants')}>Manage Variants</button>
             </article>
           ) : (
             <article className="studio-logo" id="logo-secondary">
               <strong>Logo 2</strong>
               <p>No second logo yet.</p>
+              <ul className="studio-logo__files">
+                <li><span className="studio-logo__kind">Original</span><LogoFileStatus state="unavailable" /></li>
+                <li><span className="studio-logo__kind">White</span><LogoFileStatus state="unavailable" /></li>
+                <li><span className="studio-logo__kind">Black</span><LogoFileStatus state="unavailable" /></li>
+              </ul>
               <label className="button button--outline">Add Second Logo<input type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(event) => void uploadSecondary(event, 'primary')} /></label>
             </article>
           )}
