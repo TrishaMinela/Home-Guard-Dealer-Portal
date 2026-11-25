@@ -12,7 +12,7 @@ import {
 } from '../api/_lib/crmIntegrationState.ts'
 import { encryptCrmCredentials, leadDeliveryIdempotencyKey } from '../api/_lib/dealerCrmIntegration.ts'
 import { createOptaFetchTransport, handleCrmDeliveryTrigger, handleOptaDeliveryCron } from '../api/_lib/optaDeliveryHttp.ts'
-import { OPTA_RETRY_DELAYS_MS } from '../api/_lib/optaDeliveryPolicy.ts'
+import { OPTA_MAX_ATTEMPTS, OPTA_RETRY_DELAYS_MS, retryDecision, settleOptaAttempt } from '../api/_lib/optaDeliveryPolicy.ts'
 import {
   createSupabaseOptaDeliveryStore,
   type CrmAdminClient,
@@ -22,7 +22,7 @@ import {
   type OptaPortalLead,
   type StoredDelivery,
 } from '../api/_lib/optaDeliveryStore.ts'
-import { deliverSubmittedLead, sweepOptaDeliveries, type OptaWorkerDeps } from '../api/_lib/optaDeliveryWorker.ts'
+import { OPTA_DEAD_LETTER_MARKER, deliverSubmittedLead, sweepOptaDeliveries, type OptaWorkerDeps } from '../api/_lib/optaDeliveryWorker.ts'
 import { OPTA_NOTES_MAX_LENGTH, optaDoorConfigurationNotes } from '../api/_lib/optaDoorNotes.ts'
 import {
   AMERICAS_BEST_DEALER_SLUG,
@@ -368,6 +368,7 @@ test('uncertain outcomes are never automatically retried; rejects are terminal',
   assert.equal(rejected.calls.length, 1)
   assert.equal(rejected.store.deliveries[0].status, 'dead_letter')
   assert.equal(rejected.store.deliveries[0].errorCode, 'REJECTED')
+  assert.match(rejected.logs.join('\n'), new RegExp(OPTA_DEAD_LETTER_MARKER))
   assert.match(rejected.store.deliveries[0].errorMessage ?? '', /\[redacted\]/)
   assertHidden(rejected.store.deliveries[0].errorMessage ?? '')
   assertHidden(JSON.stringify(rejectedResult.body))
@@ -425,17 +426,20 @@ test('a duplicate claim is skipped and a paused kill switch does not retry a liv
   let pausedNow = Date.parse('2026-11-24T16:00:00.000Z')
   paused.deps.now = () => new Date(pausedNow)
   await deliverSubmittedLead(paused.deps, { submissionId: SUBMISSION_ID })
+  assert.equal(paused.store.deliveries[0].status, 'failed')
+  assert.equal(paused.store.deliveries[0].errorCode, 'SERVER_ERROR')
   paused.env.OPTA_LIVE_DELIVERY_ENABLED = undefined
   pausedNow += OPTA_RETRY_DELAYS_MS[0]
   await sweepOptaDeliveries(paused.deps)
   assert.equal(paused.calls.length, 1)
-  assert.equal(paused.store.deliveries[0].status, 'dead_letter')
+  assert.equal(paused.store.deliveries[0].status, 'failed')
 
   paused.store.dealers[0].slug = 'uhr'
   paused.env.OPTA_LIVE_DELIVERY_ENABLED = 'true'
   await sweepOptaDeliveries(paused.deps)
   assert.equal(paused.calls.length, 1)
   assert.equal(paused.store.deliveries[0].status, 'dead_letter')
+  assert.match(paused.logs.join('\n'), new RegExp(OPTA_DEAD_LETTER_MARKER))
 })
 
 test('the cron sweep discovers leads created after enablement and skips older ones', async () => {
@@ -667,13 +671,103 @@ test('live responses classified as test or missing test classification remain un
   }
 })
 
-test('interrupted attempts and legacy failed attempts are not automatically resent', async () => {
-  for (const status of ['attempting', 'failed'] as const) {
-    const h = harness()
-    await h.store.insertDelivery({ integrationId: INTEGRATION_ID, leadId: LEAD_ID, dealerId: DEALER_ID, idempotencyKey: leadDeliveryIdempotencyKey(INTEGRATION_ID, LEAD_ID), status, attemptCount: 1, now: '2026-01-01T00:00:00Z', mode: 'live' })
+test('interrupted attempts are never automatically resent', async () => {
+  const h = harness()
+  await h.store.insertDelivery({ integrationId: INTEGRATION_ID, leadId: LEAD_ID, dealerId: DEALER_ID, idempotencyKey: leadDeliveryIdempotencyKey(INTEGRATION_ID, LEAD_ID), status: 'attempting', attemptCount: 1, now: '2026-01-01T00:00:00Z', mode: 'live' })
+  await sweepOptaDeliveries(h.deps)
+  assert.equal(h.calls.length, 0)
+  assert.equal(h.store.deliveries[0].status, 'attempting')
+})
+
+test('pre-accept failures retry on the 1m/5m/30m/2h/6h schedule and then dead-letter', async () => {
+  const cases = [
+    { name: 'ECONNREFUSED', transport: async () => { throw Object.assign(new Error('connect ECONNREFUSED 1.2.3.4:443'), { code: 'ECONNREFUSED' }) }, firstStatus: 'failed', errorCode: 'CONNECT_FAILURE' },
+    { name: 'HTTP 429', transport: async () => ({ status: 429, text: async () => 'slow' }), firstStatus: 'failed', errorCode: 'RATE_LIMITED' },
+    { name: 'HTTP 503', transport: async () => ({ status: 503, text: async () => 'down' }), firstStatus: 'failed', errorCode: 'SERVER_ERROR' },
+  ] as const
+  for (const scenario of cases) {
+    const h = harness({ transport: scenario.transport })
+    let now = Date.parse('2026-11-24T16:00:00.000Z')
+    h.deps.now = () => new Date(now)
+    await deliverSubmittedLead(h.deps, { submissionId: SUBMISSION_ID })
+    assert.equal(h.store.deliveries[0].status, scenario.firstStatus, scenario.name)
+    assert.equal(h.store.deliveries[0].errorCode, scenario.errorCode, scenario.name)
+    assert.equal(h.calls.length, 1, scenario.name)
+    for (let attempt = 1; attempt < OPTA_MAX_ATTEMPTS; attempt += 1) {
+      now += OPTA_RETRY_DELAYS_MS[attempt - 1] - 1
+      await sweepOptaDeliveries(h.deps)
+      assert.equal(h.calls.length, attempt, `${scenario.name} waits`)
+      now += 1
+      await sweepOptaDeliveries(h.deps)
+      assert.equal(h.calls.length, attempt + 1, `${scenario.name} retries`)
+    }
+    assert.equal(h.store.deliveries[0].status, 'dead_letter', scenario.name)
+    assert.equal(h.store.deliveries[0].errorCode, 'ATTEMPTS_EXHAUSTED', scenario.name)
+    assert.match(h.logs.join('\n'), new RegExp(OPTA_DEAD_LETTER_MARKER))
+    const after = h.calls.length
+    now += 6 * 60 * 60_000
     await sweepOptaDeliveries(h.deps)
-    assert.equal(h.calls.length, 0)
+    assert.equal(h.calls.length, after, `${scenario.name} stops`)
   }
+})
+
+test('timeouts, unparseable 200s, and save failures after send are never auto-resent', async () => {
+  const timeout = harness({
+    transport: async () => { throw Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError', code: 'ABORT_ERR' }) },
+  })
+  await deliverSubmittedLead(timeout.deps, { submissionId: SUBMISSION_ID })
+  assert.equal(timeout.store.deliveries[0].status, 'dead_letter')
+  assert.equal(timeout.store.deliveries[0].errorCode, 'NETWORK_FAILURE')
+  assert.match(timeout.logs.join('\n'), new RegExp(OPTA_DEAD_LETTER_MARKER))
+  await sweepOptaDeliveries(timeout.deps)
+  assert.equal(timeout.calls.length, 1)
+
+  const unparseable = harness({
+    transport: async () => ({ status: 200, text: async () => '<html>ok</html>' }),
+  })
+  await deliverSubmittedLead(unparseable.deps, { submissionId: SUBMISSION_ID })
+  assert.equal(unparseable.store.deliveries[0].status, 'dead_letter')
+  assert.equal(unparseable.store.deliveries[0].errorCode, 'UNEXPECTED_RESPONSE')
+  await sweepOptaDeliveries(unparseable.deps)
+  assert.equal(unparseable.calls.length, 1)
+
+  const persist = harness()
+  const originalSave = persist.store.saveResult.bind(persist.store)
+  persist.store.saveResult = async (input) => {
+    if (input.status === 'succeeded') throw new Error('storage failure')
+    return originalSave(input)
+  }
+  await deliverSubmittedLead(persist.deps, { submissionId: SUBMISSION_ID })
+  assert.equal(persist.calls.length, 1)
+  assert.equal(persist.store.deliveries[0].status, 'dead_letter')
+  assert.equal(persist.store.deliveries[0].errorCode, 'RESULT_NOT_RECORDED')
+  await sweepOptaDeliveries(persist.deps)
+  assert.equal(persist.calls.length, 1)
+
+  const stuck = harness()
+  stuck.store.saveResult = async () => { throw new Error('storage failure') }
+  await deliverSubmittedLead(stuck.deps, { submissionId: SUBMISSION_ID })
+  assert.equal(stuck.store.deliveries[0].status, 'attempting')
+  await sweepOptaDeliveries(stuck.deps)
+  assert.equal(stuck.calls.length, 1)
+  assert.equal(stuck.store.deliveries[0].status, 'attempting')
+})
+
+test('retryDecision only sends pending or scheduled pre-accept failures', () => {
+  const t0 = Date.parse('2026-12-01T00:00:00Z')
+  const row = (status: string, attemptCount: number) => ({ status, attemptCount, lastAttemptedAt: new Date(t0).toISOString(), updatedAt: new Date(t0).toISOString() })
+  assert.equal(retryDecision(row('pending', 0), t0), 'send')
+  assert.equal(retryDecision(row('failed', 1), t0 + OPTA_RETRY_DELAYS_MS[0] - 1), 'wait')
+  assert.equal(retryDecision(row('failed', 1), t0 + OPTA_RETRY_DELAYS_MS[0]), 'send')
+  assert.equal(retryDecision(row('failed', 6), t0 + 1e9), 'dead')
+  assert.equal(retryDecision(row('attempting', 1), t0 + 1e9), 'ignore')
+  assert.equal(retryDecision(row('dead_letter', 1), t0 + 1e9), 'ignore')
+  const reject = settleOptaAttempt({ mode: 'live', attemptCount: 1, result: { ok: false, disposition: 'rejected', httpStatus: 200, leadStatus: false, reason: '', message: '' }, secrets: [] })
+  assert.equal(reject.status, 'dead_letter')
+  const server = settleOptaAttempt({ mode: 'live', attemptCount: 1, result: { ok: false, disposition: 'unexpected_response', httpStatus: 503, leadStatus: null, testLead: null }, secrets: [] })
+  assert.equal(server.status, 'failed')
+  const timeout = settleOptaAttempt({ mode: 'live', attemptCount: 1, result: { ok: false, disposition: 'network_failure' }, secrets: [] })
+  assert.equal(timeout.status, 'dead_letter')
 })
 
 test('trigger accepts Vercel parsed JSON and rejects missing secrets', async () => {

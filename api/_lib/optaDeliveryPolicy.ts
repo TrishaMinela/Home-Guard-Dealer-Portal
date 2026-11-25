@@ -76,17 +76,27 @@ export function retryDecision(row: {
   lastAttemptedAt: string | null
   updatedAt: string
 }, nowMs: number): RetryDecision {
-  // An attempted request may have reached Opta even if the response was lost.
-  // Never automatically resend an attempted or failed row without reconciliation.
-  if (row.status === 'pending' && row.attemptCount === 0) return 'send'
-  void nowMs
-  return 'ignore'
+  // attempting is ambiguous: the request may already have reached Opta.
+  if (row.status === 'succeeded' || row.status === 'test_succeeded' || row.status === 'dead_letter' || row.status === 'attempting') {
+    return 'ignore'
+  }
+  if (row.status !== 'pending' && row.status !== 'failed' && row.status !== 'test_failed') return 'ignore'
+  if (row.attemptCount >= OPTA_MAX_ATTEMPTS) return 'dead'
+  if (row.status === 'pending' || row.attemptCount <= 0) return 'send'
+  const delay = OPTA_RETRY_DELAYS_MS[row.attemptCount - 1]
+  if (delay == null) return 'dead'
+  const last = Date.parse(row.lastAttemptedAt ?? row.updatedAt)
+  if (!Number.isFinite(last)) return 'send'
+  return nowMs >= last + delay ? 'send' : 'wait'
 }
 
-const TRANSIENT_DISPOSITIONS = new Set<string>()
-
 export function optaFailureIsTransient(result: OptaDeliveryResult) {
-  return !result.ok && TRANSIENT_DISPOSITIONS.has(result.disposition)
+  if (result.ok) return false
+  if (result.disposition === 'connect_failure') return true
+  if (result.disposition === 'unexpected_response') {
+    return result.httpStatus === 429 || result.httpStatus >= 500
+  }
+  return false
 }
 
 export function deliveryErrorCode(result: OptaDeliveryResult) {
@@ -96,6 +106,7 @@ export function deliveryErrorCode(result: OptaDeliveryResult) {
     case 'unauthorized': return 'UNAUTHORIZED'
     case 'missing_field': return 'MISSING_FIELD'
     case 'invalid_field': return 'INVALID_FIELD'
+    case 'connect_failure': return 'CONNECT_FAILURE'
     case 'network_failure': return 'NETWORK_FAILURE'
     case 'ineligible': return 'INELIGIBLE'
     case 'unexpected_response':

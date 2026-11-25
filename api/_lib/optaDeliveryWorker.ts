@@ -14,11 +14,15 @@ import type { OptaDeliveryStore, OptaPortalLead, StoredDelivery } from './optaDe
 import {
   AMERICAS_BEST_DEALER_SLUG,
   buildOptaLeadRequest,
+  classifyOptaTransportFailure,
   deliverOptaLead,
   type OptaDeliveryLead,
   type OptaDeliveryMode,
   type OptaTransport,
 } from './optaLeadDelivery.js'
+
+/** Stable console/search token when a delivery is dead-lettered. */
+export const OPTA_DEAD_LETTER_MARKER = 'OPTA_DEAD_LETTER'
 
 export type OptaWorkerDeps = {
   store: OptaDeliveryStore
@@ -116,7 +120,7 @@ async function deliverPortalLead(deps: OptaWorkerDeps, lead: OptaPortalLead): Pr
       responseMetadata: settled.responseMetadata,
     })
     if (!inserted.inserted) return duplicateResponse()
-    logSafe(deps, { event: 'opta_delivery', disposition: prepared.disposition, mode: decision.mode, deliveryStatus: 'dead_letter' }, secrets)
+    logSafe(deps, { event: 'opta_delivery', disposition: prepared.disposition, mode: decision.mode, deliveryStatus: 'dead_letter', marker: OPTA_DEAD_LETTER_MARKER, code: settled.errorCode }, secrets)
     return { httpStatus: 200, body: { ok: false, disposition: 'dead_letter', errorCode: settled.errorCode } }
   }
 
@@ -159,6 +163,7 @@ async function retryExisting(deps: OptaWorkerDeps, row: StoredDelivery, now: Dat
       errorMessage: null,
       responseMetadata: { disposition: 'attempts_exhausted' },
     })
+    logDeadLetter(deps, { disposition: 'attempts_exhausted', code: 'ATTEMPTS_EXHAUSTED' })
     report.deadLettered += 1
     return
   }
@@ -166,6 +171,7 @@ async function retryExisting(deps: OptaWorkerDeps, row: StoredDelivery, now: Dat
   const lead = await deps.store.findLead({ leadId: row.leadId })
   const dealer = lead ? await deps.store.findDealer(lead.dealerId) : null
   if (!lead || !dealer || !dealerAllowsOptaDelivery(dealer.slug)) {
+    const reason = lead ? 'dealer_not_eligible' : 'not_found'
     await deps.store.saveResult({
       id: row.id,
       status: 'dead_letter',
@@ -173,8 +179,9 @@ async function retryExisting(deps: OptaWorkerDeps, row: StoredDelivery, now: Dat
       httpStatus: null,
       errorCode: 'INELIGIBLE',
       errorMessage: null,
-      responseMetadata: { disposition: 'ineligible', reason: lead ? 'dealer_not_eligible' : 'not_found' },
+      responseMetadata: { disposition: 'ineligible', reason },
     })
+    logDeadLetter(deps, { disposition: 'ineligible', code: 'INELIGIBLE', reason })
     report.deadLettered += 1
     return
   }
@@ -202,6 +209,7 @@ async function retryExisting(deps: OptaWorkerDeps, row: StoredDelivery, now: Dat
       report.skipped += 1
       return
     }
+    const reason = gate.send === false ? gate.reason : 'not_found'
     await deps.store.saveResult({
       id: row.id,
       status: 'dead_letter',
@@ -209,8 +217,9 @@ async function retryExisting(deps: OptaWorkerDeps, row: StoredDelivery, now: Dat
       httpStatus: null,
       errorCode: 'INELIGIBLE',
       errorMessage: null,
-      responseMetadata: { disposition: 'ineligible', reason: gate.send === false ? gate.reason : 'not_found' },
+      responseMetadata: { disposition: 'ineligible', reason },
     })
+    logDeadLetter(deps, { disposition: 'ineligible', code: 'INELIGIBLE', reason })
     report.deadLettered += 1
     return
   }
@@ -230,6 +239,7 @@ async function retryExisting(deps: OptaWorkerDeps, row: StoredDelivery, now: Dat
       errorMessage: null,
       responseMetadata: { disposition: 'attempts_exhausted' },
     })
+    logDeadLetter(deps, { disposition: 'attempts_exhausted', code: 'ATTEMPTS_EXHAUSTED' })
     report.deadLettered += 1
     return
   }
@@ -298,18 +308,20 @@ async function finishAttempt(deps: OptaWorkerDeps, input: {
     try {
       return await deps.transport(url, init)
     } catch (error) {
+      const disposition = classifyOptaTransportFailure(error)
       const detail = redactSensitiveText(error instanceof Error ? error.message : 'network failure', input.secrets)
-      logSafe(deps, { event: 'opta_delivery', disposition: 'network_failure', mode: input.mode, detail }, input.secrets)
-      throw new Error(detail)
+      logSafe(deps, { event: 'opta_delivery', disposition, mode: input.mode, detail }, input.secrets)
+      throw error
     }
   }
   let result: Awaited<ReturnType<typeof deliverOptaLead>>
   try {
     result = await deliverOptaLead(input.lead, input.credentials, transport, input.mode, input.policy)
   } catch (error) {
+    const disposition = classifyOptaTransportFailure(error)
     const detail = redactSensitiveText(error instanceof Error ? error.message : 'network failure', input.secrets)
-    logSafe(deps, { event: 'opta_delivery', disposition: 'network_failure', mode: input.mode, detail }, input.secrets)
-    result = { ok: false, disposition: 'network_failure' }
+    logSafe(deps, { event: 'opta_delivery', disposition, mode: input.mode, detail }, input.secrets)
+    result = { ok: false, disposition }
   }
   const settled = settleOptaAttempt({
     mode: input.mode,
@@ -317,6 +329,8 @@ async function finishAttempt(deps: OptaWorkerDeps, input: {
     result,
     secrets: input.secrets,
   })
+  let recordedStatus = settled.status
+  let recordedCode = settled.errorCode
   try {
     await deps.store.saveResult({
       id: input.claimId,
@@ -328,28 +342,45 @@ async function finishAttempt(deps: OptaWorkerDeps, input: {
       responseMetadata: settled.responseMetadata,
     })
   } catch (error) {
+    const detail = redactSensitiveText(error instanceof Error ? error.message : 'storage failure', input.secrets)
     logSafe(deps, {
       event: 'opta_delivery',
       disposition: 'error',
       code: 'RESULT_NOT_RECORDED',
-      detail: redactSensitiveText(error instanceof Error ? error.message : 'storage failure', input.secrets),
+      detail,
     }, input.secrets)
+    try {
+      await deps.store.saveResult({
+        id: input.claimId,
+        status: 'dead_letter',
+        now: currentDate(deps).toISOString(),
+        httpStatus: settled.httpStatus,
+        errorCode: 'RESULT_NOT_RECORDED',
+        errorMessage: detail || null,
+        responseMetadata: { ...settled.responseMetadata, disposition: 'result_not_recorded', originalDisposition: result.disposition },
+      })
+      recordedStatus = 'dead_letter'
+      recordedCode = 'RESULT_NOT_RECORDED'
+    } catch {
+      // Row stays attempting. The sweep never auto-retries attempting rows.
+    }
   }
   logSafe(deps, {
     event: 'opta_delivery',
     disposition: result.disposition,
     mode: input.mode,
-    deliveryStatus: settled.status,
+    deliveryStatus: recordedStatus,
     httpStatus: settled.httpStatus,
     attempt: input.attemptCount,
+    ...(recordedStatus === 'dead_letter' ? { marker: OPTA_DEAD_LETTER_MARKER, code: recordedCode } : {}),
   }, input.secrets)
   return {
     httpStatus: 200,
     body: {
       ok: result.ok,
-      disposition: result.ok ? result.disposition : (settled.status === 'dead_letter' ? 'dead_letter' : result.disposition),
-      deliveryStatus: settled.status,
-      errorCode: settled.errorCode,
+      disposition: result.ok && recordedStatus !== 'dead_letter' ? result.disposition : (recordedStatus === 'dead_letter' ? 'dead_letter' : result.disposition),
+      deliveryStatus: recordedStatus,
+      errorCode: recordedCode,
     },
   }
 }
@@ -403,6 +434,10 @@ function skippedCredentials(): OptaWorkerResponse {
 
 function isCredentialFailure(error: unknown) {
   return error instanceof Error && error.message === 'CRM credentials are unavailable.'
+}
+
+function logDeadLetter(deps: OptaWorkerDeps, event: Record<string, string | number | boolean | null>, secrets: readonly string[] = []) {
+  logSafe(deps, { event: 'opta_delivery', marker: OPTA_DEAD_LETTER_MARKER, deliveryStatus: 'dead_letter', ...event }, secrets)
 }
 
 function logSafe(deps: OptaWorkerDeps, event: Record<string, string | number | boolean | null>, secrets: readonly string[]) {

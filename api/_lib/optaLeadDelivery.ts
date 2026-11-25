@@ -96,9 +96,45 @@ export type OptaDeliveryResult =
   | { ok: false; disposition: 'unauthorized'; httpStatus: number }
   | { ok: false; disposition: 'missing_field'; missing: string[]; invalid: string[] }
   | { ok: false; disposition: 'invalid_field'; missing: string[]; invalid: string[] }
+  | { ok: false; disposition: 'connect_failure' }
   | { ok: false; disposition: 'network_failure' }
   | { ok: false; disposition: 'ineligible'; reason: 'dealer_not_eligible' | 'live_delivery_disabled' | 'credentials_invalid' }
   | { ok: false; disposition: 'unexpected_response'; httpStatus: number; leadStatus: boolean | null; testLead: boolean | null }
+
+/** DNS and connection-refused failures happen before Opta can accept a lead. Timeouts and other network errors are ambiguous. */
+const CONNECT_FAILURE_CODES = new Set([
+  'ENOTFOUND',
+  'EAI_AGAIN',
+  'EAI_FAIL',
+  'EAI_NONAME',
+  'EAI_NODATA',
+  'ECONNREFUSED',
+])
+
+export function classifyOptaTransportFailure(error: unknown): 'connect_failure' | 'network_failure' {
+  for (const value of collectErrorTokens(error)) {
+    if (CONNECT_FAILURE_CODES.has(value)) return 'connect_failure'
+  }
+  return 'network_failure'
+}
+
+function collectErrorTokens(error: unknown, seen = new Set<object>()): string[] {
+  if (error == null) return []
+  if (typeof error !== 'object') {
+    return String(error).split(/[^A-Za-z0-9_]+/).filter(Boolean)
+  }
+  if (seen.has(error)) return []
+  seen.add(error)
+  const tokens: string[] = []
+  const record = error as { code?: unknown; cause?: unknown; errors?: unknown; message?: unknown; name?: unknown }
+  if (typeof record.code === 'string') tokens.push(record.code)
+  if (typeof record.message === 'string') tokens.push(...record.message.split(/[^A-Za-z0-9_]+/).filter(Boolean))
+  if (record.cause) tokens.push(...collectErrorTokens(record.cause, seen))
+  if (Array.isArray(record.errors)) {
+    for (const entry of record.errors) tokens.push(...collectErrorTokens(entry, seen))
+  }
+  return tokens
+}
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MAX_RESPONSE_CHARS = 32_768
@@ -247,8 +283,8 @@ export async function deliverOptaTestLead(
       body: JSON.stringify(prepared.request.body),
       redirect: 'error',
     })
-  } catch {
-    return { ok: false, disposition: 'network_failure' }
+  } catch (error) {
+    return { ok: false, disposition: classifyOptaTransportFailure(error) }
   }
   return interpretOptaResponse(response, mode)
 }

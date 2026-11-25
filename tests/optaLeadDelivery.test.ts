@@ -9,6 +9,7 @@ import {
   OPTA_SUBMIT_URL,
   OPTA_TEST_VALUE,
   buildOptaTestLeadRequest,
+  classifyOptaTransportFailure,
   deliverOptaTestLead,
   syntheticAmericasBestOptaLead,
   type OptaDeliveryLead,
@@ -118,6 +119,18 @@ test('network failure is reported and is not a successful delivery', async () =>
   }
   const result = await deliverOptaTestLead(syntheticAmericasBestOptaLead(), credentials, transport)
   assert.deepEqual(result, { ok: false, disposition: 'network_failure' })
+})
+
+test('DNS and connection-refused errors are classified as pre-send connect failures', async () => {
+  const refused = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:443'), { code: 'ECONNREFUSED' })
+  const dns = Object.assign(new TypeError('fetch failed'), { cause: Object.assign(new Error('getaddrinfo ENOTFOUND abw.opta.io'), { code: 'ENOTFOUND' }) })
+  const timeout = Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError', code: 'ABORT_ERR' })
+  assert.equal(classifyOptaTransportFailure(refused), 'connect_failure')
+  assert.equal(classifyOptaTransportFailure(dns), 'connect_failure')
+  assert.equal(classifyOptaTransportFailure(timeout), 'network_failure')
+  const transport: OptaTransport = async () => { throw refused }
+  const result = await deliverOptaTestLead(syntheticAmericasBestOptaLead(), credentials, transport)
+  assert.deepEqual(result, { ok: false, disposition: 'connect_failure' })
 })
 
 test('only the verified Americas Best slug can be prepared, and live mode sends test false', async () => {
