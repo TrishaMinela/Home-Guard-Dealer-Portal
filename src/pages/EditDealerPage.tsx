@@ -13,6 +13,8 @@ type EditDealerPageProps = {
   isLoading: boolean
   error: string
   onSaved: (dealer: AdminDealer) => void
+  /** Company tab editor. Branding and typography stay in Branding Studio. */
+  scope?: 'company'
 }
 
 function editSectionFromHash(hash: string): 'company' | 'branding' | 'design' {
@@ -43,7 +45,7 @@ function dealerToForm(dealer: AdminDealer): DealerFormValues {
   }
 }
 
-export function EditDealerPage({ dealers, isLoading, error, onSaved }: EditDealerPageProps) {
+export function EditDealerPage({ dealers, isLoading, error, onSaved, scope }: EditDealerPageProps) {
   const { dealerId } = useParams()
   const [formError, setFormError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -121,7 +123,7 @@ export function EditDealerPage({ dealers, isLoading, error, onSaved }: EditDeale
     }
 
     onSaved(data)
-    navigate(`/admin/dealers/${dealer.id}`)
+    navigate(scope === 'company' ? `/admin/dealers/${dealer.id}/company` : `/admin/dealers/${dealer.id}`)
   }
 
   async function saveBranding(event: FormEvent<HTMLFormElement>) {
@@ -151,6 +153,20 @@ export function EditDealerPage({ dealers, isLoading, error, onSaved }: EditDeale
     if(saveError) throw saveError
     onSaved(data as AdminDealer)
     return data as AdminDealer
+  }
+
+  if (scope === 'company') {
+    return (
+      <DealerForm
+        initialValues={dealerToForm(dealer)}
+        cancelTo={`/admin/dealers/${dealer.id}/company`}
+        error={formError}
+        isSubmitting={isSubmitting}
+        submitLabel="Save Company Details"
+        submittingLabel="Saving..."
+        onSubmit={handleSubmit}
+      />
+    )
   }
 
   return (

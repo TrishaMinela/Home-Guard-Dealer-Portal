@@ -204,14 +204,11 @@ test('every color row stays inside its card at every checked width', async () =>
   await page.close()
 })
 
-test('the admin dealer nav scrolls to the existing appearance section', async () => {
+test('the admin dealer nav opens the branding section route', async () => {
   const page = await browser!.newPage({ viewport: { width: 1100, height: 700 } })
   await page.goto(`http://127.0.0.1:${port}/#admin-nav-harness`, { waitUntil: 'networkidle' })
   await page.getByRole('link', { name: 'Branding', exact: true }).click()
-  await page.waitForFunction(() => {
-    const section = document.getElementById('branding-studio')
-    return window.location.hash === '#branding-studio' && !!section && section.getBoundingClientRect().top < 180
-  })
+  await page.waitForFunction(() => document.querySelector('[data-testid="dealer-nav-path"]')?.textContent === '/admin/dealers/test-dealer/branding')
   await page.close()
 })
 

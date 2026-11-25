@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { DealerSectionHeader } from './DealerSectionHeader'
+import { explainPreviewConfiguration, previewConfigurationNotice } from '../utils/previewConfiguration'
 
 type Provider = 'opta' | 'gohighlevel' | 'custom_webhook'
 type IntegrationState = 'disabled' | 'test' | 'live'
@@ -250,8 +251,8 @@ export function DealerCrmIntegrations({ dealerId, preview }: { dealerId: string;
         actionIcon="manage"
         trailing={<span className={headerBadge.className}>{headerBadge.label}</span>}
       />
-      {!encryptionConfigured && !isLoading && <div className="portal-alert" role="alert">Secure credential storage is not configured. Metadata can be reviewed, but credentials cannot be saved.</div>}
-      {error && <div className="portal-alert" role="alert">{error}</div>}
+      {!encryptionConfigured && !isLoading && explainPreviewConfiguration(error) === error && !error && <div className="portal-alert" role="status">Secure credential storage is not configured. Metadata can be reviewed, but credentials cannot be saved.</div>}
+      {error && <div className="portal-alert" role={explainPreviewConfiguration(error) === previewConfigurationNotice ? 'status' : 'alert'}>{explainPreviewConfiguration(error)}</div>}
       {notice && <div className="portal-alert portal-alert--success" role="status">{notice}</div>}
       {isLoading ? <div className="data-state">Loading CRM integrations…</div> : (
         <div className="crm-provider-grid" id="crm-provider-grid" tabIndex={-1}>

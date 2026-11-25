@@ -831,9 +831,9 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
   return (
     <div className={`branding-studio${editing ? ' is-editing' : ''}`}>
       <nav className="branding-studio__tabs" aria-label="Dealer sections">
-        <Link to={backTo}>Company Details</Link>
+        <Link to={mode === 'admin' ? `${backTo}/company` : backTo}>Company Details</Link>
         <span aria-current="page">Branding &amp; Appearance</span>
-        {mode === 'admin' ? <Link to={`${backTo}#door-builder-lead-webhook`}>Lead Webhook</Link> : <Link to="/company#website-address">Website Address</Link>}
+        {mode === 'admin' ? <Link to={`${backTo}/leads`}>Lead Webhook</Link> : <Link to="/company#website-address">Website Address</Link>}
       </nav>
       <header className="branding-studio__toolbar">
         <Link className="branding-studio__back" to={backTo}>{mode === 'dealer' ? 'Back to Company Details' : 'Back to Dealer'}</Link>

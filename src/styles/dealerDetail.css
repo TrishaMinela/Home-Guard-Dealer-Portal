@@ -7,6 +7,11 @@ body:has(.dealer-detail-page) { overflow-x: clip; }
 
 .dealer-detail-page {
   overflow-x: clip;
+  --dd-radius-card: 12px;
+  --dd-radius-control: 8px;
+  --dd-pad: 24px;
+  --dd-gap: 16px;
+  --dd-control: 36px;
   --dd-ink: #111827;
   --dd-muted: #6B7280;
   --dd-line: #E5E7EB;
@@ -67,7 +72,22 @@ body:has(.dealer-detail-page) { overflow-x: clip; }
   stroke-linejoin: round;
 }
 
-.dd-heading { display: grid; gap: 14px; margin-bottom: 18px; }
+.dd-open-section { margin: 0 0 4px; color: var(--dd-teal); font-size: 13px; font-weight: 700; }
+.dd-heading { display: grid; gap: 14px; margin-bottom: var(--dd-gap); }
+.dd-shortcuts { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 var(--dd-pad) var(--dd-pad); }
+.dd-shortcuts a {
+  min-height: var(--dd-control); display: inline-flex; align-items: center; padding: 0 14px;
+  border: 1px solid var(--dd-line); border-radius: var(--dd-radius-control); color: #374151;
+  background: #fff; font-size: 13px; font-weight: 600; text-decoration: none;
+}
+.dd-shortcuts a:hover { border-color: var(--dd-teal); color: var(--dd-teal); }
+.dd-editor { padding: 0 var(--dd-pad) var(--dd-pad); }
+.dealer-detail-page .dd-editor .dealer-form,
+.dealer-detail-page .dd-editor .content-card { margin: 0; }
+.dealer-detail-page .branding-studio {
+  height: min(880px, calc(100dvh - 240px)); min-height: 560px; max-height: none;
+  border: 1px solid var(--dd-line); border-radius: var(--dd-radius-card); overflow: hidden;
+}
 .dd-crumb { display: flex; align-items: center; gap: 8px; color: var(--dd-muted); font-size: 13px; }
 .dd-crumb a { color: var(--dd-muted); text-decoration: none; }
 .dd-crumb a:hover { color: var(--dd-teal); }
@@ -117,10 +137,12 @@ body:has(.dealer-detail-page) { overflow-x: clip; }
   stroke-linecap: round; stroke-linejoin: round;
 }
 .dealer-detail-page .dealer-detail-nav a:hover { background: var(--dd-teal-soft); color: var(--dd-teal); }
+.dealer-detail-page .dealer-detail-nav a[aria-current='page'],
+.dealer-detail-page .dealer-detail-nav a[aria-current='page']:hover,
 .dealer-detail-page .dealer-detail-nav a[aria-current='true'],
 .dealer-detail-page .dealer-detail-nav a[aria-current='true']:hover { background: var(--dd-teal); color: #fff; }
 
-.dealer-detail-page__sections { display: grid; gap: 16px; }
+.dealer-detail-page__sections { display: grid; gap: var(--dd-gap); }
 .dealer-detail-page .content-card,
 .dealer-detail-page .door-builder-webhook,
 .dealer-detail-page .dealer-admin-marketing,

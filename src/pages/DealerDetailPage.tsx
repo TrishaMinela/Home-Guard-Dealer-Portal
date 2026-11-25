@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type ComponentProps, type ReactNode } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { AdminDealer } from '../types/admin'
 import { getDealerVisualizerDisplayUrl } from '../config/visualizer'
@@ -13,6 +13,9 @@ import { DoorBuilderLeadWebhook } from '../components/DoorBuilderLeadWebhook'
 import { DealerSetupChecklist } from '../components/DealerSetupChecklist'
 import { DisableDealerDialog } from '../components/DisableDealerDialog'
 import { DealerOutlineIcon } from '../components/DealerOutlineIcon'
+import { dealerSectionFromPathname, dealerSectionHref, dealerDetailSections } from '../components/dealerDetailSections'
+import { EditDealerPage } from './EditDealerPage'
+import { AdminBrandingStudioRoute } from './BrandingStudioPage'
 import type { DealerAccount } from '../types/account'
 
 type DealerDetailPageProps = {
@@ -64,6 +67,19 @@ function StatusBadge({ active }: { active: boolean }) {
   )
 }
 
+export function LegacyDealerEditRedirect() {
+  const { dealerId } = useParams()
+  const hash = window.location.hash
+  const id = hash.replace(/^#/, '')
+  if (id === 'branding' || id === 'primary-color' || id === 'secondary-color') {
+    return <Navigate to={`/admin/dealers/${dealerId}/branding?section=colors`} replace />
+  }
+  if (id === 'design' || id === 'heading-font-family') {
+    return <Navigate to={`/admin/dealers/${dealerId}/branding?section=typography`} replace />
+  }
+  return <Navigate to={`/admin/dealers/${dealerId}/company/edit${hash}`} replace />
+}
+
 export function DealerDetailPage({
   dealers,
   isLoading,
@@ -79,6 +95,7 @@ export function DealerDetailPage({
   userPreview,
 }: DealerDetailPageProps) {
   const { dealerId } = useParams()
+  const location = useLocation()
   const navigate = useNavigate()
   const actionsMenuId = useId()
   const [isConfirmingDisable, setIsConfirmingDisable] = useState(false)
@@ -89,6 +106,13 @@ export function DealerDetailPage({
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [isReviewingSlug, setIsReviewingSlug] = useState(false)
   const dealer = dealers.find((item) => item.id === dealerId)
+  const sectionPath = dealer ? dealerSectionFromPathname(location.pathname, dealer.id) : ''
+  const section = dealerDetailSections.find((item) => item.path === (sectionPath === 'company/edit' ? 'company' : sectionPath)) ?? dealerDetailSections[0]
+
+  useEffect(() => {
+    if (!dealer || sectionPath == null) return
+    document.querySelector<HTMLElement>('.portal-main')?.scrollTo({ top: 0 })
+  }, [dealer, sectionPath])
 
   useEffect(() => {
     if (!dealer) return
@@ -199,8 +223,13 @@ export function DealerDetailPage({
     )
   }
 
-  const editCompanyPath = `/admin/dealers/${dealer.id}/edit#company`
-  const editSlugPath = `/admin/dealers/${dealer.id}/edit#dealer-slug`
+  if (sectionPath == null) {
+    return <Navigate to={`/admin/dealers/${dealer.id}`} replace />
+  }
+
+  const editCompanyPath = dealerSectionHref(dealer.id, 'company/edit')
+  const editSlugPath = `${dealerSectionHref(dealer.id, 'company/edit')}#dealer-slug`
+  const sectionTitle = sectionPath === 'company/edit' ? 'Edit company' : section.label
   const website = dealer.website?.trim() ?? ''
   const visualizerUrl = getDealerVisualizerDisplayUrl(dealer.slug)
   const headerHref = website || visualizerUrl
@@ -211,10 +240,12 @@ export function DealerDetailPage({
         <nav className="dd-crumb" aria-label="Breadcrumb">
           <Link to="/admin/dealers" aria-label="Back to Dealers">Dealers</Link>
           <span aria-hidden="true">›</span>
-          <span>{dealer.company_name}</span>
+          {sectionPath ? <Link to={dealerSectionHref(dealer.id, '')}>{dealer.company_name}</Link> : <span>{dealer.company_name}</span>}
+          {sectionPath ? <><span aria-hidden="true">›</span><span>{sectionTitle}</span></> : null}
         </nav>
         <div className="dd-heading__row">
           <div className="dd-heading__copy">
+            <p className="dd-open-section">{sectionTitle}</p>
             <h1>{dealer.company_name}</h1>
             <a className="dd-website" href={headerHref} target="_blank" rel="noreferrer">
               <DealerOutlineIcon name="external" />
@@ -279,9 +310,9 @@ export function DealerDetailPage({
 
       {successMessage && <div className="portal-alert portal-alert--success" role="status">{successMessage}</div>}
       {actionError && <div className="portal-alert" role="alert">{actionError}</div>}
-      {dealer.slug_request_status === 'pending' && dealer.requested_slug && (
+      {dealer.slug_request_status === 'pending' && dealer.requested_slug && (sectionPath === '' || sectionPath === 'visualizer') && (
         <div className="portal-alert" role="status">
-          A Door Builder URL change is waiting for review. <a href="#website-address">Review the request</a>
+          A Door Builder URL change is waiting for review. <Link to={dealerSectionHref(dealer.id, 'visualizer')}>Review the request</Link>
         </div>
       )}
 
@@ -301,19 +332,64 @@ export function DealerDetailPage({
       />
 
       <div className="dealer-detail-page__sections">
-        <DealerSetupChecklist dealer={dealer} dealerId={dealer.id} />
+        {sectionPath === '' && (
+          <>
+            <DealerSetupChecklist dealer={dealer} dealerId={dealer.id} />
+            <section className="content-card dealer-management-card" aria-labelledby="dealer-summary-heading">
+              <DealerSectionHeader icon="building" eyebrow="Dealer" title="Dealer summary" headingId="dealer-summary-heading" description="Key details for this dealer. Open a tab to change a setting." />
+              <div className="dealer-detail-groups dd-fields">
+                <DetailItem label="Company Name" value={dealer.company_name} />
+                <div className="dealer-detail__item"><dt>Status</dt><dd><StatusBadge active={dealer.is_active} /></dd></div>
+                <DetailItem label="Website" value={dealer.website} href={dealer.website ?? undefined} external />
+                <DetailItem label="Dealer Slug" value={dealer.slug} />
+                <DetailItem label="Created" value={formatDate(dealer.created_at)} />
+                <DetailItem label="Door Builder URL" value={visualizerUrl} href={visualizerUrl} external />
+              </div>
+            </section>
+            <section className="content-card dealer-management-card" aria-labelledby="dealer-shortcuts-heading">
+              <DealerSectionHeader icon="clipboard" eyebrow="Settings" title="Settings" headingId="dealer-shortcuts-heading" description="Marketing banners use the logo and do not recolor the template." />
+              <div className="dd-shortcuts">
+                <Link to={dealerSectionHref(dealer.id, 'company')}>Company</Link>
+                <Link to={dealerSectionHref(dealer.id, 'branding')}>Open Branding Studio</Link>
+                {canManageDealerCredentials && <Link to={dealerSectionHref(dealer.id, 'marketing')}>Marketing</Link>}
+                {canManageDealerCredentials && <Link to={dealerSectionHref(dealer.id, 'crm')}>CRM</Link>}
+                <Link to={dealerSectionHref(dealer.id, 'visualizer')}>Visualizer</Link>
+                {canManageDealerUsers && <Link to={dealerSectionHref(dealer.id, 'access')}>Access</Link>}
+                <Link to={dealerSectionHref(dealer.id, 'leads')}>Leads & Webhook</Link>
+              </div>
+            </section>
+          </>
+        )}
 
+        {(sectionPath === 'company' || sectionPath === 'company/edit') && (
         <section id="company-details" className="content-card dealer-management-card dealer-detail" aria-labelledby="company-details-heading">
-          <DealerSectionHeader
-            icon="building"
-            eyebrow="Company record"
-            title="Company Details"
-            headingId="company-details-heading"
-            description="Core information about the dealer and their business."
-            actionLabel="Edit Details"
-            actionTo={editCompanyPath}
-            onActionClick={onClearSuccess}
-          />
+          {sectionPath === 'company' ? (
+            <DealerSectionHeader
+              icon="building"
+              eyebrow="Company record"
+              title="Company Details"
+              headingId="company-details-heading"
+              description="Core information about the dealer and their business."
+              actionLabel="Edit Details"
+              actionTo={editCompanyPath}
+              onActionClick={onClearSuccess}
+            />
+          ) : (
+            <DealerSectionHeader
+              icon="building"
+              eyebrow="Company record"
+              title="Edit company"
+              headingId="company-details-heading"
+              description="Core information about the dealer and their business."
+              actionLabel="Company details"
+              actionTo={dealerSectionHref(dealer.id, 'company')}
+            />
+          )}
+          {sectionPath === 'company/edit' ? (
+            <div className="dd-editor">
+              <EditDealerPage dealers={dealers} isLoading={false} error="" onSaved={(saved) => { onDealerUpdated(saved, `${saved.company_name} was updated successfully.`); onClearSuccess() }} scope="company" />
+            </div>
+          ) : (
           <div className="dealer-detail-groups dd-fields">
             <DetailItem label="Company Name" value={dealer.company_name} />
             <DetailItem label="Website" value={dealer.website} href={dealer.website ?? undefined} external />
@@ -340,36 +416,37 @@ export function DealerDetailPage({
               </dd>
             </div>
           </div>
+          )}
         </section>
-
-        <section className="content-card dealer-management-card dd-card--compact" id="branding-studio">
-          <DealerSectionHeader
-            compact
-            icon="palette"
-            eyebrow="Door Builder"
-            title="Branding Studio"
-            description="Customize the dealer’s branding—logos, colors, fonts, and visual style—for a consistent experience. Marketing banners use the logo and do not recolor the template."
-            actionLabel="Open Branding Studio"
-            actionTo={`/admin/dealers/${dealer.id}/branding`}
-            actionIcon="external"
-            actionTone="primary"
-          />
-        </section>
-
-        <DoorBuilderLeadWebhook dealerId={dealer.id} preview={webhookPreview} />
-
-        {canManageDealerCredentials ? (
-          <>
-            <AdminDealerMarketingTools dealerId={dealer.id} previewDealer={marketingPreview} />
-            <DealerCrmIntegrations dealerId={dealer.id} preview={crmPreview} />
-          </>
-        ) : (
-          <section className="content-card dealer-management-card dealer-setup-anchor" id="marketing-and-crm" tabIndex={-1} aria-labelledby="marketing-and-crm-heading">
-            <h2 id="marketing-and-crm-heading">Marketing Tools and CRM Integrations</h2>
-            <p>This section needs additional access. It is available to an access manager.</p>
-          </section>
         )}
 
+        {sectionPath === 'branding' && (
+        <section className="dd-studio" id="branding-studio">
+          <AdminBrandingStudioRoute dealers={dealers} onDealerUpdated={(saved, message) => { onDealerUpdated(saved, message); onClearSuccess() }} />
+        </section>
+        )}
+
+        {sectionPath === 'leads' && <DoorBuilderLeadWebhook dealerId={dealer.id} preview={webhookPreview} />}
+
+        {sectionPath === 'marketing' && (canManageDealerCredentials ? (
+          <AdminDealerMarketingTools dealerId={dealer.id} previewDealer={marketingPreview} />
+        ) : (
+          <section className="content-card dealer-management-card dealer-setup-anchor" id="marketing-and-crm" tabIndex={-1} aria-labelledby="marketing-and-crm-heading">
+            <h2 id="marketing-and-crm-heading">Marketing Tools</h2>
+            <p>This section needs additional access. It is available to an access manager.</p>
+          </section>
+        ))}
+
+        {sectionPath === 'crm' && (canManageDealerCredentials ? (
+          <DealerCrmIntegrations dealerId={dealer.id} preview={crmPreview} />
+        ) : (
+          <section className="content-card dealer-management-card dealer-setup-anchor" id="marketing-and-crm" tabIndex={-1} aria-labelledby="crm-locked-heading">
+            <h2 id="crm-locked-heading">CRM Integrations</h2>
+            <p>This section needs additional access. It is available to an access manager.</p>
+          </section>
+        ))}
+
+        {sectionPath === 'visualizer' && (
         <section className="content-card dealer-management-card slug-review-card" id="website-address">
           <DealerSectionHeader
             icon="image"
@@ -417,14 +494,15 @@ export function DealerDetailPage({
             </div>
           )}
         </section>
-        {canManageDealerUsers ? (
+        )}
+        {sectionPath === 'access' && (canManageDealerUsers ? (
           <DealerUserAccess dealerId={dealer.id} sectionId="dealer-users" canSetPassword={canManageDealerCredentials} previewUsers={userPreview} />
         ) : (
           <section className="content-card dealer-management-card dealer-setup-anchor" id="dealer-users" tabIndex={-1} aria-labelledby="dealer-users-locked-heading">
             <h2 id="dealer-users-locked-heading">Dealer Users</h2>
             <p>This section needs additional access. It is available to an access manager or a billing admin.</p>
           </section>
-        )}
+        ))}
       </div>
     </div>
   )

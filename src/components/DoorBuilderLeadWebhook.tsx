@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { ConfirmationModal } from './ConfirmationModal'
 import { DealerCardIcon, DealerOutlineIcon } from './DealerOutlineIcon'
+import { explainPreviewConfiguration, previewConfigurationNotice } from '../utils/previewConfiguration'
 
 type WebhookState = {
   status: 'configured' | 'not_configured'
@@ -200,6 +201,8 @@ export function DoorBuilderLeadWebhook({ dealerId, preview }: { dealerId: string
 
   const configured = webhook.status === 'configured'
   const busy = isSaving || isTesting || isRemoving
+  const shownError = explainPreviewConfiguration(error)
+  const previewGap = shownError === previewConfigurationNotice
 
   return (
     <div className="door-builder-webhook content-card" id="door-builder-lead-webhook">
@@ -211,8 +214,8 @@ export function DoorBuilderLeadWebhook({ dealerId, preview }: { dealerId: string
         </div>
         <span className={`status-badge dd-status ${configured ? 'status-badge--active' : 'status-badge--inactive'}`}>{configured ? 'Configured' : 'Not Configured'}</span>
       </div>
-      {!encryptionConfigured && !isLoading && <div className="portal-alert" role="alert">Secure webhook storage is not configured. A webhook cannot be saved until the server encryption key is available.</div>}
-      {error && <div className="portal-alert" role="alert">{error}</div>}
+      {!encryptionConfigured && !isLoading && !previewGap && !error && <div className="portal-alert" role="status">Secure webhook storage is not configured. A webhook cannot be saved until the server encryption key is available.</div>}
+      {shownError && <div className="portal-alert" role={previewGap ? 'status' : 'alert'}>{shownError}</div>}
       {notice && <div className="portal-alert portal-alert--success" role="status">{notice}</div>}
       {isLoading ? <div className="data-state">Loading Door Builder webhook…</div> : (
         <>

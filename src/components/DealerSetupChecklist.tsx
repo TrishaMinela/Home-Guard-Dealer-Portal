@@ -1,4 +1,5 @@
 import type { MouseEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { dealerSetupChecklist, dealerSetupDestination, type DealerSetupSource, type SetupDestination, type SetupStatus } from '../features/dealer-setup/checklist'
 import { scrollToDealerDetailTarget } from './dealerDetailSections'
 import { DealerCardIcon, DealerOutlineIcon } from './DealerOutlineIcon'
@@ -25,9 +26,18 @@ function revealTarget(destination: SetupDestination) {
 }
 
 function destinationHref(destination: SetupDestination, dealerId?: string) {
-  if (destination.studioSection && dealerId) return `/admin/dealers/${dealerId}/branding?section=${destination.studioSection}`
-  if (destination.editFocusId && dealerId) return `/admin/dealers/${dealerId}/edit#${destination.editFocusId}`
-  return `#${destination.anchorId}`
+  if (!dealerId) return `#${destination.anchorId}`
+  if (destination.studioSection) return `/admin/dealers/${dealerId}/branding?section=${destination.studioSection}`
+  if (destination.editFocusId) return `/admin/dealers/${dealerId}/company/edit#${destination.editFocusId}`
+  const paths: Record<string, string> = {
+    company: 'company',
+    'dealer-users': 'access',
+    'branding-studio': 'branding',
+    'marketing-tools': 'marketing',
+    'crm-integrations': 'crm',
+  }
+  const path = paths[destination.sectionId]
+  return path ? `/admin/dealers/${dealerId}/${path}` : `#${destination.anchorId}`
 }
 
 export function DealerSetupChecklist({ dealer, dealerId }: { dealer: DealerSetupSource; dealerId?: string }) {
@@ -37,7 +47,7 @@ export function DealerSetupChecklist({ dealer, dealerId }: { dealer: DealerSetup
   const progress = items.length === 0 ? 0 : Math.round((completeCount / items.length) * 100)
 
   function openDestination(event: MouseEvent<HTMLAnchorElement>, destination: SetupDestination) {
-    if ((destination.studioSection || destination.editFocusId) && dealerId) return
+    if (dealerId) return
     event.preventDefault()
     revealTarget(destination)
   }
@@ -84,14 +94,14 @@ export function DealerSetupChecklist({ dealer, dealerId }: { dealer: DealerSetup
           return (
             <li key={item.id}>
               {destination ? (
-                <a
+                <Link
                   className="dealer-setup__link"
-                  href={destinationHref(destination, dealerId)}
+                  to={destinationHref(destination, dealerId)}
                   aria-label={`Go to ${destination.tabLabel}: ${destination.targetLabel}`}
                   onClick={(event) => openDestination(event, destination)}
                 >
                   {body}
-                </a>
+                </Link>
               ) : (
                 <div className="dealer-setup__static">{body}</div>
               )}

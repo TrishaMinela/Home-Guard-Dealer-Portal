@@ -3,6 +3,7 @@ import { MarketingToolsPage } from '../pages/MarketingToolsPage'
 import { supabase } from '../lib/supabase'
 import type { DealerAccount } from '../types/account'
 import { DealerSectionHeader } from './DealerSectionHeader'
+import { explainPreviewConfiguration, previewConfigurationNotice } from '../utils/previewConfiguration'
 
 async function loadDealerMarketingContext(dealerId: string): Promise<DealerAccount> {
   const { data } = await supabase.auth.getSession()
@@ -45,7 +46,7 @@ export function AdminDealerMarketingTools({ dealerId, previewDealer }: { dealerI
         actionTo={adminHref}
         actionIcon="manage"
       />
-      {error ? <div className="portal-alert" role="alert">{error}</div> : null}
+      {error ? <div className="portal-alert" role={explainPreviewConfiguration(error) === previewConfigurationNotice ? 'status' : 'alert'}>{explainPreviewConfiguration(error)}</div> : null}
       {!error && !dealer ? <div className="data-state">Loading Marketing Tools…</div> : null}
       {dealer ? (
         <MarketingToolsPage

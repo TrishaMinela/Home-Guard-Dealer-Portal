@@ -4,6 +4,7 @@ import { DealerPasswordModal } from './DealerPasswordModal'
 import { supabase } from '../lib/supabase'
 import { DealerSectionHeader } from './DealerSectionHeader'
 import { DealerOutlineIcon } from './DealerOutlineIcon'
+import { explainPreviewConfiguration, previewConfigurationNotice } from '../utils/previewConfiguration'
 
 type DealerUser = {
   name: string
@@ -99,7 +100,7 @@ export function DealerUserAccess({ dealerId, sectionId, canSetPassword = false, 
   return <>
     <section className="content-card billing-access-card dealer-user-access dealer-setup-anchor" id={sectionId} tabIndex={-1}>
       <DealerSectionHeader icon="users" eyebrow="Dealer security" title="Dealer Users / Access" description="Manage dealer users, their roles, and access to the Dealer Portal. Access managers can add existing accounts or send the secure Portal invitation to new users." actionLabel="Manage Users" actionHref="#add-dealer-user" actionIcon="manage" />
-      {error && <p className="message message--error" role="alert">{error}</p>}
+      {error && <p className={explainPreviewConfiguration(error) === previewConfigurationNotice ? 'message' : 'message message--error'} role={explainPreviewConfiguration(error) === previewConfigurationNotice ? 'status' : 'alert'}>{explainPreviewConfiguration(error)}</p>}
       {success && <p className="message message--success" role="status">{success}</p>}
       <div className="billing-access-card__form" id="add-dealer-user">
         <h3>Add Dealer User</h3>

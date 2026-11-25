@@ -5,9 +5,7 @@ import { DealerCrmIntegrations } from './components/DealerCrmIntegrations'
 import { DealerUserAccess } from './components/DealerUserAccess'
 import { DoorBuilderLeadWebhook } from './components/DoorBuilderLeadWebhook'
 import { AdminMarketingBannersPage } from './pages/AdminMarketingBannersPage'
-import { AdminBrandingStudioRoute } from './pages/BrandingStudioPage'
 import { DealerDetailPage } from './pages/DealerDetailPage'
-import { EditDealerPage } from './pages/EditDealerPage'
 import type { AdminDealer } from './types/admin'
 import './App.css'
 import './styles/dealerDetail.css'
@@ -105,32 +103,29 @@ const userPreview: ComponentProps<typeof DealerUserAccess>['previewUsers'] = [
 const marketingPreview: ComponentProps<typeof AdminDealerMarketingTools>['previewDealer'] = dealer
 
 export function DealerDetailPreviewHarness() {
+  const detail = (
+    <DealerDetailPage
+      dealers={[dealer]}
+      isLoading={false}
+      error=""
+      successMessage=""
+      onDealerUpdated={() => {}}
+      onClearSuccess={() => {}}
+      canManageDealerUsers
+      canManageDealerCredentials
+      webhookPreview={webhookPreview}
+      crmPreview={crmPreview}
+      marketingPreview={marketingPreview}
+      userPreview={userPreview}
+    />
+  )
   return (
     <MemoryRouter initialEntries={[`/admin/dealers/${dealer.id}`]}>
       <div className="portal-shell dd-preview-shell">
         <main className="portal-main">
           <Routes>
-            <Route
-              path="/admin/dealers/:dealerId"
-              element={
-                <DealerDetailPage
-                  dealers={[dealer]}
-                  isLoading={false}
-                  error=""
-                  successMessage=""
-                  onDealerUpdated={() => {}}
-                  onClearSuccess={() => {}}
-                  canManageDealerUsers
-                  canManageDealerCredentials
-                  webhookPreview={webhookPreview}
-                  crmPreview={crmPreview}
-                  marketingPreview={marketingPreview}
-                  userPreview={userPreview}
-                />
-              }
-            />
-            <Route path="/admin/dealers/:dealerId/edit" element={<EditDealerPage dealers={[dealer]} isLoading={false} error="" onSaved={() => {}} />} />
-            <Route path="/admin/dealers/:dealerId/branding" element={<AdminBrandingStudioRoute dealers={[dealer]} onDealerUpdated={() => {}} />} />
+            <Route path="/admin/dealers/:dealerId/*" element={detail} />
+            <Route path="/admin/dealers/:dealerId" element={detail} />
             <Route path="/admin/dealers" element={<div className="page-content"><h1>Dealers</h1></div>} />
             <Route path="/admin/marketing-banners" element={<AdminMarketingBannersPage dealers={[dealer]} />} />
           </Routes>

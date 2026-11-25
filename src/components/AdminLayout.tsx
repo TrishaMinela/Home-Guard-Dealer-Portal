@@ -16,10 +16,8 @@ import { AdminInventoryPage } from '../pages/AdminInventoryPage'
 import { AdminInventoryReviewPage } from '../pages/AdminInventoryReviewPage'
 import { AdminDoorStylesPage } from '../pages/AdminDoorStylesPage'
 import { AdminDoorStyleDetailPage } from '../pages/AdminDoorStyleDetailPage'
-import { DealerDetailPage } from '../pages/DealerDetailPage'
-import { AdminBrandingStudioRoute } from '../pages/BrandingStudioPage'
+import { DealerDetailPage, LegacyDealerEditRedirect } from '../pages/DealerDetailPage'
 import { AdminMarketingBannersPage } from '../pages/AdminMarketingBannersPage'
-import { EditDealerPage } from '../pages/EditDealerPage'
 import type { AdminDealer } from '../types/admin'
 import { adminAccountInitial, adminRoleLabel } from './adminAccount'
 import { NavIcon } from './NavIcon'
@@ -173,11 +171,6 @@ export function AdminLayout({ email, displayName = '', isInternalBillingAdmin, i
     setDealerSuccess(`${companyName} was added successfully.`)
   }
 
-  function handleDealerSaved(dealer: AdminDealer) {
-    adminData.replaceDealer(dealer)
-    setDealerDetailSuccess(`${dealer.company_name} was updated successfully.`)
-  }
-
   function handleDealerDetailUpdated(dealer: AdminDealer, message: string) {
     adminData.replaceDealer(dealer)
     setDealerDetailSuccess(message)
@@ -188,6 +181,18 @@ export function AdminLayout({ email, displayName = '', isInternalBillingAdmin, i
   }
 
   const drawerOpen = isDrawer && isMenuOpen
+  const dealerDetailPage = (
+    <DealerDetailPage
+      dealers={adminData.dealers}
+      isLoading={adminData.isLoading}
+      error={adminData.error}
+      successMessage={dealerDetailSuccess}
+      onDealerUpdated={handleDealerDetailUpdated}
+      onClearSuccess={() => setDealerDetailSuccess('')}
+      canManageDealerUsers={isBillingAccessManager || isInternalBillingAdmin}
+      canManageDealerCredentials={isBillingAccessManager}
+    />
+  )
 
   return (
     <div className="portal-shell portal-shell--admin">
@@ -328,36 +333,9 @@ export function AdminLayout({ email, displayName = '', isInternalBillingAdmin, i
             path="/admin/dealers/new"
             element={<AddDealerPage onCreated={handleDealerCreated} />}
           />
-          <Route
-            path="/admin/dealers/:dealerId/branding"
-            element={<AdminBrandingStudioRoute dealers={adminData.dealers} onDealerUpdated={handleDealerDetailUpdated} />}
-          />
-          <Route
-            path="/admin/dealers/:dealerId"
-            element={
-              <DealerDetailPage
-                dealers={adminData.dealers}
-                isLoading={adminData.isLoading}
-                error={adminData.error}
-                successMessage={dealerDetailSuccess}
-                onDealerUpdated={handleDealerDetailUpdated}
-                onClearSuccess={() => setDealerDetailSuccess('')}
-                canManageDealerUsers={isBillingAccessManager || isInternalBillingAdmin}
-                canManageDealerCredentials={isBillingAccessManager}
-              />
-            }
-          />
-          <Route
-            path="/admin/dealers/:dealerId/edit"
-            element={
-              <EditDealerPage
-                dealers={adminData.dealers}
-                isLoading={adminData.isLoading}
-                error={adminData.error}
-                onSaved={handleDealerSaved}
-              />
-            }
-          />
+          <Route path="/admin/dealers/:dealerId/edit" element={<LegacyDealerEditRedirect />} />
+          <Route path="/admin/dealers/:dealerId" element={dealerDetailPage} />
+          <Route path="/admin/dealers/:dealerId/*" element={dealerDetailPage} />
           <Route path="/admin/marketing-banners" element={<AdminMarketingBannersPage dealers={adminData.dealers} />} />
           <Route path="/admin/leads/:leadId?" element={<AdminLeadsPage {...adminData} />} />
           <Route path="/admin/ai-usage" element={<AdminAiUsagePage showInternalDetails={isInternalBillingAdmin} />} />

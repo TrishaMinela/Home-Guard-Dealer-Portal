@@ -4,6 +4,8 @@ export type DealerDetailSection = {
   id: string
   label: string
   icon: string
+  /** Path segment under /admin/dealers/:id. Empty is the overview. */
+  path: string
   access?: DealerDetailSectionAccess
   /** When set, the nav item opens this path under /admin/dealers/:id instead of scrolling. */
   route?: string
@@ -12,15 +14,29 @@ export type DealerDetailSection = {
 export const dealerDetailSectionScrollGap = 12
 
 export const dealerDetailSections: readonly DealerDetailSection[] = [
-  { id: 'setup', label: 'Overview', icon: 'clipboard' },
-  { id: 'company-details', label: 'Company', icon: 'building' },
-  { id: 'branding-studio', label: 'Branding', icon: 'palette' },
-  { id: 'door-builder-lead-webhook', label: 'Leads & Webhook', icon: 'webhook' },
-  { id: 'marketing-tools', label: 'Marketing', icon: 'megaphone', access: 'credentials' },
-  { id: 'crm-integrations', label: 'CRM', icon: 'crm', access: 'credentials' },
-  { id: 'website-address', label: 'Visualizer', icon: 'image' },
-  { id: 'dealer-users', label: 'Access', icon: 'users', access: 'users' },
+  { id: 'setup', label: 'Overview', icon: 'clipboard', path: '' },
+  { id: 'company-details', label: 'Company', icon: 'building', path: 'company' },
+  { id: 'branding-studio', label: 'Branding', icon: 'palette', path: 'branding' },
+  { id: 'door-builder-lead-webhook', label: 'Leads & Webhook', icon: 'webhook', path: 'leads' },
+  { id: 'marketing-tools', label: 'Marketing', icon: 'megaphone', path: 'marketing', access: 'credentials' },
+  { id: 'crm-integrations', label: 'CRM', icon: 'crm', path: 'crm', access: 'credentials' },
+  { id: 'website-address', label: 'Visualizer', icon: 'image', path: 'visualizer' },
+  { id: 'dealer-users', label: 'Access', icon: 'users', path: 'access', access: 'users' },
 ]
+
+const dealerSectionPaths = new Set(['', 'company', 'company/edit', 'branding', 'leads', 'marketing', 'crm', 'visualizer', 'access'])
+
+export function dealerSectionHref(dealerId: string, path: string) {
+  return path ? `/admin/dealers/${dealerId}/${path}` : `/admin/dealers/${dealerId}`
+}
+
+/** Path under /admin/dealers/:id, or null when the URL is not a dealer section. */
+export function dealerSectionFromPathname(pathname: string, dealerId: string) {
+  const prefix = `/admin/dealers/${dealerId}`
+  if (pathname !== prefix && !pathname.startsWith(`${prefix}/`)) return null
+  const rest = pathname.slice(prefix.length).replace(/^\//, '').replace(/\/$/, '')
+  return dealerSectionPaths.has(rest) ? rest : null
+}
 
 export function restrictedDealerSectionNotes(access: {
   canManageDealerCredentials: boolean
