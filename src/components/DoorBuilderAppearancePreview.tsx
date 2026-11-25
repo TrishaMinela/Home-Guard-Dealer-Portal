@@ -6,6 +6,7 @@ import { logoWebsiteHref } from '../utils/logoWebsiteUrl'
 import {
   appearanceCssVars,
   appearanceEditorPayload,
+  appearanceMode,
   inkFor,
   resolveAppearanceValue,
   resolvedBrandColors,
@@ -23,6 +24,7 @@ type Props = {
   surface?: PreviewSurface
   mobile?: boolean
   hideToolbar?: boolean
+  matchLiveDocument?: boolean
 }
 
 const DESKTOP_WIDTH = 1280
@@ -112,7 +114,7 @@ function GlobeIcon() {
   return <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="1.6" /><path d="M4 12h16M12 4c2.5 2.4 2.5 13.6 0 16M12 4c-2.5 2.4-2.5 13.6 0 16" fill="none" stroke="currentColor" strokeWidth="1.6" /></svg>
 }
 
-export function DoorBuilderAppearancePreview({ dealer, appearance, surface: surfaceProp, mobile: mobileProp, hideToolbar = false }: Props) {
+export function DoorBuilderAppearancePreview({ dealer, appearance, surface: surfaceProp, mobile: mobileProp, hideToolbar = false, matchLiveDocument = false }: Props) {
   const [mobileState, setMobile] = useState(() => window.matchMedia('(max-width: 900px)').matches)
   const [surfaceState, setSurface] = useState<PreviewSurface>('builder')
   const mobile = mobileProp ?? mobileState
@@ -128,6 +130,10 @@ export function DoorBuilderAppearancePreview({ dealer, appearance, surface: surf
   const footerBackground = resolveAppearanceValue(shown?.footerBackground, brand) ?? brand.secondary
   const headingFont = dealer.heading_font_family ? fontStacks[dealer.heading_font_family] : ''
   const bodyFont = dealer.body_font_family ? fontStacks[dealer.body_font_family] : ''
+  const textColor = matchLiveDocument
+    ? resolveAppearanceValue(appearance?.bodyText, brand) ?? resolveAppearanceValue(appearance?.headingText, brand)
+    : null
+  const appearanceModeValue = matchLiveDocument ? appearanceMode(appearance) : (shown ? 'simple' as const : undefined)
   const style = {
     '--dealer-primary': brand.primary,
     '--dealer-primary-foreground': inkFor(brand.primary),
@@ -136,6 +142,7 @@ export function DoorBuilderAppearancePreview({ dealer, appearance, surface: surf
     '--peacock': brand.primary,
     '--gold': '#f8d30e',
     ...appearanceCssVars(shown, brand),
+    ...(textColor ? { '--db-body-text': textColor, '--db-heading-text': textColor } : {}),
     ...(headingFont ? { '--db-preview-heading-font': headingFont } : {}),
     ...(dealer.heading_font_size ? { '--db-preview-heading-size': `${dealer.heading_font_size}px` } : {}),
     ...(dealer.heading_font_weight ? { '--db-preview-heading-weight': String(dealer.heading_font_weight) } : {}),
@@ -192,7 +199,7 @@ export function DoorBuilderAppearancePreview({ dealer, appearance, surface: surf
           <div className="db-preview-scale" ref={stageRef} style={{ width: designWidth, transform: `scale(${scale})` }}>
             <div
               className={`dealer-cobranded db-appearance-preview ${mobile ? 'is-mobile' : 'is-desktop'} ${headerIsLight ? 'dealer-secondary-light' : ''} ${surface === 'homepage' ? 'home-app' : ''} ${surface === 'homepage' && dealer.logo_placement !== 'header' ? 'dealer-logo-in-hero' : ''} ${surface === 'visualizer' ? 'visualizer-app' : ''}`}
-              data-appearance-mode={shown ? 'simple' : undefined}
+              data-appearance-mode={appearanceModeValue}
               data-preview-page={surface}
               style={style}
             >
@@ -239,7 +246,7 @@ export function DoorBuilderAppearancePreview({ dealer, appearance, surface: surf
                 </main>
               )}
               {surface === 'find' && (
-                <div className="db-find find-my-door-app dealer-cobranded" data-appearance-mode={shown ? 'simple' : undefined} style={style}>
+                <div className="db-find find-my-door-app dealer-cobranded" data-appearance-mode={appearanceModeValue} style={style}>
                   <header className="find-my-door-header">
                     <div className="brand">
                       {logos ? <LogoPair primaryUrl={logos.primaryUrl} secondaryUrl={logos.showPair ? logos.secondaryUrl : null} primaryHref={primaryHref} secondaryHref={secondaryHref} companyName={dealer.company_name} /> : <strong>{dealer.company_name}</strong>}

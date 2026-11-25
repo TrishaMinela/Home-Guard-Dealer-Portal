@@ -340,32 +340,18 @@ export function DealerDetailPage({
       <div className="dealer-detail-page__sections">
         {sectionPath === '' && (
           <>
+            <section className="content-card dd-section" aria-labelledby="dealer-summary-heading">
+              <DealerSectionHeader icon="building" eyebrow="Dealer" title="Dealer summary" headingId="dealer-summary-heading" description="Key details for this dealer. Use the tabs to change a setting." />
+              <dl className="dd-rows">
+                <DetailItem label="Company Name" value={dealer.company_name} />
+                <div className="dealer-detail__item"><dt>Status</dt><dd><StatusBadge active={dealer.is_active} /></dd></div>
+                <DetailItem label="Website" value={dealer.website} href={dealer.website ?? undefined} external />
+                <DetailItem label="Dealer Slug" value={dealer.slug} />
+                <DetailItem label="Created" value={formatDate(dealer.created_at)} />
+                <DetailItem label="Door Builder URL" value={visualizerUrl} href={visualizerUrl} external />
+              </dl>
+            </section>
             <DealerSetupChecklist dealer={dealer} dealerId={dealer.id} />
-            <div className="dd-split">
-              <section className="content-card dd-section" aria-labelledby="dealer-summary-heading">
-                <DealerSectionHeader icon="building" eyebrow="Dealer" title="Dealer summary" headingId="dealer-summary-heading" description="Key details for this dealer. Open a tab to change a setting." />
-                <dl className="dd-rows">
-                  <DetailItem label="Company Name" value={dealer.company_name} />
-                  <div className="dealer-detail__item"><dt>Status</dt><dd><StatusBadge active={dealer.is_active} /></dd></div>
-                  <DetailItem label="Website" value={dealer.website} href={dealer.website ?? undefined} external />
-                  <DetailItem label="Dealer Slug" value={dealer.slug} />
-                  <DetailItem label="Created" value={formatDate(dealer.created_at)} />
-                  <DetailItem label="Door Builder URL" value={visualizerUrl} href={visualizerUrl} external />
-                </dl>
-              </section>
-              <section className="content-card dd-section" aria-labelledby="dealer-shortcuts-heading">
-                <DealerSectionHeader icon="clipboard" eyebrow="Settings" title="Settings" headingId="dealer-shortcuts-heading" description="Jump to the setting you want to change." />
-                <div className="dd-shortcuts">
-                  <Link to={dealerSectionHref(dealer.id, 'company')}>Company</Link>
-                  <Link to={dealerSectionHref(dealer.id, 'branding')}>Open Branding Studio</Link>
-                  {canManageDealerCredentials && <Link to={dealerSectionHref(dealer.id, 'marketing')}>Marketing</Link>}
-                  {canManageDealerCredentials && <Link to={dealerSectionHref(dealer.id, 'crm')}>CRM</Link>}
-                  <Link to={dealerSectionHref(dealer.id, 'visualizer')}>Visualizer</Link>
-                  {canManageDealerUsers && <Link to={dealerSectionHref(dealer.id, 'access')}>Access</Link>}
-                  <Link to={dealerSectionHref(dealer.id, 'leads')}>Leads & Webhook</Link>
-                </div>
-              </section>
-            </div>
             <p className="dd-note">Marketing banners use the logo and do not recolor the template.</p>
           </>
         )}

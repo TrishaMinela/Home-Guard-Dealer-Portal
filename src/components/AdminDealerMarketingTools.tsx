@@ -22,7 +22,6 @@ export function AdminDealerMarketingTools({ dealerId, previewDealer }: { dealerI
   const fixture = import.meta.env.DEV ? previewDealer : undefined
   const [dealer, setDealer] = useState<DealerAccount | null>(fixture ?? null)
   const [error, setError] = useState('')
-  const adminHref = `/admin/marketing-banners?dealer=${encodeURIComponent(dealerId)}`
 
   useEffect(() => {
     if (fixture) return
@@ -41,13 +40,9 @@ export function AdminDealerMarketingTools({ dealerId, previewDealer }: { dealerI
         icon="megaphone"
         eyebrow="Marketing"
         title="Marketing Tools"
-        description="Give this dealer ready-to-use marketing assets, banners, and links to embed on their website."
-        actionLabel="Manage Marketing Tools"
-        actionTo={adminHref}
-        actionIcon="manage"
-        actionTone="primary"
+        description="Banners, the Door Builder link, and embed code for this dealer’s website."
       />
-      {error ? <div className="portal-alert" role={explainPreviewConfiguration(error) === previewConfigurationNotice ? 'status' : 'alert'}>{explainPreviewConfiguration(error)}</div> : null}
+      {error ? <div className={`portal-alert${explainPreviewConfiguration(error) === previewConfigurationNotice ? ' portal-alert--compact' : ''}`} role={explainPreviewConfiguration(error) === previewConfigurationNotice ? 'status' : 'alert'}>{explainPreviewConfiguration(error)}</div> : null}
       {!error && !dealer ? <div className="data-state">Loading Marketing Tools…</div> : null}
       {dealer ? (
         <MarketingToolsPage

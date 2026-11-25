@@ -75,6 +75,14 @@
 .branding-studio .appearance-group { gap: 8px; margin: 0; padding: 16px 0; border: 0; border-top: 1px solid var(--dd-line); border-radius: 0; background: transparent; }
 .branding-studio .appearance-group legend { padding: 0; font-size: 14px; font-weight: 600; }
 .branding-studio .dealer-typography-card { display: flex; flex-direction: column; }
+.studio-color-list { display: grid; }
+.studio-color-row { display: grid; grid-template-columns: 110px 28px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 12px 0; border-top: 1px solid var(--dd-line); }
+.studio-color-row:first-child { border-top: 0; padding-top: 0; }
+.studio-color-row label { font-size: 13px; font-weight: 600; }
+.studio-color-row__swatch { width: 28px; height: 28px; border: 1px solid var(--dd-line); border-radius: 8px; }
+.studio-color-row input { min-height: 36px; border: 1px solid var(--dd-line); border-radius: 8px; padding: 0 10px; font: inherit; font-size: 13px; }
+.studio-color-row button { min-height: 36px; border: 1px solid var(--dd-line); border-radius: 8px; padding: 0 10px; background: #fff; color: #374151; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.studio-color-row__error { grid-column: 2 / -1; margin: 0; color: #8a2424; font-size: 12px; }
 .branding-studio .typography-size-input { position: relative; display: block; min-width: 0; }
 .branding-studio .typography-size-input input { width: 100%; padding-right: 32px; }
 .branding-studio .typography-size-input span { position: absolute; top: 50%; right: 10px; transform: translateY(-50%); color: var(--dd-muted); font-size: 12px; font-weight: 600; }

@@ -231,7 +231,7 @@ export function DealerCompanyProfilePage({
       <section className="content-card dealer-form" id="branding-studio">
         <div className="dealer-form__section-heading">
           <h2>Branding Studio</h2>
-          <p>{canEditAppearance ? 'Logos, placement, colors, and typography for your Door Builder live on their own page so the preview can stay large.' : 'Logo branding lives on its own page. Color settings are available to dealer admins.'}</p>
+          <p>{canEditAppearance ? 'Logos, placement, and homepage colors live on their own page so the preview can stay large.' : 'Logo branding lives on its own page. Color settings are available to dealer admins.'}</p>
         </div>
         <Link className="button button--primary" to="/company/branding">Customize Door Builder</Link>
       </section>

@@ -350,6 +350,7 @@ body:has(.dealer-detail-page) { overflow-x: clip; }
 .dealer-detail-page .dealer-admin-marketing__content > .dd-split,
 .dealer-detail-page .dealer-admin-marketing__content > .banner-link-card:last-child,
 .dealer-detail-page .dealer-admin-marketing__content > .portal-alert { grid-column: 1 / -1; }
+.dealer-detail-page .portal-alert--compact { margin: 0; padding: 8px 12px; font-size: 12px; line-height: 1.4; }
 .dealer-detail-page .dealer-admin-marketing__content .banner-link-card,
 .dealer-detail-page .dealer-admin-marketing__content > .mbl {
   margin: 0; border: 1px solid var(--dd-line); border-radius: var(--dd-radius-card); background: #fff; box-shadow: none;
