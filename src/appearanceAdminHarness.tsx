@@ -1,18 +1,31 @@
+import { MemoryRouter, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { DealerDetailSectionNav } from './components/DealerDetailSectionNav'
 import './App.css'
 
+function PathProbe() {
+  const location = useLocation()
+  return <div data-testid="dealer-nav-path">{location.pathname}</div>
+}
+
+function NavWithId() {
+  const { dealerId = '' } = useParams()
+  return (
+    <>
+      <DealerDetailSectionNav dealerId={dealerId} canManageDealerCredentials canManageDealerUsers />
+      <PathProbe />
+    </>
+  )
+}
+
 export function AdminNavHarness() {
   return (
-    <div className="dealer-detail-page">
-      <DealerDetailSectionNav canManageDealerCredentials canManageDealerUsers />
-      <div id="company-details" style={{ height: 720 }}>Company Details</div>
-      <section id="branding-studio" style={{ height: 720 }}>
-        <h2>Branding Studio</h2>
-      </section>
-      <div id="door-builder-lead-webhook" style={{ height: 360 }}>Webhook</div>
-      <div id="marketing-tools" style={{ height: 240 }}>Marketing</div>
-      <div id="crm-integrations" style={{ height: 240 }}>CRM</div>
-      <div id="dealer-users" style={{ height: 240 }}>Users</div>
-    </div>
+    <MemoryRouter initialEntries={['/admin/dealers/test-dealer']}>
+      <div className="dealer-detail-page">
+        <Routes>
+          <Route path="/admin/dealers/:dealerId/*" element={<NavWithId />} />
+          <Route path="/admin/dealers/:dealerId" element={<NavWithId />} />
+        </Routes>
+      </div>
+    </MemoryRouter>
   )
 }

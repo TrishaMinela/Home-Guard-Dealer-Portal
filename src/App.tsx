@@ -12,6 +12,7 @@ import { ResetPasswordPage } from './components/ResetPasswordPage'
 import { useAccountAccess } from './hooks/useAccountAccess'
 import { supabase } from './lib/supabase'
 import './App.css'
+import './styles/dealerDetail.css'
 
 function authenticationErrorMessage(error: AuthError): string {
   if (error.code === 'invalid_credentials') return 'The email or password is incorrect.'

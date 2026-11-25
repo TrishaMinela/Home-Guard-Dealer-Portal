@@ -708,8 +708,8 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
         {saveAlert ? <p className="branding-studio__save-alert" role="alert">{saveAlert}</p> : null}
       </div>
       <div className="branding-studio__editor-head">
-        <h2>{logoView === 'cards' ? active[0] : 'Manage Variants'}</h2>
-        <p>{logoView === 'cards' ? active[1] : 'Original, white, and black choices for this logo. Files save immediately.'}</p>
+        <h2>{logoView !== 'cards' ? 'Manage Variants' : panel === 'logos' ? 'Logo Settings' : active[0]}</h2>
+        <p>{logoView !== 'cards' ? 'Original, white, and black choices for this logo. Files save immediately.' : panel === 'logos' ? 'Displayed in the selected website locations.' : active[1]}</p>
         {message && <p className="branding-studio__message" role="status">{message}</p>}
         {error && <p className="branding-studio__message is-error" role="alert">{error}</p>}
       </div>
@@ -720,11 +720,12 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
           {uploading ? <LogoFileStatus state="generating" /> : null}
           {dealer.logo_url ? (
           <article className="studio-logo" id="logo-original">
-            <strong>Logo 1 · Active</strong>
+            <div className="studio-logo__title"><strong>Primary logo</strong><span className="studio-logo__status studio-logo__status--saved">Active</span></div>
+            <p className="studio-logo__hint">Displayed in the selected website locations.</p>
             <div className="studio-logo__row">
               <div className="studio-logo__thumb"><img src={dealer.logo_url} alt="" onLoad={(event) => { const size = `${event.currentTarget.naturalWidth} × ${event.currentTarget.naturalHeight}`; setLogoSize((current) => ({ ...current, primary: size })) }} /></div>
               <div className="studio-logo__actions">
-                <label className="button button--outline">Upload Original<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onChange={(event) => void uploadLogo(event, 'primary')} /></label>
+                <label className="button button--outline">Replace Logo<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onChange={(event) => void uploadLogo(event, 'primary')} /></label>
                 <span id="logo-white"><button type="button" className="button button--outline" onClick={() => void generateLightLogo()}>Generate White</button></span>
                 <span id="logo-black"><button type="button" className="button button--outline" onClick={() => void generateBlackLogo()}>Generate Black</button></span>
               </div>
@@ -830,49 +831,42 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
 
   return (
     <div className={`branding-studio${editing ? ' is-editing' : ''}`}>
-      <nav className="branding-studio__tabs" aria-label="Dealer sections">
-        <Link to={backTo}>Company Details</Link>
-        <span aria-current="page">Branding &amp; Appearance</span>
-        {mode === 'admin' ? <Link to={`${backTo}#door-builder-lead-webhook`}>Lead Webhook</Link> : <Link to="/company#website-address">Website Address</Link>}
-      </nav>
       <header className="branding-studio__toolbar">
-        <Link className="branding-studio__back" to={backTo}>{mode === 'dealer' ? 'Back to Company Details' : 'Back to Dealer'}</Link>
+        <Link className="branding-studio__back" to={backTo}>{mode === 'dealer' ? 'Company Details' : 'Back to Dealer'}</Link>
         <div className="branding-studio__identity">
-          <h1 title="Branding & Appearance">Branding &amp; Appearance</h1>
-          <p title={dealer.company_name}>{dealer.company_name}</p>
+          <h1>Branding Studio</h1>
+          <p>Manage logos, brand colors, placement and typography.</p>
         </div>
-        <p className="branding-studio__live-status"><span className="branding-studio__live-dot" /><span className="branding-studio__live-copy">Live preview updates instantly</span></p>
-        <p className={`branding-studio__status${dirty ? '' : ' is-clean'}`} role="status">{dirty ? 'Unsaved changes' : 'All changes saved'}</p>
+        <p className={`branding-studio__status${dirty ? '' : ' is-clean'}`} role="status">{dirty ? 'Unsaved changes' : '✓ All changes saved'}</p>
         {saveAlert ? <p className="branding-studio__save-alert" role="alert">{saveAlert}</p> : null}
-        <a className="branding-studio__live" href={getDealerVisualizerUrl(dealer.slug)} target="_blank" rel="noreferrer">Open Live Website</a>
         <div className="branding-studio__actions">
           <button type="button" className="button button--outline" onClick={discard} disabled={!dirty || saving}>Discard Changes</button>
           <button type="button" className="button button--primary" onClick={() => void saveAll()} disabled={!dirty || saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
           <button type="button" className="branding-studio__edit" onClick={() => setEditing(true)}>Edit Settings</button>
+          <a className="branding-studio__live" href={getDealerVisualizerUrl(dealer.slug)} target="_blank" rel="noreferrer">Open Live Website</a>
         </div>
       </header>
+      <div className="branding-studio__pills" role="group" aria-label="Branding categories">
+        {STUDIO_SECTIONS.map((item) => (
+          <button key={item.id} type="button" aria-pressed={panel === item.id} onClick={() => choose(item.id)}>
+            {item.id === 'placement' ? 'Logo Display' : item.label}
+          </button>
+        ))}
+      </div>
       <div className="branding-studio__workspace">
-        <nav className="branding-studio__nav" aria-label="Branding categories">
-          {STUDIO_SECTIONS.map((item) => (
-            <button key={item.id} type="button" aria-current={panel === item.id ? 'page' : undefined} onClick={() => choose(item.id)}>
-              <span aria-hidden="true">{item.id === 'logos' ? '▣' : item.id === 'placement' ? '▤' : item.id === 'colors' ? '◉' : 'Aa'}</span>
-              {item.id === 'placement' ? 'Logo Display' : item.label}
-            </button>
-          ))}
-        </nav>
         <section className="branding-studio__preview" aria-label="Live preview">
           <div className="branding-studio__preview-card">
             <div className="branding-studio__preview-bar">
-              <strong>Live Preview</strong>
+              <strong>Live Door Builder Preview</strong>
               <div className="branding-studio__toggles" role="group" aria-label="Preview page">
-                {(['homepage', 'builder', 'find'] as const).map((value) => (
-                  <button key={value} type="button" aria-pressed={surface === value} onClick={() => setSurface(value)}>{value === 'find' ? 'Find My Door' : value === 'builder' ? 'Door Builder' : 'Homepage'}</button>
-                ))}
-              </div>
-              <div className="branding-studio__toggles" role="group" aria-label="Preview width">
-                <button type="button" aria-pressed={!mobile} onClick={() => setMobile(false)}>Desktop</button>
+                <button type="button" aria-pressed={surface === 'builder'} onClick={() => { setSurface('builder'); setMobile(false) }}>Door Builder</button>
+                <button type="button" aria-pressed={!mobile && surface !== 'builder'} onClick={() => setMobile(false)}>Desktop</button>
                 <button type="button" aria-pressed={mobile} onClick={() => setMobile(true)}>Mobile</button>
               </div>
+            </div>
+            <div className="branding-studio__page-pills" role="group" aria-label="Preview page">
+              <button type="button" aria-pressed={surface === 'homepage'} onClick={() => setSurface('homepage')}>Homepage</button>
+              <button type="button" aria-pressed={surface === 'find'} onClick={() => setSurface('find')}>Find My Door</button>
             </div>
             <DoorBuilderAppearancePreview dealer={previewDealer} appearance={appearance} surface={surface} mobile={mobile} hideToolbar />
           </div>

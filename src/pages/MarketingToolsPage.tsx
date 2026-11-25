@@ -52,17 +52,25 @@ export function MarketingToolsPage({
       {message && <div className="portal-alert portal-alert--success" role="status">{message}</div>}
       {error && <div className="portal-alert" role="alert">{error}</div>}
 
-      <section className="content-card banner-link-card" aria-labelledby="use-on-website-title">
-        <div className="content-card__header">
-          <p className="eyebrow">Website</p>
-          <h2 id="use-on-website-title">Use this on your website</h2>
-          <p>Copy the Door Builder link first. Then download a banner and place that image on your site. Banner designs use the dealer logo. They do not recolor themselves with the dealer’s brand colors.</p>
-        </div>
-        <div className="banner-copy-row">
-          <code>{visualizerUrl}</code>
-          <button className="button button--primary" type="button" onClick={() => void handleCopy(visualizerUrl, 'Door Builder link copied.')}>Copy Door Builder Link</button>
-        </div>
-      </section>
+      <div className={embedded ? 'dd-split' : undefined}>
+        <section className="content-card banner-link-card" aria-labelledby="use-on-website-title">
+          <div className="content-card__header">
+            <p className="eyebrow">Website</p>
+            <h2 id="use-on-website-title">Use this on your website</h2>
+            <p>Copy the Door Builder link first. Then download a banner and place that image on your site. Banner designs use the dealer logo. They do not recolor themselves with the dealer’s brand colors.</p>
+          </div>
+          <div className="banner-copy-row">
+            <code>{visualizerUrl}</code>
+            <button className="button button--primary" type="button" onClick={() => void handleCopy(visualizerUrl, 'Door Builder link copied.')}>Copy Door Builder Link</button>
+          </div>
+        </section>
+        {embedded ? (
+          <section className="content-card banner-link-card">
+            <div className="content-card__header"><p className="eyebrow">Destination</p><h2>Visualizer Link</h2><p>This is the same Door Builder address copied above.</p></div>
+            <div className="banner-copy-row"><code>{visualizerUrl}</code><button className="button button--outline" type="button" onClick={() => void handleCopy(visualizerUrl, 'Visualizer link copied.')}>Copy Link</button></div>
+          </section>
+        ) : null}
+      </div>
 
       <MarketingBannerLibrary
         dealer={dealer}
@@ -71,10 +79,12 @@ export function MarketingToolsPage({
         adminHref={bannerAdminHref}
       />
 
+      {embedded ? null : (
       <section className="content-card banner-link-card">
         <div className="content-card__header"><p className="eyebrow">Destination</p><h2>Visualizer Link</h2><p>This is the same Door Builder address copied above.</p></div>
         <div className="banner-copy-row"><code>{visualizerUrl}</code><button className="button button--outline" type="button" onClick={() => void handleCopy(visualizerUrl, 'Visualizer link copied.')}>Copy Link</button></div>
       </section>
+      )}
 
       <section className="content-card banner-link-card">
         <div className="content-card__header"><p className="eyebrow">Website</p><h2>Embed Code</h2></div>
