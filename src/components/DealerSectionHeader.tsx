@@ -1,25 +1,26 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { DealerCardIcon, DealerOutlineIcon } from './DealerOutlineIcon'
 
 type DealerSectionHeaderProps = {
   eyebrow: string
   title: string
   description: string
   headingId?: string
+  icon?: string
+  compact?: boolean
   actionLabel?: string
   actionTo?: string
   actionHref?: string
-  actionIcon?: 'edit' | 'manage'
+  actionIcon?: 'edit' | 'manage' | 'external'
+  actionTone?: 'outline' | 'primary'
   onActionClick?: () => void
   trailing?: ReactNode
 }
 
-function SectionActionIcon({ icon }: { icon: 'edit' | 'manage' }) {
-  return icon === 'manage' ? (
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM19 8v6M22 11h-6" /></svg>
-  ) : (
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" /></svg>
-  )
+function SectionActionIcon({ icon }: { icon: 'edit' | 'manage' | 'external' }) {
+  const name = icon === 'manage' ? 'users' : icon === 'external' ? 'external' : 'pencil'
+  return <DealerOutlineIcon name={name} />
 }
 
 export function DealerSectionHeader({
@@ -27,16 +28,21 @@ export function DealerSectionHeader({
   title,
   description,
   headingId,
+  icon,
+  compact = false,
   actionLabel,
   actionTo,
   actionHref,
   actionIcon = 'edit',
+  actionTone = 'outline',
   onActionClick,
   trailing,
 }: DealerSectionHeaderProps) {
   const actionContent = actionLabel ? <><SectionActionIcon icon={actionIcon} /><span>{actionLabel}</span></> : null
+  const actionClass = actionTone === 'primary' ? 'button button--primary dd-text-button' : 'dealer-section-action'
   return (
-    <header className="dealer-section-header">
+    <header className={`dealer-section-header${compact ? ' dealer-section-header--compact' : ''}`}>
+      {icon ? <DealerCardIcon name={icon} /> : null}
       <div className="dealer-section-header__copy">
         <p className="eyebrow">{eyebrow}</p>
         <h2 id={headingId}>{title}</h2>
@@ -44,8 +50,8 @@ export function DealerSectionHeader({
       </div>
       <div className="dealer-section-header__actions">
         {trailing}
-        {actionTo && actionContent && <Link className="dealer-section-action" to={actionTo} aria-label={`${actionLabel}: ${title}`} onClick={onActionClick}>{actionContent}</Link>}
-        {actionHref && actionContent && <a className="dealer-section-action" href={actionHref} aria-label={`${actionLabel}: ${title}`}>{actionContent}</a>}
+        {actionTo && actionContent && <Link className={actionClass} to={actionTo} aria-label={`${actionLabel}: ${title}`} onClick={onActionClick}>{actionContent}</Link>}
+        {actionHref && actionContent && <a className={actionClass} href={actionHref} aria-label={`${actionLabel}: ${title}`}>{actionContent}</a>}
       </div>
     </header>
   )

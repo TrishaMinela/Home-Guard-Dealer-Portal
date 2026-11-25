@@ -3,6 +3,7 @@ export type DealerDetailSectionAccess = 'credentials' | 'users'
 export type DealerDetailSection = {
   id: string
   label: string
+  icon: string
   access?: DealerDetailSectionAccess
   /** When set, the nav item opens this path under /admin/dealers/:id instead of scrolling. */
   route?: string
@@ -11,12 +12,14 @@ export type DealerDetailSection = {
 export const dealerDetailSectionScrollGap = 12
 
 export const dealerDetailSections: readonly DealerDetailSection[] = [
-  { id: 'company-details', label: 'Company Details' },
-  { id: 'branding-studio', label: 'Branding Studio', route: 'branding' },
-  { id: 'door-builder-lead-webhook', label: 'Lead Webhook' },
-  { id: 'marketing-tools', label: 'Marketing Tools', access: 'credentials' },
-  { id: 'crm-integrations', label: 'CRM Integrations', access: 'credentials' },
-  { id: 'dealer-users', label: 'Dealer Users / Access', access: 'users' },
+  { id: 'setup', label: 'Overview', icon: 'clipboard' },
+  { id: 'company-details', label: 'Company', icon: 'building' },
+  { id: 'branding-studio', label: 'Branding', icon: 'palette' },
+  { id: 'door-builder-lead-webhook', label: 'Leads & Webhook', icon: 'webhook' },
+  { id: 'marketing-tools', label: 'Marketing', icon: 'megaphone', access: 'credentials' },
+  { id: 'crm-integrations', label: 'CRM', icon: 'crm', access: 'credentials' },
+  { id: 'website-address', label: 'Visualizer', icon: 'image' },
+  { id: 'dealer-users', label: 'Access', icon: 'users', access: 'users' },
 ]
 
 export function restrictedDealerSectionNotes(access: {

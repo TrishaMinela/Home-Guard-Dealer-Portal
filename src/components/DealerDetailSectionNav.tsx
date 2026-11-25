@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import { DealerOutlineIcon } from './DealerOutlineIcon'
 import {
   dealerDetailStickyOffset,
   isScrollerAtEnd,
@@ -288,7 +289,8 @@ export function DealerDetailSectionNav({
             aria-current={activeId === section.id ? 'true' : undefined}
             onClick={section.route ? undefined : (event) => selectSection(event, section.id)}
           >
-            {section.label}
+            <DealerOutlineIcon name={section.icon} />
+            <span>{section.label}</span>
           </a>
         ))}
       </nav>

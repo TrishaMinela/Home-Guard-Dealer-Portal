@@ -45,10 +45,11 @@ function isStatusUpdate(url: string, method: string) {
 async function openAt(page: Page, width: number, scrolled: boolean) {
   await page.setViewportSize({ width, height: 800 })
   await page.goto(`http://127.0.0.1:${port}/#disable-dealer-harness`, { waitUntil: 'networkidle' })
-  await page.getByRole('button', { name: 'Disable Dealer' }).waitFor()
+  await page.getByRole('button', { name: 'Actions', exact: true }).waitFor()
   const scroller = page.locator('.portal-main')
   if (scrolled) await scroller.evaluate((element) => { element.scrollTop = 700 })
   const before = await scroller.evaluate((element) => element.scrollTop)
+  await page.getByRole('button', { name: 'Actions', exact: true }).evaluate((button: HTMLButtonElement) => button.click())
   await page.getByRole('button', { name: 'Disable Dealer' }).evaluate((button: HTMLButtonElement) => button.click())
   const dialog = page.getByRole('dialog')
   await dialog.waitFor()

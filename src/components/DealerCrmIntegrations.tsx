@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
+import { DealerSectionHeader } from './DealerSectionHeader'
 
 type Provider = 'opta' | 'gohighlevel' | 'custom_webhook'
 type IntegrationState = 'disabled' | 'test' | 'live'
@@ -106,14 +107,21 @@ async function authenticatedRequest(url: string, options?: RequestInit): Promise
   return payload
 }
 
-export function DealerCrmIntegrations({ dealerId }: { dealerId: string }) {
-  const [integrations, setIntegrations] = useState<Integration[]>([])
+type CrmPreview = {
+  integrations: Integration[]
+  encryptionConfigured?: boolean
+  optaDeliveryAvailable?: boolean
+}
+
+export function DealerCrmIntegrations({ dealerId, preview }: { dealerId: string; preview?: CrmPreview }) {
+  const fixture = import.meta.env.DEV ? preview : undefined
+  const [integrations, setIntegrations] = useState<Integration[]>(fixture?.integrations ?? [])
   const [deliveries, setDeliveries] = useState<DeliveryEntry[]>([])
   const [auditHistory, setAuditHistory] = useState<AuditEntry[]>([])
-  const [encryptionConfigured, setEncryptionConfigured] = useState(false)
-  const [optaDeliveryAvailable, setOptaDeliveryAvailable] = useState(false)
+  const [encryptionConfigured, setEncryptionConfigured] = useState(fixture?.encryptionConfigured ?? false)
+  const [optaDeliveryAvailable, setOptaDeliveryAvailable] = useState(fixture?.optaDeliveryAvailable ?? false)
   const [livePhrase, setLivePhrase] = useState(LIVE_CONFIRMATION_PHRASE)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(!fixture)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -133,13 +141,14 @@ export function DealerCrmIntegrations({ dealerId }: { dealerId: string }) {
   }, [])
 
   const load = useCallback(async () => {
+    if (fixture) return
     try {
       const payload = await authenticatedRequest(`/api/dealer-crm-integrations?dealerId=${encodeURIComponent(dealerId)}`)
       applyPayload(payload)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'CRM integration settings could not be loaded. Please try again.')
     } finally { setIsLoading(false) }
-  }, [applyPayload, dealerId])
+  }, [applyPayload, dealerId, fixture])
 
   useEffect(() => {
     const request = window.setTimeout(() => void load(), 0)
@@ -179,6 +188,10 @@ export function DealerCrmIntegrations({ dealerId }: { dealerId: string }) {
 
   async function save(event: FormEvent) {
     event.preventDefault()
+    if (fixture) {
+      setNotice('Preview only. CRM settings were not saved and no lead was sent.')
+      return
+    }
     if (!editingProvider || isSaving) return
     setIsSaving(true)
     setError('')
@@ -226,22 +239,30 @@ export function DealerCrmIntegrations({ dealerId }: { dealerId: string }) {
 
   return (
     <section id="crm-integrations" className="content-card dealer-management-card crm-integrations dealer-setup-anchor" tabIndex={-1} aria-labelledby="crm-integrations-title">
-      <div className="content-card__header crm-integrations__header">
-        <div><p className="eyebrow">Lead delivery</p><h2 id="crm-integrations-title">CRM Integrations</h2><p>Save Opta credentials here. Test and live delivery are available only for America's Best Windows &amp; Doors. Live also requires the server kill switch, and it only includes leads created after Live is saved. Door Builder lead webhooks are managed in this section.</p></div>
-        <span className={headerBadge.className}>{headerBadge.label}</span>
-      </div>
+      <DealerSectionHeader
+        icon="crm"
+        eyebrow="Lead delivery"
+        title="CRM Integrations"
+        headingId="crm-integrations-title"
+        description="Connect this dealer to supported CRM systems to automatically sync leads and customer data. Save Opta credentials here. Test and live delivery are available only for America's Best Windows & Doors. Live also requires the server kill switch, and it only includes leads created after Live is saved."
+        actionLabel="Manage Integrations"
+        actionHref="#crm-provider-grid"
+        actionIcon="manage"
+        trailing={<span className={headerBadge.className}>{headerBadge.label}</span>}
+      />
       {!encryptionConfigured && !isLoading && <div className="portal-alert" role="alert">Secure credential storage is not configured. Metadata can be reviewed, but credentials cannot be saved.</div>}
       {error && <div className="portal-alert" role="alert">{error}</div>}
       {notice && <div className="portal-alert portal-alert--success" role="status">{notice}</div>}
       {isLoading ? <div className="data-state">Loading CRM integrations…</div> : (
-        <div className="crm-provider-grid">
+        <div className="crm-provider-grid" id="crm-provider-grid" tabIndex={-1}>
           {providers.map((provider) => {
             const integration = integrations.find((candidate) => candidate.provider === provider.value)
             const stateLabel = integration?.state === 'disabled' ? 'Off' : integration ? `${integration.state.charAt(0).toUpperCase()}${integration.state.slice(1)}` : 'Not configured'
+            const stateClass = integration?.state === 'live' ? 'status-badge--active' : integration?.state === 'test' ? 'dd-status--test' : 'status-badge--inactive'
             return <article className="crm-provider-card" key={provider.value}>
-              <div className="crm-provider-card__heading"><div><h3>{provider.label}</h3><p>{provider.description}</p></div><span className={`status-badge ${integration?.state === 'live' ? 'status-badge--active' : 'status-badge--inactive'}`}>{stateLabel}</span></div>
+              <div className="crm-provider-card__heading"><div className="crm-provider-card__identity"><span className="crm-provider-card__mark" aria-hidden="true">{provider.label.slice(0, 1)}</span><div><h3>{provider.label}</h3><p>{provider.description}</p></div></div><span className={`status-badge dd-status ${stateClass}`}>{stateLabel}</span></div>
               <dl className="crm-provider-card__meta"><div><dt>Credentials</dt><dd>{integration?.hasCredentials ? 'Saved securely' : 'Not saved'}</dd></div><div><dt>Last updated</dt><dd>{integration ? new Date(integration.updatedAt).toLocaleString() : '—'}</dd></div></dl>
-              <button className="button button--outline" type="button" onClick={() => beginEdit(provider.value)}>{integration ? 'Edit Integration' : 'Add Integration'}</button>
+              <button className={integration ? 'dd-text-link' : 'button button--outline'} type="button" onClick={() => beginEdit(provider.value)}>{integration ? 'View Settings' : 'Add Integration'}</button>
             </article>
           })}
         </div>

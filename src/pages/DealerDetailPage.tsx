@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { AdminDealer } from '../types/admin'
@@ -12,6 +12,8 @@ import { DealerCrmIntegrations } from '../components/DealerCrmIntegrations'
 import { DoorBuilderLeadWebhook } from '../components/DoorBuilderLeadWebhook'
 import { DealerSetupChecklist } from '../components/DealerSetupChecklist'
 import { DisableDealerDialog } from '../components/DisableDealerDialog'
+import { DealerOutlineIcon } from '../components/DealerOutlineIcon'
+import type { DealerAccount } from '../types/account'
 
 type DealerDetailPageProps = {
   dealers: AdminDealer[]
@@ -22,27 +24,44 @@ type DealerDetailPageProps = {
   onClearSuccess: () => void
   canManageDealerUsers: boolean
   canManageDealerCredentials: boolean
+  webhookPreview?: ComponentProps<typeof DoorBuilderLeadWebhook>['preview']
+  crmPreview?: ComponentProps<typeof DealerCrmIntegrations>['preview']
+  marketingPreview?: DealerAccount
+  userPreview?: ComponentProps<typeof DealerUserAccess>['previewUsers']
 }
 
 function formatDate(date: string) {
   return new Intl.DateTimeFormat(undefined, {
-    month: 'long',
+    month: 'short',
     day: 'numeric',
     year: 'numeric',
   }).format(new Date(date))
 }
 
-function DetailItem({ label, value, href }: { label: string; value: string | null; href?: string }) {
+function DetailItem({ label, value, href, external }: { label: string; value: ReactNode; href?: string; external?: boolean }) {
+  const text = typeof value === 'string' ? value : null
   return (
     <div className="dealer-detail__item">
       <dt>{label}</dt>
-      <dd>{href && value ? <a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noreferrer' : undefined}>{value}</a> : value || '—'}</dd>
+      <dd>
+        {href && text ? (
+          <a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noreferrer' : undefined}>
+            {text}
+            {external ? <DealerOutlineIcon name="external" /> : null}
+          </a>
+        ) : value || '—'}
+      </dd>
     </div>
   )
 }
 
-function DetailGroup({ title, children, id }: { title: string; children: ReactNode; id?: string }) {
-  return <section className="dealer-detail-group dealer-setup-anchor" id={id} tabIndex={id ? -1 : undefined}><h3>{title}</h3><dl>{children}</dl></section>
+function StatusBadge({ active }: { active: boolean }) {
+  return (
+    <span className={`status-badge dd-status ${active ? 'status-badge--active' : 'status-badge--inactive'}`}>
+      <span className="dd-status__dot" aria-hidden="true" />
+      {active ? 'Active' : 'Disabled'}
+    </span>
+  )
 }
 
 export function DealerDetailPage({
@@ -54,11 +73,18 @@ export function DealerDetailPage({
   onClearSuccess,
   canManageDealerUsers,
   canManageDealerCredentials,
+  webhookPreview,
+  crmPreview,
+  marketingPreview,
+  userPreview,
 }: DealerDetailPageProps) {
   const { dealerId } = useParams()
   const navigate = useNavigate()
+  const actionsMenuId = useId()
   const [isConfirmingDisable, setIsConfirmingDisable] = useState(false)
+  const [actionsOpen, setActionsOpen] = useState(false)
   const disableButtonRef = useRef<HTMLButtonElement>(null)
+  const actionsRef = useRef<HTMLDivElement>(null)
   const [actionError, setActionError] = useState('')
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [isReviewingSlug, setIsReviewingSlug] = useState(false)
@@ -76,6 +102,23 @@ export function DealerDetailPage({
     window.addEventListener('hashchange', redirect)
     return () => window.removeEventListener('hashchange', redirect)
   }, [dealer, navigate])
+
+  useEffect(() => {
+    if (!actionsOpen) return
+    function onPointerDown(event: PointerEvent) {
+      if (isConfirmingDisable) return
+      if (!actionsRef.current?.contains(event.target as Node)) setActionsOpen(false)
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape' && !isConfirmingDisable) setActionsOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [actionsOpen, isConfirmingDisable])
 
   async function updateStatus(isActive: boolean) {
     if (!dealer) return
@@ -156,55 +199,97 @@ export function DealerDetailPage({
     )
   }
 
+  const editCompanyPath = `/admin/dealers/${dealer.id}/edit#company`
+  const editSlugPath = `/admin/dealers/${dealer.id}/edit#dealer-slug`
+  const website = dealer.website?.trim() ?? ''
+  const visualizerUrl = getDealerVisualizerDisplayUrl(dealer.slug)
+  const headerHref = website || visualizerUrl
+
   return (
     <div className="page-content dealer-detail-page">
-      <Link className="button button--outline dealer-back-link" to="/admin/dealers">Back to Dealers</Link>
-      <header className="page-header admin-page-header dealer-page-header page-header--with-action">
-        <div className="dealer-page-header__copy">
-          <p className="eyebrow">Dealer company</p>
-          <h1>{dealer.company_name}</h1>
-          <a className="dealer-page-header__url" href={getDealerVisualizerDisplayUrl(dealer.slug)} target="_blank" rel="noreferrer">{getDealerVisualizerDisplayUrl(dealer.slug)}</a>
-          <div className="dealer-page-header__meta"><span className={`status-badge ${dealer.is_active ? 'status-badge--active' : 'status-badge--inactive'}`}>{dealer.is_active ? 'Active' : 'Disabled'}</span><span>Added {formatDate(dealer.created_at)}</span></div>
-        </div>
-        <div className="page-actions">
-          {dealer.is_active ? (
-            <button
-              ref={disableButtonRef}
-              className="button button--danger-outline"
-              type="button"
-              onClick={() => setIsConfirmingDisable(true)}
-            >
-              Disable Dealer
-            </button>
-          ) : (
-            <button
-              className="button button--primary"
-              type="button"
-              disabled={isUpdatingStatus}
-              onClick={() => void updateStatus(true)}
-            >
-              {isUpdatingStatus ? 'Enabling...' : 'Enable Dealer'}
-            </button>
-          )}
+      <header className="dd-heading">
+        <nav className="dd-crumb" aria-label="Breadcrumb">
+          <Link to="/admin/dealers" aria-label="Back to Dealers">Dealers</Link>
+          <span aria-hidden="true">›</span>
+          <span>{dealer.company_name}</span>
+        </nav>
+        <div className="dd-heading__row">
+          <div className="dd-heading__copy">
+            <h1>{dealer.company_name}</h1>
+            <a className="dd-website" href={headerHref} target="_blank" rel="noreferrer">
+              <DealerOutlineIcon name="external" />
+              <span>{headerHref}</span>
+            </a>
+            <div className="dd-meta">
+              <StatusBadge active={dealer.is_active} />
+              <span className="dd-meta__item">Dealer ID: {dealer.id}</span>
+              <span className="dd-meta__item">Created: {formatDate(dealer.created_at)}</span>
+            </div>
+          </div>
+          <div className="page-actions dd-heading__actions">
+            <div className="dd-actions" ref={actionsRef}>
+              <button
+                className="button button--outline"
+                type="button"
+                aria-expanded={actionsOpen}
+                aria-controls={actionsMenuId}
+                aria-haspopup="true"
+                onClick={(event) => {
+                  // detail 0 is a scripted click, which can be delivered twice. Opening is idempotent.
+                  if (event.detail === 0) {
+                    setActionsOpen(true)
+                    return
+                  }
+                  setActionsOpen((open) => !open)
+                }}
+              >
+                Actions
+                <DealerOutlineIcon name="chevron" />
+              </button>
+              <div className="dd-actions__menu" id={actionsMenuId} hidden={!actionsOpen}>
+                {dealer.is_active ? (
+                  <button
+                    ref={disableButtonRef}
+                    className="button button--danger-outline"
+                    type="button"
+                    onClick={() => setIsConfirmingDisable(true)}
+                  >
+                    Disable Dealer
+                  </button>
+                ) : (
+                  <button
+                    className="button button--primary"
+                    type="button"
+                    disabled={isUpdatingStatus}
+                    onClick={() => void updateStatus(true)}
+                  >
+                    {isUpdatingStatus ? 'Enabling...' : 'Enable Dealer'}
+                  </button>
+                )}
+                <Link to={editCompanyPath} onClick={onClearSuccess}>Edit company details</Link>
+              </div>
+            </div>
+            <Link className="button button--primary dd-text-button" to={editCompanyPath} onClick={onClearSuccess}>
+              <DealerOutlineIcon name="pencil" />
+              Update Dealer
+            </Link>
+          </div>
         </div>
       </header>
 
       {successMessage && <div className="portal-alert portal-alert--success" role="status">{successMessage}</div>}
       {actionError && <div className="portal-alert" role="alert">{actionError}</div>}
-
-      <DealerDetailSectionNav
-        dealerId={dealer.id}
-        canManageDealerCredentials={canManageDealerCredentials}
-        canManageDealerUsers={canManageDealerUsers}
-      />
-
       {dealer.slug_request_status === 'pending' && dealer.requested_slug && (
         <div className="portal-alert" role="status">
           A Door Builder URL change is waiting for review. <a href="#website-address">Review the request</a>
         </div>
       )}
 
-      <DealerSetupChecklist dealer={dealer} dealerId={dealer.id} />
+      <DealerDetailSectionNav
+        dealerId={dealer.id}
+        canManageDealerCredentials={canManageDealerCredentials}
+        canManageDealerUsers={canManageDealerUsers}
+      />
 
       <DisableDealerDialog
         open={isConfirmingDisable}
@@ -216,87 +301,130 @@ export function DealerDetailPage({
       />
 
       <div className="dealer-detail-page__sections">
-      <section id="company-details" className="content-card dealer-management-card dealer-detail" aria-labelledby="company-details-heading">
-        <DealerSectionHeader eyebrow="Company record" title="Company Details" headingId="company-details-heading" description="Core identity, contact information, location, and public links for this dealer." actionLabel="Edit" actionTo={`/admin/dealers/${dealer.id}/edit#company`} onActionClick={onClearSuccess} trailing={<span className={`status-badge ${dealer.is_active ? 'status-badge--active' : 'status-badge--inactive'}`}>{dealer.is_active ? 'Active' : 'Disabled'}</span>} />
-        <div className="dealer-detail-groups">
-          <DetailGroup title="Core identity"><DetailItem label="Company Name" value={dealer.company_name} /><DetailItem label="Dealer Slug" value={dealer.slug} /><DetailItem label="Status" value={dealer.is_active ? 'Active' : 'Disabled'} /><DetailItem label="Created Date" value={formatDate(dealer.created_at)} /></DetailGroup>
-          <DetailGroup id="company-contact" title="Contact information"><DetailItem label="Primary Contact" value={dealer.primary_contact_name} /><DetailItem label="Email" value={dealer.email} href={dealer.email ? `mailto:${dealer.email}` : undefined} /><DetailItem label="Phone" value={dealer.phone} href={dealer.phone ? `tel:${dealer.phone}` : undefined} /></DetailGroup>
-          <DetailGroup title="Address & location"><DetailItem label="Street Address" value={dealer.address} /><DetailItem label="City" value={dealer.city} /><DetailItem label="State" value={dealer.state} /><DetailItem label="ZIP" value={dealer.zip} /></DetailGroup>
-          <DetailGroup id="dealer-slug" title="Public links"><DetailItem label="Door Builder URL" value={getDealerVisualizerDisplayUrl(dealer.slug)} href={getDealerVisualizerDisplayUrl(dealer.slug)} /><DetailItem label="Website" value={dealer.website} href={dealer.website ?? undefined} /></DetailGroup>
-        </div>
-      </section>
+        <DealerSetupChecklist dealer={dealer} dealerId={dealer.id} />
 
-      <section className="content-card dealer-management-card" id="branding-studio">
-        <div className="dealer-form__section-heading">
-          <p className="eyebrow">Door Builder</p>
-          <h2>Branding Studio</h2>
-          <p>Logos, placement, colors, and typography for this dealer’s Door Builder. Marketing banners use the logo and do not recolor the template.</p>
-        </div>
-        <Link className="button button--primary" to={`/admin/dealers/${dealer.id}/branding`}>Customize Door Builder</Link>
-      </section>
-
-      <DoorBuilderLeadWebhook dealerId={dealer.id} />
-
-      {canManageDealerCredentials ? (
-        <>
-          <AdminDealerMarketingTools dealerId={dealer.id} />
-          <DealerCrmIntegrations dealerId={dealer.id} />
-        </>
-      ) : (
-        <section className="content-card dealer-management-card dealer-setup-anchor" id="marketing-and-crm" tabIndex={-1} aria-labelledby="marketing-and-crm-heading">
-          <h2 id="marketing-and-crm-heading">Marketing Tools and CRM Integrations</h2>
-          <p>This section needs additional access. It is available to an access manager.</p>
-        </section>
-      )}
-
-      <section className="content-card slug-review-card" id="website-address">
-        <div className="content-card__header">
-          <p className="eyebrow">Dealer request</p>
-          <h2>Visualizer URL Request</h2>
-        </div>
-        {dealer.slug_request_status === 'pending' && dealer.requested_slug ? (
-          <div className="slug-review-card__body">
-            <dl className="slug-review-details">
-              <DetailItem label="Current URL" value={getDealerVisualizerDisplayUrl(dealer.slug)} />
-              <DetailItem label="Requested URL" value={getDealerVisualizerDisplayUrl(dealer.requested_slug)} />
-              <DetailItem
-                label="Requested Date"
-                value={dealer.slug_requested_at ? formatDate(dealer.slug_requested_at) : '—'}
-              />
-            </dl>
-            <div className="page-actions">
-              <button
-                className="button button--outline"
-                type="button"
-                disabled={isReviewingSlug}
-                onClick={() => void reviewSlugRequest('reject')}
-              >
-                Reject
-              </button>
-              <button
-                className="button button--primary"
-                type="button"
-                disabled={isReviewingSlug}
-                onClick={() => void reviewSlugRequest('approve')}
-              >
-                {isReviewingSlug ? 'Working...' : 'Approve'}
-              </button>
+        <section id="company-details" className="content-card dealer-management-card dealer-detail" aria-labelledby="company-details-heading">
+          <DealerSectionHeader
+            icon="building"
+            eyebrow="Company record"
+            title="Company Details"
+            headingId="company-details-heading"
+            description="Core information about the dealer and their business."
+            actionLabel="Edit Details"
+            actionTo={editCompanyPath}
+            onActionClick={onClearSuccess}
+          />
+          <div className="dealer-detail-groups dd-fields">
+            <DetailItem label="Company Name" value={dealer.company_name} />
+            <DetailItem label="Website" value={dealer.website} href={dealer.website ?? undefined} external />
+            <DetailItem label="Dealer Slug" value={dealer.slug} />
+            <div className="dealer-detail__item">
+              <dt>Status</dt>
+              <dd><StatusBadge active={dealer.is_active} /></dd>
+            </div>
+            <DetailItem label="Created" value={formatDate(dealer.created_at)} />
+            <DetailItem label="Primary Contact" value={dealer.primary_contact_name} />
+            <DetailItem label="Email" value={dealer.email} href={dealer.email ? `mailto:${dealer.email}` : undefined} />
+            <DetailItem label="Phone" value={dealer.phone} href={dealer.phone ? `tel:${dealer.phone}` : undefined} />
+            <DetailItem label="Street Address" value={dealer.address} />
+            <DetailItem label="City" value={dealer.city} />
+            <DetailItem label="State" value={dealer.state} />
+            <DetailItem label="ZIP" value={dealer.zip} />
+            <div className="dealer-detail__item dd-field--wide">
+              <dt>Door Builder URL</dt>
+              <dd>
+                <a href={visualizerUrl} target="_blank" rel="noreferrer">
+                  {visualizerUrl}
+                  <DealerOutlineIcon name="external" />
+                </a>
+              </dd>
             </div>
           </div>
-        ) : (
-          <div className="data-state data-state--compact">
-            No pending Visualizer URL request.
-          </div>
-        )}
-      </section>
-      {canManageDealerUsers ? (
-        <DealerUserAccess dealerId={dealer.id} sectionId="dealer-users" canSetPassword={canManageDealerCredentials} />
-      ) : (
-        <section className="content-card dealer-management-card dealer-setup-anchor" id="dealer-users" tabIndex={-1} aria-labelledby="dealer-users-locked-heading">
-          <h2 id="dealer-users-locked-heading">Dealer Users</h2>
-          <p>This section needs additional access. It is available to an access manager or a billing admin.</p>
         </section>
-      )}
+
+        <section className="content-card dealer-management-card dd-card--compact" id="branding-studio">
+          <DealerSectionHeader
+            compact
+            icon="palette"
+            eyebrow="Door Builder"
+            title="Branding Studio"
+            description="Customize the dealer’s branding—logos, colors, fonts, and visual style—for a consistent experience. Marketing banners use the logo and do not recolor the template."
+            actionLabel="Open Branding Studio"
+            actionTo={`/admin/dealers/${dealer.id}/branding`}
+            actionIcon="external"
+            actionTone="primary"
+          />
+        </section>
+
+        <DoorBuilderLeadWebhook dealerId={dealer.id} preview={webhookPreview} />
+
+        {canManageDealerCredentials ? (
+          <>
+            <AdminDealerMarketingTools dealerId={dealer.id} previewDealer={marketingPreview} />
+            <DealerCrmIntegrations dealerId={dealer.id} preview={crmPreview} />
+          </>
+        ) : (
+          <section className="content-card dealer-management-card dealer-setup-anchor" id="marketing-and-crm" tabIndex={-1} aria-labelledby="marketing-and-crm-heading">
+            <h2 id="marketing-and-crm-heading">Marketing Tools and CRM Integrations</h2>
+            <p>This section needs additional access. It is available to an access manager.</p>
+          </section>
+        )}
+
+        <section className="content-card dealer-management-card slug-review-card" id="website-address">
+          <DealerSectionHeader
+            icon="image"
+            eyebrow="Dealer request"
+            title="Visualizer URL Request"
+            description="Request a custom Visualizer URL for this dealer."
+            actionLabel="Request URL"
+            actionTo={editSlugPath}
+            actionIcon="external"
+          />
+          {dealer.slug_request_status === 'pending' && dealer.requested_slug ? (
+            <div className="slug-review-card__body">
+              <dl className="slug-review-details">
+                <DetailItem label="Current URL" value={visualizerUrl} />
+                <DetailItem label="Requested URL" value={getDealerVisualizerDisplayUrl(dealer.requested_slug)} />
+                <DetailItem
+                  label="Requested Date"
+                  value={dealer.slug_requested_at ? formatDate(dealer.slug_requested_at) : '—'}
+                />
+              </dl>
+              <div className="page-actions">
+                <button
+                  className="button button--outline"
+                  type="button"
+                  disabled={isReviewingSlug}
+                  onClick={() => void reviewSlugRequest('reject')}
+                >
+                  Reject
+                </button>
+                <button
+                  className="button button--primary"
+                  type="button"
+                  disabled={isReviewingSlug}
+                  onClick={() => void reviewSlugRequest('approve')}
+                >
+                  {isReviewingSlug ? 'Working...' : 'Approve'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="dd-empty">
+              <span className="dd-empty__icon" aria-hidden="true"><DealerOutlineIcon name="image" /></span>
+              <strong>No Visualizer URL requested yet.</strong>
+              <p>When this dealer asks for a different Door Builder address, the request shows up here to approve or reject.</p>
+            </div>
+          )}
+        </section>
+        {canManageDealerUsers ? (
+          <DealerUserAccess dealerId={dealer.id} sectionId="dealer-users" canSetPassword={canManageDealerCredentials} previewUsers={userPreview} />
+        ) : (
+          <section className="content-card dealer-management-card dealer-setup-anchor" id="dealer-users" tabIndex={-1} aria-labelledby="dealer-users-locked-heading">
+            <h2 id="dealer-users-locked-heading">Dealer Users</h2>
+            <p>This section needs additional access. It is available to an access manager or a billing admin.</p>
+          </section>
+        )}
       </div>
     </div>
   )
