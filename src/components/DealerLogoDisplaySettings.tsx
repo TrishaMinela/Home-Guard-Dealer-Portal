@@ -228,14 +228,14 @@ export function DealerLogoDisplaySettings({ dealer, onSaveDisplay, onSaveSeconda
         <h2 id="logo-display-heading">Logo Display</h2>
         <p>Choose one logo or two logos side by side. Marketing banners keep using the first logo only.</p>
       </div>
-      <div className="logo-placement-options" role="radiogroup" aria-label="Logo display">
+      <div className={`logo-placement-options ${embedded ? 'studio-segment' : ''}`} role="radiogroup" aria-label="Logo display">
         <label className={`logo-placement-option ${display === 'single' ? 'is-selected' : ''}`}>
           <input type="radio" name={`logo-display-${dealer.id}`} value="single" checked={display === 'single'} onChange={() => { setDisplay('single'); onDraftChange?.('single') }} />
-          <span><strong>1 Logo</strong><small>The current Door Builder logo. This is the default.</small></span>
+          <span><strong>One Logo</strong><small>Show the primary logo by itself. This is the default.</small></span>
         </label>
         <label className={`logo-placement-option ${display === 'dual' ? 'is-selected' : ''}`}>
           <input type="radio" name={`logo-display-${dealer.id}`} value="dual" checked={display === 'dual'} onChange={() => { setDisplay('dual'); onDraftChange?.('dual') }} />
-          <span><strong>2 Logos</strong><small>Primary logo on the left, second logo on the right, with a thin divider.</small></span>
+          <span><strong>Two Logos</strong><small>Primary logo on the left, second logo on the right, with a thin divider.</small></span>
         </label>
       </div>
       {showUploads && showPair && (

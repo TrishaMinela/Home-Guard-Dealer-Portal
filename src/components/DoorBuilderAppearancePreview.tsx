@@ -15,7 +15,7 @@ import '../styles/logoPair.css'
 import '../styles/doorBuilderPreview.css'
 import '../styles/dealerAppearance.css'
 
-type PreviewSurface = 'homepage' | 'builder' | 'find'
+type PreviewSurface = 'homepage' | 'builder' | 'find' | 'visualizer'
 
 type Props = {
   dealer: AdminDealer
@@ -32,7 +32,15 @@ const SURFACE_LOGO: Record<PreviewSurface, DoorBuilderPreviewSurface> = {
   homepage: 'home-header',
   builder: 'page-header',
   find: 'find-my-door',
+  visualizer: 'page-header',
 }
+
+const PREVIEW_PAGES = [
+  ['homepage', 'Homepage'],
+  ['builder', 'Door Builder'],
+  ['visualizer', 'Visualizer'],
+  ['find', 'Find My Door'],
+] as const
 
 const CONFIGURATIONS = [
   { name: 'Single Door', description: 'One standard entry door.', image: '/appearance-preview/single-door.webp', selected: true },
@@ -170,7 +178,7 @@ export function DoorBuilderAppearancePreview({ dealer, appearance, surface: surf
       {hideToolbar ? null : <div className="db-preview-shell__bar">
         <strong>Live preview</strong>
         <div className="db-preview-shell__toggle" role="group" aria-label="Preview page">
-          {([['homepage', 'Homepage'], ['builder', 'Door Builder'], ['find', 'Find My Door']] as const).map(([value, label]) => (
+          {PREVIEW_PAGES.map(([value, label]) => (
             <button key={value} type="button" className={surface === value ? 'is-selected' : ''} aria-pressed={surface === value} onClick={() => setSurface(value)}>{label}</button>
           ))}
         </div>
@@ -183,8 +191,9 @@ export function DoorBuilderAppearancePreview({ dealer, appearance, surface: surf
         <div className="db-preview-sizer" style={{ height: scaledHeight }}>
           <div className="db-preview-scale" ref={stageRef} style={{ width: designWidth, transform: `scale(${scale})` }}>
             <div
-              className={`dealer-cobranded db-appearance-preview ${mobile ? 'is-mobile' : 'is-desktop'} ${headerIsLight ? 'dealer-secondary-light' : ''}`}
+              className={`dealer-cobranded db-appearance-preview ${mobile ? 'is-mobile' : 'is-desktop'} ${headerIsLight ? 'dealer-secondary-light' : ''} ${surface === 'homepage' ? 'home-app' : ''} ${surface === 'homepage' && dealer.logo_placement !== 'header' ? 'dealer-logo-in-hero' : ''} ${surface === 'visualizer' ? 'visualizer-app' : ''}`}
               data-appearance-mode={shown ? 'simple' : undefined}
+              data-preview-page={surface}
               style={style}
             >
               {surface !== 'find' && (
@@ -230,13 +239,13 @@ export function DoorBuilderAppearancePreview({ dealer, appearance, surface: surf
                 </main>
               )}
               {surface === 'find' && (
-                <div className="db-find find-my-door-app">
+                <div className="db-find find-my-door-app dealer-cobranded" data-appearance-mode={shown ? 'simple' : undefined} style={style}>
                   <header className="find-my-door-header">
                     <div className="brand">
                       {logos ? <LogoPair primaryUrl={logos.primaryUrl} secondaryUrl={logos.showPair ? logos.secondaryUrl : null} primaryHref={primaryHref} secondaryHref={secondaryHref} companyName={dealer.company_name} /> : <strong>{dealer.company_name}</strong>}
                       <span className="app-name"><strong>HGI Door Finder</strong></span>
                     </div>
-                    <a className="find-my-door-builder-link" href="#builder" onClick={stop}>Door Builder</a>
+                    <a className="home-return find-my-door-builder-link" href="#builder" onClick={stop}>Door Builder</a>
                   </header>
                   <ol className="find-door-steps" aria-label="Progress">
                     {['Photo', 'Style', 'Glass', 'Details', 'Door'].map((label, index) => (
@@ -266,6 +275,15 @@ export function DoorBuilderAppearancePreview({ dealer, appearance, surface: surf
                     </section>
                   </main>
                 </div>
+              )}
+              {surface === 'visualizer' && (
+                <main className="db-visualizer">
+                  <section className="db-visualizer__card">
+                    <p>Home Visualizer</p>
+                    <h1>See your door on your home.</h1>
+                    <p>Upload a photo of the entrance. This page uses the same header as the Door Builder.</p>
+                  </section>
+                </main>
               )}
               {surface === 'builder' && <>
               <div className="builder-toolbar">
@@ -366,7 +384,15 @@ export function DoorBuilderAppearancePreview({ dealer, appearance, surface: surf
           </div>
         </div>
       </div>
-      <p className="db-preview-caption">This preview uses the Door Builder layout and color tokens. It does not save a configuration or send a lead.</p>
+      <p className="db-preview-caption">
+        {surface === 'find'
+          ? (shown?.headerBackground
+            ? 'Find My Door is using the header color from this draft. Other pages can use a different header. Nothing is published until you save.'
+            : 'Find My Door keeps a black header and gold line until a header color is saved. Homepage and Door Builder use the brand header. This preview does not change the live site.')
+          : surface === 'homepage'
+            ? 'The homepage header is shorter and has no color bar. The logo is in the header or above the headline, the same way the live site does it. Nothing is published until you save.'
+            : 'The Door Builder and the visualizer share this header. It is 94px tall on desktop, with the brand colors and a color bar. Nothing is published until you save.'}
+      </p>
     </div>
   )
 }

@@ -30,6 +30,24 @@ export function dealerSectionHref(dealerId: string, path: string) {
   return path ? `/admin/dealers/${dealerId}/${path}` : `/admin/dealers/${dealerId}`
 }
 
+/** Old one-page bookmarks. Null means the hash is not a dealer tab. */
+const legacyDealerHashRoutes: Record<string, string> = {
+  setup: '',
+  'company-details': 'company',
+  'door-builder-lead-webhook': 'leads',
+  'marketing-tools': 'marketing',
+  'marketing-and-crm': 'marketing',
+  'crm-integrations': 'crm',
+  'website-address': 'visualizer',
+  'dealer-users': 'access',
+  'add-dealer-user': 'access',
+}
+
+export function dealerSectionFromLegacyHash(hash: string): string | null {
+  const id = decodeURIComponent(hash.replace(/^#/, '').trim())
+  return Object.prototype.hasOwnProperty.call(legacyDealerHashRoutes, id) ? legacyDealerHashRoutes[id] : null
+}
+
 /** Path under /admin/dealers/:id, or null when the URL is not a dealer section. */
 export function dealerSectionFromPathname(pathname: string, dealerId: string) {
   const prefix = `/admin/dealers/${dealerId}`

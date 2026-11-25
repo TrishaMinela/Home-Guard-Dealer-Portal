@@ -13,7 +13,7 @@ import { DoorBuilderLeadWebhook } from '../components/DoorBuilderLeadWebhook'
 import { DealerSetupChecklist } from '../components/DealerSetupChecklist'
 import { DisableDealerDialog } from '../components/DisableDealerDialog'
 import { DealerOutlineIcon } from '../components/DealerOutlineIcon'
-import { dealerSectionFromPathname, dealerSectionHref, dealerDetailSections } from '../components/dealerDetailSections'
+import { dealerSectionFromLegacyHash, dealerSectionFromPathname, dealerSectionHref, dealerDetailSections } from '../components/dealerDetailSections'
 import { EditDealerPage } from './EditDealerPage'
 import { AdminBrandingStudioRoute } from './BrandingStudioPage'
 import type { DealerAccount } from '../types/account'
@@ -117,8 +117,14 @@ export function DealerDetailPage({
   useEffect(() => {
     if (!dealer) return
     const redirect = () => {
-      if (!isLegacyBrandingTarget(window.location.hash)) return
-      const section = studioSectionFromValue(window.location.hash)
+      const hash = window.location.hash
+      const legacySection = dealerSectionFromLegacyHash(hash)
+      if (legacySection != null) {
+        navigate(dealerSectionHref(dealer.id, legacySection), { replace: true })
+        return
+      }
+      if (!isLegacyBrandingTarget(hash)) return
+      const section = studioSectionFromValue(hash)
       window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
       navigate(`/admin/dealers/${dealer.id}/branding${section ? `?section=${section}` : ''}`, { replace: true })
     }

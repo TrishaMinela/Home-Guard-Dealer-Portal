@@ -82,7 +82,8 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
   const [panel, setPanel] = useState<StudioSectionId>(section)
   const [logoView, setLogoView] = useState<'cards' | 'primary-variants' | 'secondary-variants'>('cards')
   const [editing, setEditing] = useState(false)
-  const [surface, setSurface] = useState<'homepage' | 'builder' | 'find'>('builder')
+  const [surface, setSurface] = useState<'homepage' | 'builder' | 'find' | 'visualizer'>('builder')
+  const [previewSource, setPreviewSource] = useState<'draft' | 'saved'>('draft')
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches)
   const [placementDraft, setPlacementDraft] = useState<DealerLogoPlacement | null>(null)
   const [displayDraft, setDisplayDraft] = useState<DealerLogoDisplay | null>(null)
@@ -139,6 +140,9 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
     || (brandDraft != null && (brandDraft.primary !== (dealer.primary_color ?? '') || brandDraft.secondary !== (dealer.secondary_color ?? '')))
     || linkChanged(primaryLinkDraft, dealer.logo_website_url)
     || linkChanged(secondaryLinkDraft, dealer.logo_secondary_website_url)
+  const showingSaved = previewSource === 'saved' && dirty
+  const canvasDealer = showingSaved ? dealer : previewDealer
+  const canvasAppearance = showingSaved ? dealer.door_builder_appearance ?? null : appearance
 
   useEffect(() => {
     if (!dirty) return
@@ -800,9 +804,16 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
       )}
       {panel === 'placement' && (
         <>
-          <p className="branding-studio__note">Header and Hero are only set here. Marketing banners do not use these choices.</p>
-          <DealerLogoDisplaySettings key={`display-${draftEpoch}`} dealer={dealer} embedded showUploads={false} value={display} onDraftChange={setDisplayDraft} onSaveDisplay={async (value) => saveDisplay(dealer, value)} onSaveSecondary={saveSecondary} onUpdated={onDealerUpdated} />
-          <DealerLogoPlacementSettings key={`placement-${draftEpoch}`} dealer={dealer} value={placement} onDraftChange={setPlacementDraft} onSave={async (value) => savePlacement(dealer, value)} onUpdated={onDealerUpdated} />
+          <section className="studio-group">
+            <h3>How many logos</h3>
+            <p>One logo is the usual choice. Two logos sit side by side with a thin line between them. Marketing banners do not use these choices. They still use the first logo only.</p>
+            <DealerLogoDisplaySettings key={`display-${draftEpoch}`} dealer={dealer} embedded showUploads={false} value={display} onDraftChange={setDisplayDraft} onSaveDisplay={async (value) => saveDisplay(dealer, value)} onSaveSecondary={saveSecondary} onUpdated={onDealerUpdated} />
+          </section>
+          <section className="studio-group">
+            <h3>Where the homepage logo sits</h3>
+            <p>Header puts the logo in the top bar. Hero puts it above the headline. The Door Builder and Find My Door keep the logo in the header either way.</p>
+            <DealerLogoPlacementSettings key={`placement-${draftEpoch}`} dealer={dealer} value={placement} onDraftChange={setPlacementDraft} onSave={async (value) => savePlacement(dealer, value)} onUpdated={onDealerUpdated} />
+          </section>
         </>
       )}
       {panel === 'colors' && (
@@ -857,18 +868,23 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
         <section className="branding-studio__preview" aria-label="Live preview">
           <div className="branding-studio__preview-card">
             <div className="branding-studio__preview-bar">
-              <strong>Live Door Builder Preview</strong>
-              <div className="branding-studio__toggles" role="group" aria-label="Preview page">
-                <button type="button" aria-pressed={surface === 'builder'} onClick={() => { setSurface('builder'); setMobile(false) }}>Door Builder</button>
-                <button type="button" aria-pressed={!mobile && surface !== 'builder'} onClick={() => setMobile(false)}>Desktop</button>
+              <strong>{showingSaved ? 'Saved production preview' : 'Draft preview'}</strong>
+              <div className="branding-studio__source" role="group" aria-label="Preview source">
+                <button type="button" aria-pressed={!showingSaved} onClick={() => setPreviewSource('draft')}>Draft</button>
+                <button type="button" className="is-saved" aria-pressed={showingSaved} disabled={!dirty} onClick={() => setPreviewSource('saved')}>Saved</button>
+              </div>
+              <div className="branding-studio__toggles" role="group" aria-label="Preview width">
+                <button type="button" aria-pressed={!mobile} onClick={() => setMobile(false)}>Desktop</button>
                 <button type="button" aria-pressed={mobile} onClick={() => setMobile(true)}>Mobile</button>
               </div>
             </div>
             <div className="branding-studio__page-pills" role="group" aria-label="Preview page">
               <button type="button" aria-pressed={surface === 'homepage'} onClick={() => setSurface('homepage')}>Homepage</button>
+              <button type="button" aria-pressed={surface === 'builder'} onClick={() => setSurface('builder')}>Door Builder</button>
+              <button type="button" aria-pressed={surface === 'visualizer'} onClick={() => setSurface('visualizer')}>Visualizer</button>
               <button type="button" aria-pressed={surface === 'find'} onClick={() => setSurface('find')}>Find My Door</button>
             </div>
-            <DoorBuilderAppearancePreview dealer={previewDealer} appearance={appearance} surface={surface} mobile={mobile} hideToolbar />
+            <DoorBuilderAppearancePreview dealer={canvasDealer} appearance={canvasAppearance} surface={surface} mobile={mobile} hideToolbar />
           </div>
         </section>
         <aside className="branding-studio__editor" aria-label="Branding settings">{editor}</aside>
