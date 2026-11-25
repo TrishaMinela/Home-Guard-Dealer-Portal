@@ -26,7 +26,7 @@
 .branding-studio__pills { display: flex; flex: 0 0 auto; gap: 8px; padding: 12px 20px; overflow: auto; background: #fff; border-bottom: 1px solid var(--dd-line); }
 .branding-studio__pills button { min-height: 32px; border: 1px solid transparent; border-radius: 999px; padding: 0 12px; background: #F3F4F6; color: #374151; font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; }
 .branding-studio__pills button[aria-pressed="true"] { border-color: #D1D5DB; background: #fff; color: var(--dd-ink); }
-.branding-studio__workspace { display: grid; grid-template-columns: minmax(0, 1.85fr) minmax(260px, 1fr); grid-template-rows: minmax(0, 1fr); flex: 1 1 auto; height: 0; min-height: 0; overflow: hidden; background: #fff; }
+.branding-studio__workspace { display: grid; grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: minmax(0, 1fr); flex: 1 1 auto; height: 0; min-height: 0; overflow: hidden; background: #fff; }
 .branding-studio__preview, .branding-studio__editor { min-width: 0; min-height: 0; height: 100%; }
 .branding-studio__preview { padding: 16px 12px 16px 20px; overflow: hidden; }
 .branding-studio__preview-card { display: flex; flex-direction: column; width: 100%; height: 100%; overflow: hidden; border: 1px solid var(--dd-line); border-radius: var(--dd-radius-card); background: #fff; }
@@ -40,18 +40,65 @@
 .branding-studio__source button:last-child { border-right: 0; }
 .branding-studio__source button[aria-pressed="true"] { background: #fff7e8; color: #8a5a00; }
 .branding-studio__source button[aria-pressed="true"].is-saved { background: #e8f6ee; color: #157A45; }
-.branding-studio .studio-segment { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border: 1px solid var(--dd-line); border-radius: var(--dd-radius-control); background: #F3F4F6; }
-.branding-studio .studio-segment .logo-placement-option { align-items: center; margin: 0; padding: 8px 10px; border: 0; border-radius: 6px; background: transparent; box-shadow: none; }
-.branding-studio .studio-segment .logo-placement-option.is-selected { border: 0; background: #fff; box-shadow: 0 1px 2px rgba(17, 24, 39, .08); }
-.branding-studio .studio-segment .logo-placement-option input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-.branding-studio .studio-segment .logo-placement-option small { display: none; }
-.branding-studio .studio-group .dealer-form__section-heading { display: none; }
-.branding-studio .studio-group { display: grid; gap: 8px; margin: 0 0 14px; padding: 12px; border: 1px solid var(--dd-line); border-radius: var(--dd-radius-card); background: #fff; }
-.branding-studio .studio-group h3 { margin: 0; font-size: 14px; }
-.branding-studio .studio-group > p { margin: 0; color: var(--dd-muted); font-size: 12px; line-height: 1.45; }
-.branding-studio .typography-preview--studio { margin-top: 12px; padding: 12px; border: 1px solid var(--dd-line); border-radius: var(--dd-radius-card); background: #F8FAFB; }
-.branding-studio .typography-preview--studio h3 { margin: 4px 0; font-size: 22px; }
-.branding-studio .appearance-group { border-radius: var(--dd-radius-card); border-color: var(--dd-line); }
+.branding-studio .logo-placement-options { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; height: auto; min-height: 36px; margin: 0; padding: 2px; border: 1px solid var(--dd-line); border-radius: 8px; background: #F3F4F6; box-sizing: border-box; overflow: hidden; }
+.branding-studio .logo-placement-option { position: relative; display: flex; align-items: center; justify-content: center; height: 32px; min-height: 32px; margin: 0; padding: 0 8px; gap: 0; border: 0; border-radius: 6px; background: transparent; box-shadow: none; cursor: pointer; overflow: hidden; }
+.branding-studio .logo-placement-option.is-selected,
+.branding-studio .logo-placement-option.is-selected:hover { border: 0; background: var(--dd-teal); color: #fff; box-shadow: none; }
+.branding-studio .logo-placement-option.is-selected strong { color: #fff; }
+.branding-studio .logo-placement-option strong { font-size: 13px; font-weight: 600; }
+.branding-studio .logo-placement-option small,
+.branding-studio .logo-placement-option .eyebrow { display: none; }
+.branding-studio .logo-placement-option span { pointer-events: none; }
+.branding-studio .logo-placement-option input { position: absolute; z-index: 1; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; cursor: pointer; }
+.branding-studio .studio-group .content-card,
+.branding-studio .studio-group .dealer-management-card { height: auto; max-height: none; overflow: visible; }
+.branding-studio .studio-group .dealer-form__section-heading,
+.branding-studio .dealer-typography-card .dealer-form__section-heading,
+.branding-studio .appearance-settings__intro,
+.branding-studio .appearance-group > p { display: none; }
+.branding-studio .appearance-settings .dealer-form__section-heading { display: block; margin: 16px 0 8px; }
+.branding-studio .appearance-settings .dealer-form__section-heading .eyebrow,
+.branding-studio .appearance-settings .dealer-form__section-heading p { display: none; }
+.branding-studio .appearance-settings .dealer-form__section-heading h2 { margin: 0; font-size: 14px; font-weight: 600; }
+.branding-studio .studio-flat { display: grid; }
+.branding-studio .studio-group { display: grid; gap: 8px; margin: 0; padding: 16px 0; border: 0; border-top: 1px solid var(--dd-line); border-radius: 0; background: transparent; }
+.branding-studio .studio-group:first-child { padding-top: 0; border-top: 0; }
+.branding-studio .studio-group h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.branding-studio .studio-group > p { margin: 0; color: var(--dd-muted); font-size: 12px; line-height: 1.4; }
+.branding-studio .studio-group .content-card,
+.branding-studio .studio-group .dealer-management-card { margin: 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
+.branding-studio .typography-preview--studio { display: grid; gap: 2px; margin: 0 0 16px; padding: 0 0 16px; border: 0; border-bottom: 1px solid var(--dd-line); border-radius: 0; background: transparent; }
+.branding-studio .typography-preview--studio .eyebrow { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.branding-studio .typography-preview--studio h3 { margin: 0; font-size: 18px; line-height: 1.3; }
+.branding-studio .typography-preview--studio p:last-child { margin: 0; color: var(--dd-muted); font-size: 13px; }
+.branding-studio .appearance-settings { gap: 0; padding: 0; }
+.branding-studio .appearance-group { gap: 8px; margin: 0; padding: 16px 0; border: 0; border-top: 1px solid var(--dd-line); border-radius: 0; background: transparent; }
+.branding-studio .appearance-group legend { padding: 0; font-size: 14px; font-weight: 600; }
+.branding-studio .dealer-typography-card { display: flex; flex-direction: column; }
+.branding-studio .typography-size-input { position: relative; display: block; min-width: 0; }
+.branding-studio .typography-size-input input { width: 100%; padding-right: 32px; }
+.branding-studio .typography-size-input span { position: absolute; top: 50%; right: 10px; transform: translateY(-50%); color: var(--dd-muted); font-size: 12px; font-weight: 600; }
+.branding-studio .appearance-color { grid-template-columns: minmax(96px, max-content) minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.branding-studio .appearance-color > span { grid-column: auto; font-size: 13px; font-weight: 600; }
+.branding-studio .appearance-color__trigger,
+.branding-studio .appearance-color__default,
+.branding-studio .studio-brand input,
+.branding-studio .typography-settings-grid select,
+.branding-studio .typography-settings-grid input { min-height: 36px; border-radius: 8px; }
+.branding-studio .appearance-color__default { padding: 0 10px; }
+.branding-studio .appearance-text button { min-height: 32px; border-radius: 8px; }
+.branding-studio .appearance-text button.is-selected { border-color: var(--dd-teal); background: var(--dd-teal); color: #fff; }
+.branding-studio .studio-brand { gap: 10px; margin: 0; padding: 0 0 16px; border: 0; border-radius: 0; background: transparent; }
+.branding-studio .studio-brand h3,
+.branding-studio .studio-links h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.branding-studio .studio-brand > p,
+.branding-studio .studio-links > p,
+.branding-studio .studio-logo__hint,
+.branding-studio__note { margin: 0; color: var(--dd-muted); font-size: 12px; line-height: 1.4; }
+.branding-studio .typography-settings-grid { gap: 0; }
+.branding-studio .typography-settings-grid fieldset { display: grid; gap: 8px; margin: 0; padding: 16px 0; border: 0; border-top: 1px solid var(--dd-line); }
+.branding-studio .typography-settings-grid legend { padding: 0; font-size: 14px; font-weight: 600; }
+.branding-studio .typography-settings-grid label { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; align-items: center; font-size: 13px; font-weight: 600; }
 .branding-studio__preview .db-preview-shell,
 .branding-studio__preview .db-preview-frame,
 .branding-studio__preview .db-preview-sizer { width: 100%; max-width: none; }
@@ -64,7 +111,7 @@
 .branding-studio__toggles button[aria-pressed="true"] { background: var(--dd-teal-soft); color: var(--dd-teal); }
 .branding-studio__preview .db-appearance-preview { display: flex; flex-direction: column; box-sizing: border-box; }
 .branding-studio__preview .db-appearance-preview > footer { margin-top: auto; }
-.branding-studio__editor { display: flex; flex-direction: column; min-height: 0; overflow: auto; background: #fff; border-left: 1px solid var(--dd-line); padding: 16px; padding-bottom: calc(16px + var(--notification-clearance, 96px)); }
+.branding-studio__editor { display: flex; flex-direction: column; width: 380px; max-width: 100%; min-height: 0; overflow: auto; background: #fff; border-left: 1px solid var(--dd-line); padding: 0; }
 .branding-studio__editor > *,
 .branding-studio__editor .content-card,
 .branding-studio__editor .dealer-form { flex-shrink: 0; }
@@ -73,9 +120,13 @@
 .branding-studio__editor .dealer-typography-card,
 .branding-studio__editor .dealer-form { overflow: visible; }
 .branding-studio__preview .db-preview-shell { scroll-padding-bottom: var(--notification-clearance, 96px); }
-.branding-studio__editor-head h2 { margin: 0; font-size: 18px; }
-.branding-studio__editor-head p, .branding-studio__note { margin: 4px 0 10px; color: #5d6b68; font-size: 12px; }
-.studio-logo, .studio-brand, .studio-links { display: grid; gap: 8px; margin-bottom: 12px; padding: 12px; border: 1px solid var(--dd-line, #E5E7EB); border-radius: var(--dd-radius-card, 12px); background: #fff; }
+.branding-studio__editor-head { position: sticky; top: 0; z-index: 3; flex: 0 0 auto; padding: 20px 24px 12px; background: #fff; border-bottom: 1px solid var(--dd-line); }
+.branding-studio__editor-head h2 { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.3; }
+.branding-studio__editor-head p { margin: 4px 0 0; color: var(--dd-muted); font-size: 12px; line-height: 1.4; }
+.branding-studio__editor-body { flex: 0 0 auto; min-height: 0; overflow: visible; padding: 16px 24px calc(16px + var(--notification-clearance, 96px)); }
+.studio-logo, .studio-brand, .studio-links { display: grid; gap: 8px; margin: 0; padding: 16px 0; border: 0; border-top: 1px solid var(--dd-line); border-radius: 0; background: transparent; }
+.branding-studio__cards > :first-child,
+.branding-studio__editor-body > .studio-logo:first-child { border-top: 0; padding-top: 0; }
 .studio-logo__title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .studio-logo__row { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 8px; align-items: start; }
 .studio-logo__thumb { display: grid; place-items: center; width: 72px; height: 72px; border-radius: 8px; overflow: hidden; background: repeating-conic-gradient(#e7eeec 0% 25%, #fff 0% 50%) 50% / 16px 16px; }
@@ -123,9 +174,9 @@
   .branding-studio__toolbar { padding: 12px 16px; }
   .branding-studio__actions { width: 100%; margin-left: 0; }
   .branding-studio__workspace { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr); height: 0; overflow: hidden; }
-  .branding-studio__editor { display: none; }
-  .branding-studio__edit { display: inline-flex; }
-  .branding-studio.is-editing .branding-studio__editor { display: flex; position: fixed; z-index: 180; top: 0; right: 0; bottom: 0; left: 0; width: auto; height: auto; border-left: 0; }
+  .branding-studio__editor { display: none !important; width: 100%; }
+  .branding-studio__edit { display: inline-flex; position: relative; z-index: 3; }
+  .branding-studio.is-editing .branding-studio__editor { display: flex !important; position: fixed; z-index: 180; top: 0; right: 0; bottom: 0; left: 0; width: auto; height: auto; overflow: auto; border-left: 0; }
   .branding-studio.is-editing .branding-studio__sheet-bar, .branding-studio.is-editing .branding-studio__sheet-actions { display: flex; flex-wrap: wrap; position: sticky; z-index: 2; justify-content: space-between; gap: 8px; background: #fff; }
   .branding-studio.is-editing .branding-studio__sheet-bar { top: 0; }
   .branding-studio__sheet-bar .branding-studio__save-alert { flex: 1 0 100%; }

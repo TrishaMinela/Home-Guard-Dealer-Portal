@@ -682,9 +682,9 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
   }
 
   const sectionMeta = {
-    logos: ['Logos', 'Upload both logos, generate variants, and set each website link.'],
-    placement: ['Logo Display & Placement', 'Choose one or two logos, then where the homepage shows them.'],
-    colors: ['Colors', 'Brand colors are separate from the six Door Builder overrides.'],
+    logos: ['Logos', 'Files save immediately. Website links stay in the draft until you save.'],
+    placement: ['Logo Display', 'Choose how many logos, and where the homepage shows them.'],
+    colors: ['Colors', 'Brand colors are separate from the Door Builder colors.'],
     typography: ['Typography', 'Headings and body type update the preview immediately.'],
   } as const
   const active = sectionMeta[panel]
@@ -704,19 +704,15 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
     return { state: 'saved', name: logoName(generatedUrl) }
   }
 
+  const editorBodyRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const body = editorBodyRef.current
+    if (!body) return
+    body.scrollTop = 0
+  }, [panel, logoView])
+
   const editor = (
     <>
-      <div className="branding-studio__sheet-bar">
-        <strong>{active[0]}</strong>
-        <button type="button" onClick={() => setEditing(false)}>Close</button>
-        {saveAlert ? <p className="branding-studio__save-alert" role="alert">{saveAlert}</p> : null}
-      </div>
-      <div className="branding-studio__editor-head">
-        <h2>{logoView !== 'cards' ? 'Manage Variants' : panel === 'logos' ? 'Logo Settings' : active[0]}</h2>
-        <p>{logoView !== 'cards' ? 'Original, white, and black choices for this logo. Files save immediately.' : panel === 'logos' ? 'Displayed in the selected website locations.' : active[1]}</p>
-        {message && <p className="branding-studio__message" role="status">{message}</p>}
-        {error && <p className="branding-studio__message is-error" role="alert">{error}</p>}
-      </div>
       {logoView !== 'cards' && <button type="button" className="branding-studio__back-section" onClick={() => setLogoView('cards')}>Back</button>}
       {panel === 'logos' && logoView === 'cards' && (
         <div className="branding-studio__cards">
@@ -803,18 +799,18 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
         </div>
       )}
       {panel === 'placement' && (
-        <>
+        <div className="studio-flat">
           <section className="studio-group">
             <h3>How many logos</h3>
-            <p>One logo is the usual choice. Two logos sit side by side with a thin line between them. Marketing banners do not use these choices. They still use the first logo only.</p>
+            <p>Marketing banners do not use these choices.</p>
             <DealerLogoDisplaySettings key={`display-${draftEpoch}`} dealer={dealer} embedded showUploads={false} value={display} onDraftChange={setDisplayDraft} onSaveDisplay={async (value) => saveDisplay(dealer, value)} onSaveSecondary={saveSecondary} onUpdated={onDealerUpdated} />
           </section>
           <section className="studio-group">
-            <h3>Where the homepage logo sits</h3>
-            <p>Header puts the logo in the top bar. Hero puts it above the headline. The Door Builder and Find My Door keep the logo in the header either way.</p>
+            <h3>Logo placement</h3>
+            <p>Header is the top bar. Hero sits above the headline.</p>
             <DealerLogoPlacementSettings key={`placement-${draftEpoch}`} dealer={dealer} value={placement} onDraftChange={setPlacementDraft} onSave={async (value) => savePlacement(dealer, value)} onUpdated={onDealerUpdated} />
           </section>
-        </>
+        </div>
       )}
       {panel === 'colors' && (
         <>
@@ -887,7 +883,20 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
             <DoorBuilderAppearancePreview dealer={canvasDealer} appearance={canvasAppearance} surface={surface} mobile={mobile} hideToolbar />
           </div>
         </section>
-        <aside className="branding-studio__editor" aria-label="Branding settings">{editor}</aside>
+        <aside className="branding-studio__editor" aria-label="Branding settings" ref={editorBodyRef}>
+          <div className="branding-studio__sheet-bar">
+            <strong>{active[0]}</strong>
+            <button type="button" onClick={() => setEditing(false)}>Close</button>
+            {saveAlert ? <p className="branding-studio__save-alert" role="alert">{saveAlert}</p> : null}
+          </div>
+          <div className="branding-studio__editor-head">
+            <h2>{logoView !== 'cards' ? 'Manage Variants' : active[0]}</h2>
+            <p>{logoView !== 'cards' ? 'Original, white, and black choices for this logo. Files save immediately.' : active[1]}</p>
+            {message && <p className="branding-studio__message" role="status">{message}</p>}
+            {error && <p className="branding-studio__message is-error" role="alert">{error}</p>}
+          </div>
+          <div className="branding-studio__editor-body">{editor}</div>
+        </aside>
       </div>
     </div>
   )
