@@ -86,6 +86,9 @@ export function DoorBuilderLeadWebhook({ dealerId, preview }: { dealerId: string
   const [sampleNote, setSampleNote] = useState('TEST LEAD — NOT A REAL CUSTOMER')
   const [failures, setFailures] = useState<FailureRow[]>([])
   const [confirmTest, setConfirmTest] = useState(false)
+  const [urlFocused, setUrlFocused] = useState(false)
+  const [editingSample, setEditingSample] = useState(false)
+  const [payloadOpen, setPayloadOpen] = useState(false)
 
   const apply = useCallback((payload: ApiResponse) => {
     if (payload.webhook) setWebhook(payload.webhook)
@@ -115,7 +118,7 @@ export function DoorBuilderLeadWebhook({ dealerId, preview }: { dealerId: string
 
   async function save(event: FormEvent) {
     event.preventDefault()
-    if (isSaving || fixture) return
+    if (isSaving || fixture || !draft.trim()) return
     setIsSaving(true)
     setError('')
     setNotice('')
@@ -203,14 +206,26 @@ export function DoorBuilderLeadWebhook({ dealerId, preview }: { dealerId: string
   const busy = isSaving || isTesting || isRemoving
   const shownError = explainPreviewConfiguration(error)
   const previewGap = shownError === previewConfigurationNotice
+  const showingMask = !urlFocused && !draft && configured && !!webhook.maskedUrl
+  const urlValue = showingMask ? webhook.maskedUrl ?? '' : draft
+
+  async function copyMasked() {
+    if (!webhook.maskedUrl) return
+    try {
+      await navigator.clipboard.writeText(webhook.maskedUrl)
+      setNotice('Copied the masked webhook address.')
+    } catch {
+      setNotice('The masked address is shown in the field.')
+    }
+  }
 
   return (
     <div className="door-builder-webhook content-card" id="door-builder-lead-webhook">
       <div className="dealer-section-header door-builder-webhook__heading">
         <DealerCardIcon name="webhook" />
         <div className="dealer-section-header__copy">
-          <h3>Door Builder Lead Webhook</h3>
-          <p>Receive door builder leads from this dealer in real time. Configure the webhook URL and test the connection. Zapier Catch Hook for this dealer’s Door Builder leads. Home Guard master delivery stays in place. One webhook is saved per dealer.</p>
+          <h3>Lead Webhook</h3>
+          <p>Manage dealer lead delivery, connection testing and recent activity.</p>
         </div>
         <span className={`status-badge dd-status ${configured ? 'status-badge--active' : 'status-badge--inactive'}`}>{configured ? 'Configured' : 'Not Configured'}</span>
       </div>
@@ -220,48 +235,81 @@ export function DoorBuilderLeadWebhook({ dealerId, preview }: { dealerId: string
       {isLoading ? <div className="data-state">Loading Door Builder webhook…</div> : (
         <>
           <div className="door-builder-webhook__columns">
-            <div className="door-builder-webhook__main">
-              <form onSubmit={(event) => void save(event)}>
+            <section className="door-builder-webhook__panel">
+              <div className="door-builder-webhook__panel-head">
+                <div>
+                  <h4>Webhook Connection</h4>
+                  <p>Dealer webhook destination. Home Guard master routing remains separate.</p>
+                </div>
+                <span className="dd-chip">Zapier</span>
+              </div>
+              <form className="door-builder-webhook__main" onSubmit={(event) => void save(event)}>
                 <label htmlFor={`${warningId}-url`}>Webhook URL
-                  <input id={`${warningId}-url`} type="url" inputMode="url" autoComplete="off" spellCheck={false} maxLength={200} value={draft} placeholder="https://hooks.zapier.com/hooks/catch/…/…/" onChange={(event) => setDraft(event.target.value)} />
+                  <span className="door-builder-webhook__url">
+                    <input id={`${warningId}-url`} type="text" inputMode="url" autoComplete="off" spellCheck={false} maxLength={200} value={urlValue} placeholder="https://hooks.zapier.com/hooks/catch/…/…/" onFocus={(event) => { setUrlFocused(true); if (!draft && webhook.maskedUrl && event.currentTarget.value === webhook.maskedUrl) event.currentTarget.value = '' }} onBlur={() => setUrlFocused(false)} onChange={(event) => setDraft(event.target.value === webhook.maskedUrl ? '' : event.target.value)} />
+                    <button className="door-builder-webhook__copy" type="button" aria-label="Copy masked webhook" disabled={!webhook.maskedUrl} onClick={() => void copyMasked()}>
+                      <DealerOutlineIcon name="copy" />
+                    </button>
+                  </span>
                 </label>
-                <p className="door-builder-webhook__hint">Paste the Catch Hook URL to save or replace it. After saving, only a masked value is shown.</p>
-                <dl className="door-builder-webhook__meta">
-                  <div><dt>Saved webhook</dt><dd>{configured ? webhook.maskedUrl : 'Not Configured'}</dd></div>
-                  <div><dt>Last Received</dt><dd>{formatWhen(webhook.lastSuccessAt, webhook.lastSuccessHttpStatus)}</dd></div>
-                  <div><dt>Last failed delivery</dt><dd>{formatWhen(webhook.lastFailureAt, webhook.lastFailureHttpStatus)}</dd></div>
-                  <div><dt>Last connection test</dt><dd>{formatWhen(webhook.lastTestAt, webhook.lastTestHttpStatus)}</dd></div>
-                </dl>
+                <p className="door-builder-webhook__hint">Saved addresses are masked for security. Paste a Catch Hook URL to save or replace it. Saved webhook: {configured ? webhook.maskedUrl : 'Not Configured'}.</p>
                 <div className="door-builder-webhook__actions">
                   <button className="button button--primary" type="submit" disabled={busy || !encryptionConfigured || !draft.trim()}>{isSaving ? 'Saving securely…' : 'Save Webhook'}</button>
-                  <button className="button button--primary" type="button" disabled={busy || !configured} aria-describedby={warningId} onClick={() => setConfirmTest(true)}>{isTesting ? 'Testing…' : 'Test Connection'}</button>
-                  <button className="button button--outline" type="button" disabled={busy || !configured} onClick={() => setConfirmRemove(true)}>Remove Webhook</button>
+                  <button className="button button--outline" type="button" disabled={busy || !configured} aria-describedby={warningId} onClick={() => setConfirmTest(true)}>{isTesting ? 'Testing…' : 'Test Connection'}</button>
                   <a className="button button--outline" href="#door-builder-webhook-history">View Recent Leads</a>
+                  <button className="button button--outline door-builder-webhook__remove" type="button" disabled={busy || !configured} onClick={() => setConfirmRemove(true)}>Remove Webhook</button>
                 </div>
+                <dl className="door-builder-webhook__stats">
+                  <div><dt>Last Received</dt><dd>{formatWhen(webhook.lastSuccessAt, webhook.lastSuccessHttpStatus)}</dd></div>
+                  <div><dt>Last Connection Test</dt><dd>{formatWhen(webhook.lastTestAt, webhook.lastTestHttpStatus)}</dd></div>
+                  <div><dt>Last Failed Delivery</dt><dd>{formatWhen(webhook.lastFailureAt, webhook.lastFailureHttpStatus)}</dd></div>
+                </dl>
               </form>
-            </div>
-            <aside className="door-builder-webhook__sample" id="door-builder-webhook-payload">
-              <h4>Sample Lead (Preview)</h4>
-              <p>This is the lead Test Connection sends. It is not saved as a Portal lead and is not sent to the Home Guard master webhook.</p>
-              <div className="form-grid">
-                {([
-                  ['fullName', 'Name'], ['firstName', 'First Name'], ['lastName', 'Last Name'],
-                  ['email', 'Email'], ['phone', 'Phone'], ['postalCode', 'Postal Code'],
-                ] as const).map(([key, label]) => (
-                  <label key={key}>{label}<input value={contact[key]} onChange={(event) => setContact((current) => ({ ...current, [key]: event.target.value }))} /></label>
-                ))}
+            </section>
+            <section className="door-builder-webhook__panel door-builder-webhook__sample" id="door-builder-webhook-payload">
+              <div className="door-builder-webhook__panel-head">
+                <div>
+                  <h4>Sample Lead</h4>
+                  <p>Preview the payload used to test your dealer webhook. It is not saved as a Portal lead and is not sent to the Home Guard master webhook.</p>
+                </div>
+                <span className="dd-chip">Test Data</span>
               </div>
-              <dl className="door-builder-webhook__meta" id="door-builder-webhook-fields">
-                {Object.entries(doorFields).map(([key, value]) => <div key={key}><dt>{key.replaceAll('_', ' ')}</dt><dd>{value}</dd></div>)}
-                <div><dt>notes</dt><dd>{sampleNote}</dd></div>
+              <dl className="door-builder-webhook__summary">
+                <div><dt>Name</dt><dd>{contact.fullName || '—'}</dd></div>
+                <div><dt>Email</dt><dd>{contact.email || '—'}</dd></div>
+                <div><dt>ZIP Code</dt><dd>{contact.postalCode || '—'}</dd></div>
+                <div><dt>Door Configuration</dt><dd>Included in payload</dd></div>
               </dl>
-              <a className="dd-text-link" href="#door-builder-webhook-fields">
-                View Full Payload
-                <DealerOutlineIcon name="external" />
-              </a>
-            </aside>
+              {editingSample && (
+                <div className="form-grid">
+                  {([
+                    ['fullName', 'Name'], ['firstName', 'First Name'], ['lastName', 'Last Name'],
+                    ['email', 'Email'], ['phone', 'Phone'], ['postalCode', 'ZIP Code'],
+                  ] as const).map(([key, label]) => (
+                    <label key={key}>{label}<input value={contact[key]} onChange={(event) => setContact((current) => ({ ...current, [key]: event.target.value }))} /></label>
+                  ))}
+                  {Object.entries(doorFields).map(([key, value]) => (
+                    <label key={key}>{key.replaceAll('_', ' ')}<input value={value} onChange={(event) => setDoorFields((current) => ({ ...current, [key]: event.target.value }))} /></label>
+                  ))}
+                  <label>Test notes<textarea value={sampleNote} onChange={(event) => setSampleNote(event.target.value)} /></label>
+                </div>
+              )}
+              <div className="door-builder-webhook__sample-actions">
+                <button className="button button--outline" type="button" onClick={() => setEditingSample((current) => !current)}>{editingSample ? 'Done Editing' : 'Edit Sample Lead'}</button>
+                <button className="dd-text-link" type="button" onClick={() => setPayloadOpen((current) => !current)}>
+                  View Full Payload
+                  <DealerOutlineIcon name="external" />
+                </button>
+              </div>
+              {payloadOpen && (
+                <dl className="door-builder-webhook__meta" id="door-builder-webhook-fields">
+                  {Object.entries(doorFields).map(([key, value]) => <div key={key}><dt>{key.replaceAll('_', ' ')}</dt><dd>{value}</dd></div>)}
+                  <div><dt>notes</dt><dd>{sampleNote}</dd></div>
+                </dl>
+              )}
+            </section>
           </div>
-          <p className="door-builder-webhook__warning" id={warningId}>A test may trigger a real Zap, including emails and Google Sheets rows. An HTTP success means Zapier accepted the sample lead. It does not mean email or later Zap steps succeeded.</p>
+          <p className="door-builder-webhook__warning" id={warningId}>Testing a webhook may trigger an actual Zap, including emails and Google Sheets rows. A successful HTTP response confirms receipt by Zapier, not the completion of subsequent workflow steps.</p>
           {testMessage && <p className="door-builder-webhook__result" role="status">{testMessage}</p>}
           <div id="door-builder-webhook-history">
             {failures.length > 0 && <div className="door-builder-webhook__audit"><h4>Failed deliveries</h4><ul>{failures.map((row) => <li key={row.id}><span><strong>Attempt {row.attemptNumber}</strong>{row.httpStatus ? ` · HTTP ${row.httpStatus}` : ''}{row.blockedReason ? ` · ${row.blockedReason}` : ''}</span>{row.canRetry ? <button className="button button--outline" type="button" disabled={busy} onClick={() => void retry(row.submissionId)}>Retry</button> : null}</li>)}</ul><p className="door-builder-webhook__hint">A successful delivery is never sent again. Customer submission does not automatically retry a failed dealer copy.</p></div>}

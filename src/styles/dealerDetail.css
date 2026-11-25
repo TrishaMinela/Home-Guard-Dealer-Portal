@@ -243,29 +243,58 @@ body:has(.dealer-detail-page) { overflow-x: clip; }
   display: inline-flex; align-items: center; gap: 4px; color: var(--dd-teal); font-weight: 600;
 }
 
-.dealer-detail-page .door-builder-webhook { display: grid; gap: 0; margin: 0; padding: 0; background: #fff; }
+.dealer-detail-page .door-builder-webhook { display: grid; gap: 0; margin: 0; padding: 0; background: transparent; border: 0; }
+.dealer-detail-page .door-builder-webhook__heading { border: 1px solid var(--dd-line); border-radius: var(--dd-radius-card); background: #fff; }
 .dealer-detail-page .door-builder-webhook__columns {
-  display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(260px, 0.9fr); gap: 20px; padding: 20px 24px 8px;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--dd-gap); padding: var(--dd-gap) 0 0;
+}
+.dealer-detail-page .door-builder-webhook__panel {
+  display: grid; align-content: start; gap: 12px; min-width: 0; padding: 16px;
+  border: 1px solid var(--dd-line); border-radius: var(--dd-radius-card); background: #fff;
+}
+.dealer-detail-page .door-builder-webhook__panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.dealer-detail-page .door-builder-webhook__panel h4 { margin: 0; color: var(--dd-ink); font-size: 15px; }
+.dealer-detail-page .door-builder-webhook__panel-head p { margin: 4px 0 0; color: var(--dd-muted); font-size: 12px; line-height: 1.45; }
+.dd-chip {
+  flex: none; min-height: 22px; display: inline-flex; align-items: center; padding: 0 8px;
+  border-radius: 999px; color: var(--dd-teal); background: var(--dd-teal-soft); font-size: 11px; font-weight: 700;
 }
 .dealer-detail-page .door-builder-webhook form,
 .dealer-detail-page .door-builder-webhook__main { display: grid; gap: 12px; }
-.dealer-detail-page .door-builder-webhook__meta { grid-template-columns: 1fr 1fr; }
-.dealer-detail-page .door-builder-webhook__sample {
-  display: grid; align-content: start; gap: 12px; padding: 16px;
-  border: 1px solid var(--dd-line); border-radius: 12px; background: #fff;
+.dealer-detail-page .door-builder-webhook__url { display: flex; align-items: center; gap: 6px; }
+.dealer-detail-page .door-builder-webhook__url input { min-width: 0; }
+.dealer-detail-page .door-builder-webhook__copy {
+  width: var(--dd-control); height: var(--dd-control); display: grid; flex: none; place-items: center;
+  border: 1px solid var(--dd-line); border-radius: var(--dd-radius-control); background: #fff; color: var(--dd-muted); cursor: pointer;
 }
-.dealer-detail-page .door-builder-webhook__sample h4 { margin: 0; font-size: 14px; }
-.dealer-detail-page .door-builder-webhook__sample > p,
+.dealer-detail-page .door-builder-webhook__copy svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.dealer-detail-page .door-builder-webhook__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.dealer-detail-page .door-builder-webhook__actions .button { min-height: var(--dd-control); height: var(--dd-control); padding: 0 12px; font-size: 13px; }
+.dealer-detail-page .door-builder-webhook__remove { color: #9B2C2C; border-color: #E7C7C7; }
+.dealer-detail-page .door-builder-webhook__stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.dealer-detail-page .door-builder-webhook__stats div { min-width: 0; padding: 10px; border: 1px solid var(--dd-line); border-radius: 8px; background: #F8FAFB; }
+.dealer-detail-page .door-builder-webhook__stats dt { color: var(--dd-muted); font-size: 11px; font-weight: 600; }
+.dealer-detail-page .door-builder-webhook__stats dd { margin: 4px 0 0; color: var(--dd-ink); font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
+.dealer-detail-page .door-builder-webhook__summary { display: grid; margin: 0; }
+.dealer-detail-page .door-builder-webhook__summary div { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--dd-line); }
+.dealer-detail-page .door-builder-webhook__summary dt { color: var(--dd-muted); font-size: 13px; }
+.dealer-detail-page .door-builder-webhook__summary dd { margin: 0; color: var(--dd-ink); font-size: 13px; font-weight: 600; }
+.dealer-detail-page .door-builder-webhook__sample-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.dealer-detail-page .door-builder-webhook__sample-actions .button { min-height: var(--dd-control); height: var(--dd-control); padding: 0 12px; }
+.dealer-detail-page .door-builder-webhook__meta { grid-template-columns: 1fr; }
 .dealer-detail-page .door-builder-webhook__warning,
-.dealer-detail-page .door-builder-webhook__result { margin: 0 24px 16px; }
-.dealer-detail-page .door-builder-webhook__sample > p { margin: 0; }
+.dealer-detail-page .door-builder-webhook__result { margin: var(--dd-gap) 0 0; }
+.dealer-detail-page .door-builder-webhook__warning {
+  padding: 12px 14px; border: 1px solid #D5E7E7; border-radius: var(--dd-radius-card);
+  background: var(--dd-teal-soft); color: #1F4F4F; font-size: 13px; line-height: 1.45;
+}
 .dd-text-link {
   display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0;
   color: var(--dd-teal); background: transparent; font: inherit; font-size: 13px; font-weight: 600;
   text-decoration: none; cursor: pointer;
 }
 .dd-text-link:hover { text-decoration: underline; }
-.dealer-detail-page .door-builder-webhook__audit { margin: 0 24px 16px; }
+.dealer-detail-page .door-builder-webhook__audit { margin: var(--dd-gap) 0 0; padding: 16px; border: 1px solid var(--dd-line); border-radius: var(--dd-radius-card); background: #fff; }
 
 .dealer-detail-page .dealer-admin-marketing .page-header { display: none; }
 .dealer-detail-page .dealer-admin-marketing .content-card {

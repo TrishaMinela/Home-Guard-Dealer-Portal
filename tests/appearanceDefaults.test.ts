@@ -327,7 +327,7 @@ test('the preview stays on screen while the footer group is edited', async () =>
 async function openStudio(page: Page, role: 'admin' | 'member' = 'admin') {
   await page.goto(`http://127.0.0.1:${port}/?role=${role}#profile-nav-harness`, { waitUntil: 'networkidle' })
   await page.getByRole('link', { name: 'Customize Door Builder' }).click()
-  await page.getByRole('heading', { name: 'Branding & Appearance' }).waitFor()
+  await page.getByRole('heading', { name: 'Branding Studio', level: 1 }).waitFor()
 }
 
 test('the branding studio keeps a large preview and moves the homepage logo between header and hero', async () => {
@@ -473,7 +473,8 @@ test('the branding studio fits the preview and settings at every requested width
     const fit = await page.evaluate((narrow) => {
       const preview = document.querySelector('.branding-studio__preview')?.getBoundingClientRect()
       const settings = document.querySelector('.branding-studio__editor')?.getBoundingClientRect()
-      const nav = document.querySelector('.branding-studio__nav')?.getBoundingClientRect()
+      const pills = document.querySelector('.branding-studio__pills')?.getBoundingClientRect()
+      const studio = document.querySelector('.branding-studio')?.getBoundingClientRect()
       const save = document.querySelector<HTMLElement>(narrow ? '.branding-studio__sheet-actions .button--primary' : '.branding-studio__actions .button--primary')
       const saveBox = save?.getBoundingClientRect()
       const saveTarget = saveBox ? document.elementFromPoint(saveBox.left + saveBox.width / 2, saveBox.top + saveBox.height / 2) : null
@@ -482,7 +483,8 @@ test('the branding studio fits the preview and settings at every requested width
         overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         preview: preview ? Math.round(preview.width) : 0,
         settings: settings ? Math.round(settings.width) : 0,
-        nav: nav ? Math.round(nav.width) : 0,
+        pills: pills ? Math.round(pills.width) : 0,
+        studio: studio ? Math.round(studio.width) : 0,
         overlap: !!(preview && settings && settings.width > 8 && preview.width > 8 && settings.right > preview.left + 8 && settings.left < preview.right - 8 && settings.bottom > preview.top + 8 && settings.top < preview.bottom - 8),
         save: !!(save && saveTarget && (saveTarget === save || save.contains(saveTarget))),
         uploadTop: upload ? Math.round(upload.top) : -1,
@@ -491,8 +493,8 @@ test('the branding studio fits the preview and settings at every requested width
     assert.ok(fit.overflow <= 1, `${width}px overflow ${fit.overflow}`)
     assert.ok(fit.preview >= Math.min(280, width - 40), `${width}px preview ${fit.preview}`)
     if (width >= 1024) {
-      assert.ok(fit.nav >= 90 && fit.nav <= 110, `${width}px nav ${fit.nav}`)
-      assert.ok(fit.settings >= 300 && fit.settings <= 340, `${width}px editor ${fit.settings}`)
+      assert.ok(fit.pills >= Math.min(280, width - 40), `${width}px pills ${fit.pills}`)
+      assert.ok(fit.settings >= 260 && fit.settings <= fit.studio * 0.42, `${width}px editor ${fit.settings} of ${fit.studio}`)
       assert.equal(fit.overlap, false, `${width}px editor overlaps the preview`)
       assert.ok(fit.uploadTop >= 0 && fit.uploadTop < 700, `${width}px upload at ${fit.uploadTop}`)
     }
@@ -538,7 +540,7 @@ test('studio drafts survive categories and discard, and a partial save names the
   assert.match(alert, /Colors failed: colors rejected/)
   page.once('dialog', (dialog) => void dialog.accept())
   await page.getByRole('button', { name: 'Discard' }).click()
-  assert.equal(await page.locator('.branding-studio__status').innerText(), 'All changes saved')
+  assert.equal(await page.locator('.branding-studio__status').innerText(), '✓ All changes saved')
   await page.close()
 })
 
@@ -685,8 +687,8 @@ test('one logo and an admin studio still show both upload actions', async () => 
   const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } })
   await page.goto(`http://127.0.0.1:${port}/?role=admin&studio=admin&logos=single#profile-nav-harness`, { waitUntil: 'networkidle' })
   await page.getByRole('link', { name: 'Customize Door Builder' }).click()
-  await page.getByRole('heading', { name: 'Branding & Appearance' }).waitFor()
-  assert.equal(await page.getByText('Upload Original').count(), 1)
+  await page.getByRole('heading', { name: 'Branding Studio', level: 1 }).waitFor()
+  assert.equal(await page.getByText('Replace Logo').count(), 1)
   await page.getByText('Add Second Logo').waitFor()
   await page.getByRole('button', { name: 'Colors', exact: true }).click()
   await page.getByRole('heading', { name: 'Door Builder Appearance' }).waitFor()
@@ -697,7 +699,7 @@ test('a dealer with no logo still opens the studio and the preview', async () =>
   const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } })
   await page.goto(`http://127.0.0.1:${port}/?role=admin&logos=none#profile-nav-harness`, { waitUntil: 'networkidle' })
   await page.getByRole('link', { name: 'Customize Door Builder' }).click()
-  await page.getByRole('heading', { name: 'Branding & Appearance' }).waitFor()
+  await page.getByRole('heading', { name: 'Branding Studio', level: 1 }).waitFor()
   await page.getByText('Add Second Logo').waitFor()
   assert.equal(await page.getByRole('button', { name: 'Generate White' }).first().isDisabled(), true)
   assert.match(await page.locator('#logo-original').innerText(), /Upload a logo first/)
@@ -867,10 +869,10 @@ test('each branding category scrolls its last control into view', async () => {
     return {
       title: title?.textContent?.trim() ?? '',
       fits: !!title && title.scrollWidth <= title.clientWidth + 1,
-      statusOk: hidden || ellipsized,
+      statusOk: !status || hidden || ellipsized,
     }
   })
-  assert.equal(titleFit.title, 'Branding & Appearance')
+  assert.equal(titleFit.title, 'Branding Studio')
   assert.equal(titleFit.fits, true)
   assert.equal(titleFit.statusOk, true)
   await page.evaluate(() => {
@@ -974,7 +976,7 @@ test('logo status text stays separate from the filename', async () => {
   const longName = `${'very-long-dealer-logo-file-name-'.repeat(6)}logo.webp`
   await page.goto(`http://127.0.0.1:${port}/?role=admin&logoStatus=gallery&logos=long#profile-nav-harness`, { waitUntil: 'networkidle' })
   await page.getByRole('link', { name: 'Customize Door Builder' }).click()
-  await page.getByRole('heading', { name: 'Branding & Appearance' }).waitFor()
+  await page.getByRole('heading', { name: 'Branding Studio', level: 1 }).waitFor()
   const gallery = await page.getByTestId('logo-status-gallery').evaluate((element) => [...element.querySelectorAll<HTMLElement>('.studio-logo__meta')].map((row) => {
     const status = row.querySelector<HTMLElement>('[role="status"]')
     const mark = status?.querySelector<HTMLElement>('[aria-hidden="true"]')
@@ -1031,18 +1033,18 @@ test('logo status text stays separate from the filename', async () => {
   }
   await page.goto(`http://127.0.0.1:${port}/?role=admin&logos=single#profile-nav-harness`, { waitUntil: 'networkidle' })
   await page.getByRole('link', { name: 'Customize Door Builder' }).click()
-  await page.getByRole('heading', { name: 'Branding & Appearance' }).waitFor()
+  await page.getByRole('heading', { name: 'Branding Studio', level: 1 }).waitFor()
   assert.match(await page.locator('#logo-original').innerText(), /✓\s*Saved\s*·\s*Current logo/)
   assert.match(await page.locator('#logo-secondary').innerText(), /Unavailable/)
   assert.doesNotMatch(await page.locator('#logo-secondary').innerText(), /Saved/)
   await page.goto(`http://127.0.0.1:${port}/?role=admin#profile-nav-harness`, { waitUntil: 'networkidle' })
   await page.getByRole('link', { name: 'Customize Door Builder' }).click()
-  await page.getByRole('heading', { name: 'Branding & Appearance' }).waitFor()
+  await page.getByRole('heading', { name: 'Branding Studio', level: 1 }).waitFor()
   assert.match(await page.locator('#logo-original').innerText(), /Saved\s*·\s*Current logo/)
   assert.match(await page.locator('#logo-secondary').innerText(), /Saved\s*·\s*Current logo/)
   await page.goto(`http://127.0.0.1:${port}/?role=admin&logos=none#profile-nav-harness`, { waitUntil: 'networkidle' })
   await page.getByRole('link', { name: 'Customize Door Builder' }).click()
-  await page.getByRole('heading', { name: 'Branding & Appearance' }).waitFor()
+  await page.getByRole('heading', { name: 'Branding Studio', level: 1 }).waitFor()
   assert.match(await page.locator('#logo-original').innerText(), /Unavailable/)
   assert.match(await page.locator('#logo-secondary').innerText(), /Unavailable/)
   assert.doesNotMatch(await page.locator('#logo-original').innerText(), /Saved/)

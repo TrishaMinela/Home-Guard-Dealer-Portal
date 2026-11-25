@@ -71,6 +71,12 @@ export function DealerOutlineIcon({ name }: DealerOutlineIconProps) {
         <path d="M16 13.5V18a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h4.5" />
       </>
     ),
+    copy: (
+      <>
+        <rect x="9" y="9" width="11" height="11" rx="1.5" />
+        <path d="M5 15V5.5A1.5 1.5 0 0 1 6.5 4H15" />
+      </>
+    ),
     check: <path d="m5 12 5 5L20 7" />,
     chevron: <path d="m6 9 6 6 6-6" />,
   }
