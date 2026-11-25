@@ -1,9 +1,9 @@
 import { timingSafeEqual } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createClient } from '@supabase/supabase-js'
-import { createSupabaseOptaDeliveryStore, type CrmAdminClient } from './optaDeliveryStore.ts'
-import { deliverSubmittedLead, sweepOptaDeliveries, type OptaWorkerDeps } from './optaDeliveryWorker.ts'
-import type { OptaTransport } from './optaLeadDelivery.ts'
+import { createSupabaseOptaDeliveryStore, type CrmAdminClient } from './optaDeliveryStore.js'
+import { deliverSubmittedLead, sweepOptaDeliveries, type OptaWorkerDeps } from './optaDeliveryWorker.js'
+import type { OptaTransport } from './optaLeadDelivery.js'
 
 type JsonResponse = ServerResponse<IncomingMessage> & { json?: (value: unknown) => void }
 
@@ -108,6 +108,17 @@ function headerValue(headers: IncomingMessage['headers'], name: string) {
 }
 
 async function readJson(request: IncomingMessage) {
+  // Vercel may have already parsed JSON before invoking the function.
+  const parsedBody = (request as IncomingMessage & { body?: unknown }).body
+  if (parsedBody !== undefined) {
+    const raw = typeof parsedBody === 'string' ? parsedBody : JSON.stringify(parsedBody)
+    if (Buffer.byteLength(raw) > MAX_BODY_BYTES) throw new Error('REQUEST_TOO_LARGE')
+    try {
+      const value: unknown = JSON.parse(raw)
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('INVALID_JSON')
+      return value as { submissionId?: unknown; leadId?: unknown }
+    } catch { throw new Error('INVALID_JSON') }
+  }
   const chunks: Buffer[] = []
   let size = 0
   for await (const chunk of request) {

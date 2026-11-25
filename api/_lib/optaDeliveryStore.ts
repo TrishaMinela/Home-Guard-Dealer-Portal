@@ -1,7 +1,7 @@
-import { decryptCrmCredentials, isCrmCredentialEncryptionConfigured, type EncryptedCredentialEnvelope } from './dealerCrmIntegration.ts'
-import { marksDeliveryEnablement } from './crmIntegrationState.ts'
-import type { CrmIntegrationState } from './dealerCrmIntegration.ts'
-import type { DeliveryAttemptStatus } from './optaDeliveryPolicy.ts'
+import { decryptCrmCredentials, isCrmCredentialEncryptionConfigured, type EncryptedCredentialEnvelope } from './dealerCrmIntegration.js'
+import { marksDeliveryEnablement } from './crmIntegrationState.js'
+import type { CrmIntegrationState } from './dealerCrmIntegration.js'
+import type { DeliveryAttemptStatus } from './optaDeliveryPolicy.js'
 
 type StorageError = { code?: string; message?: string } | null
 type StorageResult<T> = { data: T; error: StorageError }
@@ -10,6 +10,7 @@ type Filter = PromiseLike<StorageResult<Record<string, unknown>[]>> & {
   eq(column: string, value: string | number | boolean | null): Filter
   in(column: string, values: readonly string[]): Filter
   gt(column: string, value: string): Filter
+  is(column: string, value: null): Filter
   order(column: string, options: { ascending: boolean }): Filter
   limit(count: number): Filter
   select(columns: string): Filter
@@ -72,7 +73,7 @@ export type OptaDeliveryStore = {
   listRetryCandidates(limit: number): Promise<StoredDelivery[]>
   claimRetry(input: { id: string; expectedUpdatedAt: string; attemptCount: number; now: string; fromStatus: string }): Promise<boolean>
   saveResult(input: DeliveryResultPatch): Promise<void>
-  listLeadsCreatedAfter(dealerId: string, createdAfter: string, limit: number): Promise<OptaPortalLead[]>
+  listLeadsCreatedAfter(dealerId: string, createdAfter: string, limit: number, integrationId: string): Promise<OptaPortalLead[]>
   listDeliveryLeadIds(integrationId: string, leadIds: string[]): Promise<string[]>
 }
 
@@ -109,7 +110,6 @@ const AUDIT = 'dealer_crm_integration_audit_log'
 const LEAD_COLUMNS = 'id,dealer_id,first_name,last_name,email,phone,address,city,state,zip,comments,source,door_configuration,submission_id,created_at'
 const INTEGRATION_COLUMNS = 'id,dealer_id,state,field_mapping,credentials_ciphertext,credentials_iv,credentials_auth_tag,credential_key_version'
 const DELIVERY_COLUMNS = 'id,integration_id,lead_id,dealer_id,delivery_status,attempt_count,last_attempted_at,updated_at'
-const RETRY_STATUSES = ['pending', 'failed', 'test_failed', 'attempting']
 
 export function decodeByteaToBase64(value: unknown) {
   if (Buffer.isBuffer(value)) return value.toString('base64')
@@ -308,7 +308,7 @@ export function createSupabaseOptaDeliveryStore(admin: CrmAdminClient, encryptio
       const result = await admin.from(DELIVERIES)
         .select(DELIVERY_COLUMNS)
         .eq('provider', 'opta')
-        .in('delivery_status', RETRY_STATUSES)
+        .in('delivery_status', ['pending', 'failed', 'test_failed'])
         .order('updated_at', { ascending: true })
         .limit(limit)
       if (result.error || !Array.isArray(result.data)) storageFailure()
@@ -335,12 +335,15 @@ export function createSupabaseOptaDeliveryStore(admin: CrmAdminClient, encryptio
       }).eq('id', input.id).select('id')
       if (result.error || !Array.isArray(result.data) || result.data.length !== 1) storageFailure()
     },
-    async listLeadsCreatedAfter(dealerId, createdAfter, limit) {
+    async listLeadsCreatedAfter(dealerId, createdAfter, limit, integrationId) {
       const result = await admin.from(LEADS)
-        .select(LEAD_COLUMNS)
+        .select(`${LEAD_COLUMNS},delivery:dealer_crm_lead_deliveries!dealer_crm_delivery_lead_fk()`)
         .eq('dealer_id', dealerId)
+        .eq('delivery.integration_id', integrationId)
+        .is('delivery', null)
         .gt('created_at', createdAfter)
         .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
         .limit(limit)
       if (result.error || !Array.isArray(result.data)) storageFailure()
       return result.data.map(portalLead).filter((lead): lead is OptaPortalLead => lead !== null)

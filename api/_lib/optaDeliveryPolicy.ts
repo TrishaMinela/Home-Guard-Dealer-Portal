@@ -1,6 +1,6 @@
-import { dealerAllowsOptaDelivery } from './crmIntegrationState.ts'
-import type { CrmIntegrationState } from './dealerCrmIntegration.ts'
-import type { OptaDeliveryMode, OptaDeliveryResult } from './optaLeadDelivery.ts'
+import { dealerAllowsOptaDelivery } from './crmIntegrationState.js'
+import type { CrmIntegrationState } from './dealerCrmIntegration.js'
+import type { OptaDeliveryMode, OptaDeliveryResult } from './optaLeadDelivery.js'
 
 /** Waits before retry 2, 3, 4, 5, and 6. The sixth transient failure is dead-lettered. */
 export const OPTA_RETRY_DELAYS_MS = [
@@ -76,20 +76,12 @@ export function retryDecision(row: {
   lastAttemptedAt: string | null
   updatedAt: string
 }, nowMs: number): RetryDecision {
-  if (row.status === 'succeeded' || row.status === 'test_succeeded' || row.status === 'dead_letter') return 'ignore'
-  if (row.attemptCount >= OPTA_MAX_ATTEMPTS) {
-    if (row.status === 'attempting') {
-      const updated = Date.parse(row.updatedAt)
-      if (Number.isFinite(updated) && nowMs - updated < OPTA_ATTEMPT_STALE_MS) return 'ignore'
-    }
-    return 'dead'
-  }
-  if (row.status === 'attempting') {
-    const updated = Date.parse(row.updatedAt)
-    if (!Number.isFinite(updated) || nowMs - updated >= OPTA_ATTEMPT_STALE_MS) return 'send'
+  // attempting is ambiguous: the request may already have reached Opta.
+  if (row.status === 'succeeded' || row.status === 'test_succeeded' || row.status === 'dead_letter' || row.status === 'attempting') {
     return 'ignore'
   }
   if (row.status !== 'pending' && row.status !== 'failed' && row.status !== 'test_failed') return 'ignore'
+  if (row.attemptCount >= OPTA_MAX_ATTEMPTS) return 'dead'
   if (row.status === 'pending' || row.attemptCount <= 0) return 'send'
   const delay = OPTA_RETRY_DELAYS_MS[row.attemptCount - 1]
   if (delay == null) return 'dead'
@@ -98,10 +90,13 @@ export function retryDecision(row: {
   return nowMs >= last + delay ? 'send' : 'wait'
 }
 
-const TRANSIENT_DISPOSITIONS = new Set(['network_failure', 'unexpected_response'])
-
 export function optaFailureIsTransient(result: OptaDeliveryResult) {
-  return !result.ok && TRANSIENT_DISPOSITIONS.has(result.disposition)
+  if (result.ok) return false
+  if (result.disposition === 'connect_failure') return true
+  if (result.disposition === 'unexpected_response') {
+    return result.httpStatus === 429 || result.httpStatus >= 500
+  }
+  return false
 }
 
 export function deliveryErrorCode(result: OptaDeliveryResult) {
@@ -111,6 +106,7 @@ export function deliveryErrorCode(result: OptaDeliveryResult) {
     case 'unauthorized': return 'UNAUTHORIZED'
     case 'missing_field': return 'MISSING_FIELD'
     case 'invalid_field': return 'INVALID_FIELD'
+    case 'connect_failure': return 'CONNECT_FAILURE'
     case 'network_failure': return 'NETWORK_FAILURE'
     case 'ineligible': return 'INELIGIBLE'
     case 'unexpected_response':

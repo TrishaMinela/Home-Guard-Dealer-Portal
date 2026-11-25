@@ -1,4 +1,4 @@
-import { decryptCrmCredentials, isCrmCredentialEncryptionConfigured, leadDeliveryIdempotencyKey, type EncryptedCredentialEnvelope } from './dealerCrmIntegration.ts'
+import { decryptCrmCredentials, isCrmCredentialEncryptionConfigured, leadDeliveryIdempotencyKey, type EncryptedCredentialEnvelope } from './dealerCrmIntegration.js'
 import {
   AMERICAS_BEST_DEALER_SLUG,
   DEFAULT_OPTA_UNCONFIRMED_POLICY,
@@ -9,7 +9,7 @@ import {
   type OptaDeliveryResult,
   type OptaTransport,
   type OptaUnconfirmedFieldPolicy,
-} from './optaLeadDelivery.ts'
+} from './optaLeadDelivery.js'
 
 /** Collected Door Builder fields mapped to the Opta parameters confirmed for this campaign. */
 export const DOOR_BUILDER_OPTA_FIELDS = {

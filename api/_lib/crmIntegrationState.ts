@@ -1,5 +1,5 @@
-import { AMERICAS_BEST_DEALER_SLUG } from './optaLeadDelivery.ts'
-import type { CrmIntegrationState } from './dealerCrmIntegration.ts'
+import { AMERICAS_BEST_DEALER_SLUG } from './optaLeadDelivery.js'
+import type { CrmIntegrationState } from './dealerCrmIntegration.js'
 
 /** The only dealer allowed to send Opta leads. Keep this list to that one slug. */
 export const OPTA_DEALER_ALLOWLIST: readonly string[] = [AMERICAS_BEST_DEALER_SLUG]

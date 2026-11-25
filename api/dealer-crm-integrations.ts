@@ -52,6 +52,16 @@ function send(response: JsonResponse, status: number, value: unknown) {
 }
 
 async function readBody(request: IncomingMessage): Promise<SaveBody> {
+  const body = (request as IncomingMessage & { body?: unknown }).body
+  if (body !== undefined) {
+    const raw = typeof body === 'string' ? body : JSON.stringify(body)
+    if (Buffer.byteLength(raw) > MAX_BODY_BYTES) throw new Error('REQUEST_TOO_LARGE')
+    try {
+      const value: unknown = JSON.parse(raw)
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('INVALID_JSON')
+      return value as SaveBody
+    } catch { throw new Error('INVALID_JSON') }
+  }
   const chunks: Buffer[] = []
   let size = 0
   for await (const chunk of request) {
@@ -138,7 +148,7 @@ export default async function handler(request: IncomingMessage, response: JsonRe
   }
   const authorization = Array.isArray(request.headers.authorization) ? request.headers.authorization[0] : request.headers.authorization
   const access = await authorizeBillingAccessManager(authorization)
-  if (!access.authorized) return send(response, access.status, { error: access.message })
+  if (access.authorized === false) return send(response, access.status, { error: access.message })
 
   const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -171,7 +181,7 @@ export default async function handler(request: IncomingMessage, response: JsonRe
         requestedState: body.state,
         liveConfirmation: body.liveConfirmation,
       })
-      if (!stateChange.ok) return send(response, stateChange.status, { error: stateChange.error })
+      if (stateChange.ok === false) return send(response, stateChange.status, { error: stateChange.error })
       const nextState: CrmIntegrationState = stateChange.state
       let fieldMapping: Record<string, string>
       try { fieldMapping = validatedFieldMapping(body.fieldMapping) } catch { return send(response, 400, { error: 'Review the CRM field mapping and try again.' }) }
