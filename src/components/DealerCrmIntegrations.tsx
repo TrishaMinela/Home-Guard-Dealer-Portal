@@ -239,13 +239,13 @@ export function DealerCrmIntegrations({ dealerId, preview }: { dealerId: string;
   }
 
   return (
-    <section id="crm-integrations" className="content-card dealer-management-card crm-integrations dealer-setup-anchor" tabIndex={-1} aria-labelledby="crm-integrations-title">
+    <section id="crm-integrations" className="content-card dd-section crm-integrations dealer-setup-anchor" tabIndex={-1} aria-labelledby="crm-integrations-title">
       <DealerSectionHeader
         icon="crm"
         eyebrow="Lead delivery"
         title="CRM Integrations"
         headingId="crm-integrations-title"
-        description="Connect this dealer to supported CRM systems to automatically sync leads and customer data. Save Opta credentials here. Test and live delivery are available only for America's Best Windows & Doors. Live also requires the server kill switch, and it only includes leads created after Live is saved."
+        description="Connect this dealer to Opta, GoHighLevel, or a custom webhook."
         actionLabel="Manage Integrations"
         actionHref="#crm-provider-grid"
         actionIcon="manage"
@@ -254,16 +254,23 @@ export function DealerCrmIntegrations({ dealerId, preview }: { dealerId: string;
       {!encryptionConfigured && !isLoading && explainPreviewConfiguration(error) === error && !error && <div className="portal-alert" role="status">Secure credential storage is not configured. Metadata can be reviewed, but credentials cannot be saved.</div>}
       {error && <div className="portal-alert" role={explainPreviewConfiguration(error) === previewConfigurationNotice ? 'status' : 'alert'}>{explainPreviewConfiguration(error)}</div>}
       {notice && <div className="portal-alert portal-alert--success" role="status">{notice}</div>}
+      {!isLoading && (
+        <dl className="dd-stats">
+          <div className="dd-stat"><dt>Opta</dt><dd>{optaIntegration ? headerBadge.label : 'Not configured'}</dd></div>
+          <div className="dd-stat"><dt>Saved credentials</dt><dd>{integrations.filter((item) => item.hasCredentials).length}</dd></div>
+          <div className="dd-stat"><dt>Deliveries</dt><dd>{deliveries.length || '—'}</dd></div>
+        </dl>
+      )}
       {isLoading ? <div className="data-state">Loading CRM integrations…</div> : (
-        <div className="crm-provider-grid" id="crm-provider-grid" tabIndex={-1}>
+        <div className="crm-provider-grid dd-split dd-split--three" id="crm-provider-grid" tabIndex={-1}>
           {providers.map((provider) => {
             const integration = integrations.find((candidate) => candidate.provider === provider.value)
             const stateLabel = integration?.state === 'disabled' ? 'Off' : integration ? `${integration.state.charAt(0).toUpperCase()}${integration.state.slice(1)}` : 'Not configured'
             const stateClass = integration?.state === 'live' ? 'status-badge--active' : integration?.state === 'test' ? 'dd-status--test' : 'status-badge--inactive'
-            return <article className="crm-provider-card" key={provider.value}>
+            return <article className="crm-provider-card dd-panel" key={provider.value}>
               <div className="crm-provider-card__heading"><div className="crm-provider-card__identity"><span className="crm-provider-card__mark" aria-hidden="true">{provider.label.slice(0, 1)}</span><div><h3>{provider.label}</h3><p>{provider.description}</p></div></div><span className={`status-badge dd-status ${stateClass}`}>{stateLabel}</span></div>
-              <dl className="crm-provider-card__meta"><div><dt>Credentials</dt><dd>{integration?.hasCredentials ? 'Saved securely' : 'Not saved'}</dd></div><div><dt>Last updated</dt><dd>{integration ? new Date(integration.updatedAt).toLocaleString() : '—'}</dd></div></dl>
-              <button className={integration ? 'dd-text-link' : 'button button--outline'} type="button" onClick={() => beginEdit(provider.value)}>{integration ? 'View Settings' : 'Add Integration'}</button>
+              <dl className="dd-rows"><div><dt>Credentials</dt><dd>{integration?.hasCredentials ? 'Saved securely' : 'Not saved'}</dd></div><div><dt>Last updated</dt><dd>{integration ? new Date(integration.updatedAt).toLocaleString() : '—'}</dd></div></dl>
+              <button className="button button--outline" type="button" onClick={() => beginEdit(provider.value)}>{integration ? 'Edit Settings' : 'Add Integration'}</button>
             </article>
           })}
         </div>
@@ -293,13 +300,14 @@ export function DealerCrmIntegrations({ dealerId, preview }: { dealerId: string;
         <fieldset><legend>Field mappings</legend><p>Map a provider destination field to an approved HGI lead value. Provider field names must be confirmed before delivery is enabled.</p><div className="crm-mapping-list">
           {mappingRows.map((row, index) => <div className="crm-mapping-row" key={`${index}-${row.destination}`}><label>CRM destination field<input value={row.destination} maxLength={120} placeholder="Example: contact.email" onChange={(event) => setMappingRows((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, destination: event.target.value } : item))} /></label><label>HGI lead field<select value={row.source} onChange={(event) => setMappingRows((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, source: event.target.value } : item))}>{sources.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><button className="button button--ghost" type="button" disabled={mappingRows.length === 1} onClick={() => setMappingRows((current) => current.filter((_, itemIndex) => itemIndex !== index))}>Remove</button></div>)}
         </div><button className="button button--outline" type="button" disabled={mappingRows.length >= 40} onClick={() => setMappingRows((current) => [...current, { destination: '', source: 'customer.full_name' }])}>Add Field Mapping</button></fieldset>
-        <div className="crm-integration-editor__notice">
+        <div className="crm-integration-editor__notice dd-note">
           <strong>{deliveryState === 'live' && !stateLocked ? 'Live sends real leads.' : deliveryState === 'test' && !stateLocked ? 'Test sends marked test leads.' : 'Off sends nothing.'}</strong>
           <span>Opta credentials stay on the server. Other dealers and other providers cannot be activated.</span>
         </div>
         <div className="page-actions"><button className="button button--outline" type="button" onClick={cancelEdit}>Cancel</button><button className="button button--primary" type="submit" disabled={isSaving || (!encryptionConfigured && Object.values(credentials).some(Boolean))}>{isSaving ? 'Saving securely…' : 'Save settings'}</button></div>
       </form>}
 
+      <p className="dd-note">Save Opta credentials here. Test and live delivery are available only for America&apos;s Best Windows &amp; Doors. Live also requires the server kill switch, and it only includes leads created after Live is saved.</p>
       {!isLoading && <div className="crm-delivery-status">
         <h3>Delivery status</h3>
         {deliveries.length === 0 ? <p>No CRM deliveries yet.</p> : <ul>{deliveries.map((delivery) => <li key={delivery.id}><span><strong>{providerLabel(delivery.provider)}</strong> · {deliveryLabel(delivery.deliveryStatus)} · {delivery.attemptCount} {delivery.attemptCount === 1 ? 'attempt' : 'attempts'}{delivery.errorCode ? ` · ${delivery.errorCode}` : ''}</span>{delivery.errorMessage && <span className="crm-delivery-status__error">{delivery.errorMessage}</span>}<time dateTime={delivery.updatedAt}>{new Date(delivery.updatedAt).toLocaleString()}</time></li>)}</ul>}

@@ -36,7 +36,7 @@ export function AdminDealerMarketingTools({ dealerId, previewDealer }: { dealerI
   }, [dealerId, fixture])
 
   return (
-    <section className="content-card dealer-management-card dealer-settings-section dealer-admin-marketing dealer-setup-anchor" id="marketing-tools" tabIndex={-1}>
+    <section className="content-card dd-section dealer-settings-section dealer-admin-marketing dealer-setup-anchor" id="marketing-tools" tabIndex={-1}>
       <DealerSectionHeader
         icon="megaphone"
         eyebrow="Marketing"
@@ -45,6 +45,7 @@ export function AdminDealerMarketingTools({ dealerId, previewDealer }: { dealerI
         actionLabel="Manage Marketing Tools"
         actionTo={adminHref}
         actionIcon="manage"
+        actionTone="primary"
       />
       {error ? <div className="portal-alert" role={explainPreviewConfiguration(error) === previewConfigurationNotice ? 'status' : 'alert'}>{explainPreviewConfiguration(error)}</div> : null}
       {!error && !dealer ? <div className="data-state">Loading Marketing Tools…</div> : null}
@@ -57,6 +58,7 @@ export function AdminDealerMarketingTools({ dealerId, previewDealer }: { dealerI
           bannerAdminHref={`/admin/marketing-banners?dealer=${encodeURIComponent(dealerId)}`}
         />
       ) : null}
+      <p className="dd-note">Banner artwork uses the saved logo and does not recolor the template. Copying a link or embed code does not publish a new asset.</p>
     </section>
   )
 }

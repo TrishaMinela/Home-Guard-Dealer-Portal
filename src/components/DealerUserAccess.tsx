@@ -98,17 +98,28 @@ export function DealerUserAccess({ dealerId, sectionId, canSetPassword = false, 
   }
 
   return <>
-    <section className="content-card billing-access-card dealer-user-access dealer-setup-anchor" id={sectionId} tabIndex={-1}>
+    <section className="content-card dd-section billing-access-card dealer-user-access dealer-setup-anchor" id={sectionId} tabIndex={-1}>
       <DealerSectionHeader icon="users" eyebrow="Dealer security" title="Dealer Users / Access" description="Manage dealer users, their roles, and access to the Dealer Portal. Access managers can add existing accounts or send the secure Portal invitation to new users." actionLabel="Manage Users" actionHref="#add-dealer-user" actionIcon="manage" />
       {error && <p className={explainPreviewConfiguration(error) === previewConfigurationNotice ? 'message' : 'message message--error'} role={explainPreviewConfiguration(error) === previewConfigurationNotice ? 'status' : 'alert'}>{explainPreviewConfiguration(error)}</p>}
       {success && <p className="message message--success" role="status">{success}</p>}
-      <div className="billing-access-card__form" id="add-dealer-user">
-        <h3>Add Dealer User</h3>
-        <form onSubmit={(event) => void grant(event)}>
-          <label><span>Email Address</span><input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="user@example.com" disabled={saving} /></label>
-          <button className="button button--primary" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Add User'}</button>
-        </form>
-        <p className="dd-help">New Portal users are invited as Dealer Admin. This does not change billing or CRM roles.</p>
+      <div className="dd-split">
+        <div className="dd-panel billing-access-card__form" id="add-dealer-user">
+          <h3>Add Dealer User</h3>
+          <p>Invite an existing account or a new Portal user.</p>
+          <form onSubmit={(event) => void grant(event)}>
+            <label><span>Email Address</span><input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="user@example.com" disabled={saving} /></label>
+            <button className="button button--primary" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Add User'}</button>
+          </form>
+        </div>
+        <div className="dd-panel">
+          <h3>Access summary</h3>
+          <p>Membership is scoped only to this dealer.</p>
+          <dl className="dd-stats">
+            <div className="dd-stat"><dt>Users</dt><dd>{users.length}</dd></div>
+            <div className="dd-stat"><dt>Active</dt><dd>{users.filter((user) => user.status === 'active').length}</dd></div>
+            <div className="dd-stat"><dt>Pending</dt><dd>{users.filter((user) => user.status === 'pending').length}</dd></div>
+          </dl>
+        </div>
       </div>
       <div className="billing-access-card__list">
         <div className="billing-access-card__list-heading"><div><h3>Current Users ({users.length})</h3><p>Membership is scoped only to this dealer.</p></div></div>
@@ -136,7 +147,7 @@ export function DealerUserAccess({ dealerId, sectionId, canSetPassword = false, 
                         <div className="table-actions">
                           {user.status === 'pending' && <button className="button button--outline button--compact" type="button" disabled={saving} onClick={() => void update(user, 'resend')}>Resend Invite</button>}
                           {canSetPassword && <button className="button button--outline button--compact" type="button" disabled={saving} onClick={() => setPendingPasswordConfirmation(user)}>Set Password</button>}
-                          <button className="button button--outline button--compact" type="button" disabled={saving} onClick={() => setPendingRemoval(user)}>Remove Dealer Access</button>
+                          <button className="button button--danger-outline button--compact" type="button" disabled={saving} onClick={() => setPendingRemoval(user)}>Remove Dealer Access</button>
                         </div>
                       </details>
                     </td>
@@ -147,6 +158,7 @@ export function DealerUserAccess({ dealerId, sectionId, canSetPassword = false, 
           </div>
         )}
       </div>
+      <p className="dd-note">New Portal users are invited as Dealer Admin. This does not change billing or CRM roles.</p>
     </section>
     <ConfirmationModal open={Boolean(pendingRemoval)} title="Remove dealer access?" message="This user will lose access to this dealer. Their sign-in and any other legitimate roles will remain unchanged." target={pendingRemoval?.email} confirmLabel="Remove Access" confirmingLabel="Removing…" destructive isConfirming={saving} onCancel={() => { if (!saving) setPendingRemoval(null) }} onConfirm={() => { if (pendingRemoval) void update(pendingRemoval, 'revoke') }} />
     <ConfirmationModal open={Boolean(pendingPasswordConfirmation)} title="Change dealer user password?" message="This replaces the user’s current Portal password. Their dealer access and other account permissions will remain unchanged." target={pendingPasswordConfirmation?.email} confirmLabel="Continue" onCancel={() => setPendingPasswordConfirmation(null)} onConfirm={() => { setPasswordTarget(pendingPasswordConfirmation); setPendingPasswordConfirmation(null); setPasswordError('') }} />
