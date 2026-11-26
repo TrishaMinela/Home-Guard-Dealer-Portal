@@ -336,7 +336,6 @@ test('the branding studio keeps a large preview and moves the homepage logo betw
   await page.getByRole('button', { name: 'Logo Display' }).click()
   await page.getByRole('radio', { name: /Hero/ }).check()
   assert.equal(await page.locator('.branding-studio__status').innerText(), 'Unsaved changes')
-  await page.getByRole('button', { name: 'Homepage', exact: true }).click()
   assert.equal(await page.locator('.db-appearance-preview header .logo-pair, .db-appearance-preview header .dealer-brand-mark').count(), 0)
   assert.equal(await page.locator('.dealer-hero-logo img').count() > 0, true)
   const heroBackground = await page.locator('.db-home .home-hero').evaluate((element) => getComputedStyle(element).backgroundColor)
@@ -345,12 +344,9 @@ test('the branding studio keeps a large preview and moves the homepage logo betw
   assert.equal(await page.locator('.db-appearance-preview header img').count() > 0, true)
   assert.equal(await page.locator('.dealer-hero-logo').count(), 0)
   await page.getByRole('button', { name: 'Colors', exact: true }).click()
-  await page.getByRole('button', { name: 'Typography', exact: true }).click()
-  await page.locator('#heading-font-family').selectOption({ index: 1 })
-  const chosenFont = await page.locator('#heading-font-family').inputValue()
-  await page.getByRole('button', { name: 'Logos', exact: true }).click()
-  await page.getByRole('button', { name: 'Typography', exact: true }).click()
-  assert.equal(await page.locator('#heading-font-family').inputValue(), chosenFont)
+  assert.equal(await page.getByRole('button', { name: 'Typography', exact: true }).count(), 0)
+  await page.locator('#studio-header-color').fill('#112233')
+  await page.locator('#studio-header-color').blur()
   assert.equal(await page.locator('.branding-studio__status').innerText(), 'Unsaved changes')
   await page.close()
 })
@@ -359,11 +355,12 @@ test('old branding links open the matching studio category', async () => {
   const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } })
   await page.goto(`http://127.0.0.1:${port}/?role=admin#profile-nav-harness`, { waitUntil: 'networkidle' })
   await page.evaluate(() => { window.location.hash = 'door-builder-appearance' })
-  await page.getByRole('heading', { name: 'Door Builder Appearance' }).waitFor()
+  await page.getByLabel('Header color').waitFor()
   await page.getByRole('link', { name: 'Company Details', exact: true }).click()
   await page.getByRole('link', { name: 'Company Details', exact: true }).waitFor()
   await page.evaluate(() => { window.location.hash = 'heading-font-family' })
-  await page.locator('#heading-font-family').waitFor()
+  await page.getByLabel('Header color').waitFor()
+  assert.equal(await page.locator('#heading-font-family').count(), 0)
   await page.close()
 })
 
@@ -393,7 +390,6 @@ test('the mobile branding sheet stays above the page and can be closed', async (
 test('the homepage and find my door previews use the live type, porch, and dealer color', async () => {
   const page = await browser!.newPage({ viewport: { width: 1440, height: 900 } })
   await openStudio(page)
-  await page.getByRole('button', { name: 'Homepage', exact: true }).click()
   const home = await page.evaluate(() => {
     const heading = document.querySelector('.db-home h1')
     const emphasis = heading?.querySelector('em')
@@ -440,27 +436,9 @@ test('the homepage and find my door previews use the live type, porch, and deale
   assert.ok(mobileHome.aspect > 1.25 && mobileHome.aspect < 1.42, `mobile photo ratio ${mobileHome.aspect}`)
   assert.equal(mobileHome.stacked, true)
   await page.getByRole('button', { name: 'Desktop', exact: true }).click()
-  await page.getByRole('button', { name: 'Find My Door', exact: true }).click()
-  const find = await page.evaluate(() => {
-    const upload = document.querySelector<HTMLElement>('.find-door-upload')
-    const bar = getComputedStyle(document.querySelector('.find-door-gallery h2')!, '::after')
-    return { upload: upload ? getComputedStyle(upload).backgroundColor : '', underline: bar.backgroundColor, underlineHeight: bar.height }
-  })
-  assert.equal(find.upload, 'rgb(35, 81, 118)')
-  assert.equal(find.underline, 'rgb(248, 211, 14)')
-  assert.ok(parseFloat(find.underlineHeight) >= 3, find.underlineHeight)
-  await page.getByRole('button', { name: 'Mobile', exact: true }).click()
-  const mobile = await page.evaluate(() => {
-    const photo = document.querySelector('.find-door-feature')?.getBoundingClientRect()
-    const copy = document.querySelector('.find-door-lead')?.getBoundingClientRect()
-    const images = [...document.querySelectorAll('.find-door-marquee img')].map((image) => image.getBoundingClientRect())
-    return {
-      photoFirst: !!photo && !!copy && photo.bottom <= copy.top + 2,
-      row: images.length === 3 && images[1].left >= images[0].right - 2 && Math.abs(images[0].top - images[1].top) < 4,
-    }
-  })
-  assert.equal(mobile.photoFirst, true)
-  assert.equal(mobile.row, true)
+  assert.equal(await page.getByRole('button', { name: 'Find My Door', exact: true }).count(), 0)
+  assert.equal(await page.getByRole('button', { name: 'Door Builder', exact: true }).count(), 0)
+  assert.equal(await page.locator('.db-appearance-preview footer').count(), 1)
   await page.close()
 })
 
@@ -523,15 +501,13 @@ test('studio drafts survive categories and discard, and a partial save names the
     if (request.method() !== 'GET' && request.url().includes('example.supabase.co')) writes.push(request.url())
   })
   await openStudio(page)
-  await page.getByRole('button', { name: 'Homepage', exact: true }).click()
   await page.getByRole('button', { name: 'Mobile', exact: true }).click()
   assert.deepEqual(writes, [])
   await page.getByRole('button', { name: 'Logo Display' }).click()
   await page.getByRole('radio', { name: /Hero/ }).check()
   await page.getByRole('button', { name: 'Colors', exact: true }).click()
-  await page.locator('#appearance-headerBackground').click()
-  await page.locator('#appearance-headerBackground-hex').fill('#ff0000')
-  await page.locator('.appearance-popover__done').click()
+  await page.locator('#studio-header-color').fill('#ff0000')
+  await page.locator('#studio-header-color').blur()
   assert.equal(await page.locator('.branding-studio__status').innerText(), 'Unsaved changes')
   await page.getByRole('button', { name: 'Save Changes' }).click()
   await page.locator('.branding-studio__toolbar .branding-studio__save-alert').waitFor()
@@ -561,10 +537,8 @@ test('leaving the studio with unsaved changes asks first and Back returns to the
 })
 
 async function paintStudioColor(page: playwright.Page) {
-  await page.locator('#appearance-bodyBackground').scrollIntoViewIfNeeded()
-  await page.locator('#appearance-bodyBackground').click()
-  await page.locator('#appearance-bodyBackground-hex').fill('#112233')
-  await page.locator('.appearance-popover__done').click()
+  await page.locator('#studio-header-color').fill('#112233')
+  await page.locator('#studio-header-color').blur()
 }
 
 async function showColors(page: playwright.Page, width: number) {
@@ -608,14 +582,13 @@ test('a successful studio save clears the colors draft and keeps the save result
     window.dispatchEvent(event)
     return event.defaultPrevented
   }), false)
-  assert.match(await page.locator('#appearance-bodyBackground').innerText(), /#112233/i)
+  assert.match(await page.locator('#studio-header-color').inputValue(), /#112233/i)
   const appearanceWrites: string[] = []
   page.on('request', (request) => {
     if (request.method() === 'POST' && request.url().includes('update_my_dealer_door_builder_appearance')) appearanceWrites.push(request.url())
   })
-  await page.locator('#appearance-bodyBackground').click()
-  await page.locator('#appearance-bodyBackground-hex').fill('#223344')
-  await page.locator('.appearance-popover__done').click()
+  await page.locator('#studio-header-color').fill('#223344')
+  await page.locator('#studio-header-color').blur()
   await page.locator('.branding-studio__actions .button--primary').evaluate((button) => {
     if (!(button instanceof HTMLButtonElement)) return
     button.click()
@@ -648,24 +621,22 @@ test('a successful studio save clears the colors draft and keeps the save result
     assert.match(await page.locator('.branding-studio__message.is-error').innerText(), /Colors failed: colors rejected/)
     assert.equal(await alertInView(page), true, `${width}px failed save alert is off screen`)
     if (width < 1024) await page.getByRole('button', { name: 'Close', exact: true }).click()
-    await page.getByRole('button', { name: 'Typography', exact: true }).click()
+    await page.getByRole('button', { name: 'Logo Display' }).click()
     if (width < 1024) {
       await page.getByRole('button', { name: 'Edit Settings' }).evaluate((element) => {
         if (element instanceof HTMLButtonElement) element.click()
       })
     }
-    await page.locator('#heading-font-family').evaluate((element, index) => {
-      if (!(element instanceof HTMLSelectElement)) return
-      element.selectedIndex = Number(index)
-      element.dispatchEvent(new Event('change', { bubbles: true }))
-    }, width === 390 ? 3 : width === 1024 ? 2 : 1)
+    await page.getByRole('radio', { name: width === 1024 ? /^Header/ : /^Hero/ }).check()
     if (width < 1024) await page.getByRole('button', { name: 'Close', exact: true }).click()
     await showColors(page, width)
     await page.locator('.branding-studio__editor').evaluate((element) => { element.scrollTop = element.scrollHeight })
-    await page.locator('button:visible').filter({ hasText: 'Save Changes' }).last().click()
+    await page.locator('button:visible').filter({ hasText: 'Save Changes' }).last().evaluate((button) => {
+      if (button instanceof HTMLButtonElement) button.click()
+    })
     await page.locator('.branding-studio__save-alert').first().waitFor()
     const partial = await page.locator('.branding-studio__save-alert').first().innerText()
-    assert.match(partial, /Saved Typography/)
+    assert.match(partial, /Saved Logo Display & Placement/)
     assert.match(partial, /Colors failed:/)
     assert.equal(await alertInView(page), true, `${width}px partial save alert is off screen`)
     if (width < 1024) await page.getByRole('button', { name: 'Close', exact: true }).click()
@@ -677,7 +648,8 @@ test('a dealer member does not see appearance controls', async () => {
   const page = await browser!.newPage({ viewport: { width: 1100, height: 800 } })
   await openStudio(page, 'member')
   await page.getByRole('button', { name: 'Colors', exact: true }).click()
-  await page.getByRole('heading', { name: 'Brand colors' }).waitFor()
+  await page.getByText('Appearance settings are available to dealer admins.').waitFor()
+  assert.equal(await page.getByLabel('Header color').count(), 0)
   assert.equal(await page.getByRole('heading', { name: 'Door Builder Appearance' }).count(), 0)
   await page.getByRole('button', { name: 'Logos', exact: true }).waitFor()
   await page.close()
@@ -691,7 +663,7 @@ test('one logo and an admin studio still show both upload actions', async () => 
   assert.equal(await page.getByText('Replace Logo').count(), 1)
   await page.getByText('Add Second Logo').waitFor()
   await page.getByRole('button', { name: 'Colors', exact: true }).click()
-  await page.getByRole('heading', { name: 'Door Builder Appearance' }).waitFor()
+  await page.getByLabel('Header color').waitFor()
   await page.close()
 })
 
@@ -714,8 +686,7 @@ test('the preview fills the studio and scrolls to Restart Build', async () => {
   await openStudio(page)
   for (const width of [1024, 1280, 1440]) {
     await page.setViewportSize({ width, height: 900 })
-    for (const name of ['Homepage', 'Door Builder', 'Find My Door']) {
-      await page.getByRole('button', { name, exact: true }).click()
+    for (const name of ['Homepage']) {
       const gap = await page.evaluate(() => {
         const shell = document.querySelector('.branding-studio__preview .db-preview-shell')?.getBoundingClientRect()
         const footer = document.querySelector('.db-appearance-preview footer')?.getBoundingClientRect()
@@ -730,28 +701,8 @@ test('the preview fills the studio and scrolls to Restart Build', async () => {
     }
   }
   await page.setViewportSize({ width: 1440, height: 900 })
-  await page.getByRole('button', { name: 'Door Builder', exact: true }).click()
   await page.getByRole('button', { name: 'Mobile', exact: true }).click()
-  const reached = await page.evaluate(() => {
-    const shell = document.querySelector<HTMLElement>('.branding-studio__preview .db-preview-shell')
-    if (!shell || shell.scrollHeight <= shell.clientHeight + 8) return false
-    const buttons = [...document.querySelectorAll<HTMLElement>('.preview-reset-design')]
-    const button = buttons.find((item) => (item.textContent || '').includes('Restart Build') && getComputedStyle(item).display !== 'none' && item.getBoundingClientRect().height > 0)
-    if (!button) return false
-    const shellBox = shell.getBoundingClientRect()
-    const box = button.getBoundingClientRect()
-    shell.scrollTop += box.top - shellBox.top - 12
-    const next = button.getBoundingClientRect()
-    const nextShell = shell.getBoundingClientRect()
-    const bottom = shell.scrollHeight - shell.clientHeight
-    shell.scrollTop = bottom
-    return next.top >= nextShell.top - 2 && next.bottom <= nextShell.bottom + 2 && shell.scrollTop > 40
-  })
-  assert.equal(reached, true)
-  const underline = await page.locator('.section-heading h1').evaluate((element) => getComputedStyle(element, '::after').backgroundColor)
-  assert.equal(underline, 'rgb(35, 81, 118)')
-  const popular = await page.locator('.popular-styles h2').evaluate((element) => getComputedStyle(element, '::after').backgroundColor)
-  assert.equal(popular, 'rgb(248, 211, 14)')
+  assert.equal(await page.locator('.db-appearance-preview footer').count(), 1)
   await page.setViewportSize({ width: 1024, height: 900 })
   const overlap = await page.evaluate(() => {
     const name = document.querySelector('.branding-studio__identity p')?.getBoundingClientRect()
@@ -806,7 +757,7 @@ test('each branding category scrolls its last control into view', async () => {
   await openStudio(page)
   for (const size of [{ width: 1024, height: 768 }, { width: 1440, height: 900 }]) {
     await page.setViewportSize(size)
-    for (const name of ['Logos', 'Logo Display', 'Colors', 'Typography']) {
+    for (const name of ['Logos', 'Logo Display', 'Colors']) {
       await page.getByRole('button', { name, exact: true }).click()
       const editor = page.locator('.branding-studio__editor')
       const box = await editor.boundingBox()
@@ -913,7 +864,7 @@ test('the preview box stays the same across categories and Save stays clickable'
     }
   })
   const first = await box()
-  for (const name of ['Logo Display', 'Colors', 'Typography', 'Logos']) {
+  for (const name of ['Logo Display', 'Colors', 'Logos']) {
     await page.getByRole('button', { name, exact: true }).click()
     assert.deepEqual(await box(), first, name)
   }

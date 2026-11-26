@@ -65,7 +65,7 @@ test('company profile listens for sidebar links without taking over the other sa
   const studio = readFileSync('src/pages/BrandingStudioPage.tsx', 'utf8')
   assert.match(studio, /DealerLogoVariantSettings/)
   assert.match(studio, /DealerLogoPlacementSettings/)
-  assert.match(studio, /DealerTypographySettings/)
+  assert.doesNotMatch(studio, /<DealerTypographySettings/)
   assert.match(studio, /unsavedProfileNavigationKind/)
   assert.match(studio, /document\.addEventListener\('click', onClick, true\)/)
   assert.doesNotMatch(logos, /unsavedProfileNavigationKind/)

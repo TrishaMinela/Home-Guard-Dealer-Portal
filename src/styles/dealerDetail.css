@@ -119,8 +119,18 @@ body:has(.dealer-detail-page) { overflow-x: clip; }
 .dealer-detail-page .dd-section .crm-audit-history { margin: 0; padding: 16px; border: 1px solid var(--dd-line); border-radius: var(--dd-radius-card); background: #fff; }
 .dealer-detail-page .dd-editor .dealer-form,
 .dealer-detail-page .dd-editor .content-card { margin: 0; }
+.portal-main:has(.dd-studio) { display: flex; flex-direction: column; overflow: hidden; }
+.dealer-detail-page:has(.dd-studio) {
+  display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden;
+}
+.dealer-detail-page:has(.dd-studio) .dd-heading,
+.dealer-detail-page:has(.dd-studio) .dealer-detail-nav,
+.dealer-detail-page:has(.dd-studio) > .portal-alert { flex: 0 0 auto; }
+.dealer-detail-page:has(.dd-studio) .dealer-detail-nav { position: static; }
+.dealer-detail-page:has(.dd-studio) .dealer-detail-page__sections { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.dealer-detail-page:has(.dd-studio) .dd-studio { display: flex; flex-direction: column; min-height: 0; height: auto; overflow: hidden; }
 .dealer-detail-page .branding-studio {
-  height: min(880px, calc(100dvh - 240px)); min-height: 560px; max-height: none;
+  flex: 1 1 auto; height: auto; min-height: 0; max-height: none;
   border: 1px solid var(--dd-line); border-radius: var(--dd-radius-card); overflow: hidden;
 }
 .dd-crumb { display: flex; align-items: center; gap: 8px; color: var(--dd-muted); font-size: 13px; }
@@ -340,6 +350,7 @@ body:has(.dealer-detail-page) { overflow-x: clip; }
 .dealer-detail-page .dealer-admin-marketing__content > .dd-split,
 .dealer-detail-page .dealer-admin-marketing__content > .banner-link-card:last-child,
 .dealer-detail-page .dealer-admin-marketing__content > .portal-alert { grid-column: 1 / -1; }
+.dealer-detail-page .portal-alert--compact { margin: 0; padding: 8px 12px; font-size: 12px; line-height: 1.4; }
 .dealer-detail-page .dealer-admin-marketing__content .banner-link-card,
 .dealer-detail-page .dealer-admin-marketing__content > .mbl {
   margin: 0; border: 1px solid var(--dd-line); border-radius: var(--dd-radius-card); background: #fff; box-shadow: none;

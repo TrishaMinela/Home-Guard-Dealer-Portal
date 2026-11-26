@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
   dealerDetailSections,
   dealerDetailStickyOffset,
+  dealerSectionFromLegacyHash,
   dealerSectionFromPathname,
   dealerSectionHref,
   isScrollerAtEnd,
@@ -61,6 +62,20 @@ test('visible dealer detail sections follow the same access flags as the page', 
     visibleDealerDetailSections({ canManageDealerCredentials: false, canManageDealerUsers: true }).map((section) => section.id),
     ['setup', 'company-details', 'branding-studio', 'door-builder-lead-webhook', 'website-address', 'dealer-users'],
   )
+})
+
+test('old dealer hashes open the matching tab', () => {
+  const id = 'dealer-1'
+  assert.equal(dealerSectionFromLegacyHash('#dealer-users'), 'access')
+  assert.equal(dealerSectionFromLegacyHash('#add-dealer-user'), 'access')
+  assert.equal(dealerSectionFromLegacyHash('#marketing-tools'), 'marketing')
+  assert.equal(dealerSectionFromLegacyHash('#setup'), '')
+  assert.equal(dealerSectionFromLegacyHash('#company-name'), null)
+  assert.equal(dealerSectionHref(id, dealerSectionFromLegacyHash('#dealer-users') ?? ''), `/admin/dealers/${id}/access`)
+  assert.equal(dealerSectionHref(id, dealerSectionFromLegacyHash('#marketing-tools') ?? ''), `/admin/dealers/${id}/marketing`)
+  assert.match(page, /dealerSectionFromLegacyHash/)
+  assert.doesNotMatch(readFileSync('src/pages/EditDealerPage.tsx', 'utf8'), /#dealer-users|#branding/)
+  assert.doesNotMatch(readFileSync('src/pages/AdminMarketingBannersPage.tsx', 'utf8'), /#marketing-tools/)
 })
 
 test('dealer section routes round-trip and ignore unknown paths', () => {

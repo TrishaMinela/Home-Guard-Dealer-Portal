@@ -35,7 +35,7 @@ type Props = {
 }
 
 const GROUP_NOTES: Record<SimplifiedAppearanceGroup, string> = {
-  header: 'Background covers the builder header, the homepage header, and the Find My Door header. Text colors navigation labels, icons, and header buttons. Logos, logo links, and logo sizing stay as they are.',
+  header: 'Background and text cover the homepage header and the Door Builder header, including the visualizer. Find My Door stays black with a gold line until a header color is saved here. Logos, logo links, and logo sizing stay as they are.',
   main: 'One background covers the left configuration area on Door, Finish, Glass, and Hardware, including its headings and instructions. It does not recolor the door preview, the homepage hero, or homepage content. Find My Door uses it only on the options block. Cards, door images, glass, finishes, hardware, and photos keep their own colors.',
   footer: 'Text colors footer copy, links, the Built with ♥ by School Radius credit, and icons. Home Guard branding, feedback, and links stay in place.',
 }

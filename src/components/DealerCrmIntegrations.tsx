@@ -42,9 +42,9 @@ type ApiResponse = {
 type MappingRow = { destination: string; source: string }
 
 const providers: Array<{ value: Provider; label: string; description: string }> = [
-  { value: 'opta', label: 'Opta', description: 'Dealer lead delivery for approved Opta accounts.' },
-  { value: 'gohighlevel', label: 'GoHighLevel', description: 'Future location-scoped lead delivery.' },
-  { value: 'custom_webhook', label: 'Custom Webhook', description: 'Future HTTPS webhook delivery.' },
+  { value: 'opta', label: 'Opta', description: 'Where this dealer’s leads can be sent in Opta. Saving these settings does not send a lead.' },
+  { value: 'gohighlevel', label: 'GoHighLevel', description: 'A place for a future GoHighLevel connection. It does not send leads yet.' },
+  { value: 'custom_webhook', label: 'Custom Webhook', description: 'A place for a future web address. This is separate from the Leads & Webhook tab.' },
 ]
 const sources = [
   ['customer.first_name', 'Customer first name'], ['customer.last_name', 'Customer last name'],
@@ -245,7 +245,7 @@ export function DealerCrmIntegrations({ dealerId, preview }: { dealerId: string;
         eyebrow="Lead delivery"
         title="CRM Integrations"
         headingId="crm-integrations-title"
-        description="Connect this dealer to Opta, GoHighLevel, or a custom webhook."
+        description="Choose where this dealer’s Door Builder leads should go. Saving here does not send a lead, and it does not change the Leads & Webhook address."
         actionLabel="Manage Integrations"
         actionHref="#crm-provider-grid"
         actionIcon="manage"

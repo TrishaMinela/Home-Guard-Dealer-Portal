@@ -1,12 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { BrandColorField } from '../components/BrandColorField'
 import { DoorBuilderAppearancePreview } from '../components/DoorBuilderAppearancePreview'
-import { DoorBuilderAppearanceSettings } from '../components/DoorBuilderAppearanceSettings'
 import { DealerLogoDisplaySettings } from '../components/DealerLogoDisplaySettings'
 import { DealerLogoPlacementSettings, type DealerLogoPlacement } from '../components/DealerLogoPlacementSettings'
 import { DealerLogoVariantSettings } from '../components/DealerLogoVariantSettings'
-import { DealerTypographySettings } from '../components/DealerTypographySettings'
 import { LogoBackgroundDialog } from '../components/LogoBackgroundDialog'
 import { LogoFileStatus, type LogoFileStatusState } from '../components/LogoFileStatus'
 import { getDealerVisualizerUrl } from '../config/visualizer'
@@ -14,7 +11,7 @@ import { STUDIO_SECTIONS, isLegacyBrandingTarget, runBrandingSave, studioSection
 import { supabase } from '../lib/supabase'
 import '../styles/brandingStudio.css'
 import type { AdminDealer } from '../types/admin'
-import { appearanceEquals, appearanceRpcArgs, appearanceUpdate, type DoorBuilderAppearance } from '../utils/doorBuilderAppearance'
+import { DOOR_BUILDER_PRIMARY_FALLBACK, DOOR_BUILDER_SECONDARY_FALLBACK, appearanceEquals, appearanceRpcArgs, appearanceUpdate, parseHexInput, resolveAppearanceValue, type DoorBuilderAppearance } from '../utils/doorBuilderAppearance'
 import { normalizeLogoWebsiteUrl } from '../utils/logoWebsiteUrl'
 import { generateDefaultDealerLightLogo } from '../utils/dealerLightLogo'
 import { generatedLightLogoMessage, logoVariantSavePlan, normalizeLogoDisplay, type DealerLogoDisplay, type DealerLogoVariant } from '../utils/dealerLogoVariants'
@@ -34,6 +31,53 @@ function joinLabels(labels: string[]) {
   return `${unique.slice(0, -1).join(', ')} and ${unique[unique.length - 1]}`
 }
 import { readLogoForRemoval } from '../utils/readLogoForRemoval'
+
+function patchAppearance(current: DoorBuilderAppearance | null | undefined, key: 'headerBackground' | 'footerBackground', hex: string | null) {
+  const next: DoorBuilderAppearance = { ...(current ?? {}) }
+  if (hex) next[key] = hex
+  else delete next[key]
+  return Object.keys(next).length ? next : null
+}
+
+function patchTextColor(current: DoorBuilderAppearance | null | undefined, hex: string | null) {
+  const next: DoorBuilderAppearance = { ...(current ?? {}) }
+  if (hex) {
+    next.bodyText = hex
+    next.headingText = hex
+  } else {
+    delete next.bodyText
+    delete next.headingText
+  }
+  return Object.keys(next).length ? next : null
+}
+
+function ColorRow({ id, label, value, onCommit, onReset }: { id: string; label: string; value: string; onCommit: (hex: string) => void; onReset: () => void }) {
+  const [text, setText] = useState(value)
+  const [rowError, setRowError] = useState('')
+  const [source, setSource] = useState(value)
+  if (source !== value) {
+    setSource(value)
+    setText(value)
+    setRowError('')
+  }
+  const swatch = /^#[0-9a-f]{6}$/i.test(text) ? text : value
+  return (
+    <div className="studio-color-row">
+      <label htmlFor={id}>{label}</label>
+      <span className="studio-color-row__swatch" style={{ background: swatch }} />
+      <input id={id} value={text} spellCheck={false} autoCapitalize="off" autoCorrect="off" onChange={(event) => {
+        const next = event.target.value
+        setText(next)
+        const parsed = parseHexInput(next)
+        if (!parsed.ok) { setRowError(parsed.error); return }
+        setRowError('')
+        onCommit(parsed.hex)
+      }} />
+      <button type="button" onClick={onReset}>Reset</button>
+      {rowError ? <p className="studio-color-row__error" role="alert">{rowError}</p> : null}
+    </div>
+  )
+}
 
 const logoExtensions: Record<string, string> = {
   'image/png': 'png',
@@ -78,11 +122,11 @@ export function AdminBrandingStudioRoute({
 export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, onDealerUpdated }: Props) {
   const [params, setParams] = useSearchParams()
   const requested = studioSectionFromValue(params.get('section')) ?? studioSectionFromValue(window.location.hash) ?? 'logos'
-  const section: StudioSectionId = requested
+  const section: StudioSectionId = requested === 'typography' ? 'colors' : requested
   const [panel, setPanel] = useState<StudioSectionId>(section)
   const [logoView, setLogoView] = useState<'cards' | 'primary-variants' | 'secondary-variants'>('cards')
   const [editing, setEditing] = useState(false)
-  const [surface, setSurface] = useState<'homepage' | 'builder' | 'find'>('builder')
+  const [previewSource, setPreviewSource] = useState<'draft' | 'saved'>('draft')
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches)
   const [placementDraft, setPlacementDraft] = useState<DealerLogoPlacement | null>(null)
   const [displayDraft, setDisplayDraft] = useState<DealerLogoDisplay | null>(null)
@@ -139,6 +183,9 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
     || (brandDraft != null && (brandDraft.primary !== (dealer.primary_color ?? '') || brandDraft.secondary !== (dealer.secondary_color ?? '')))
     || linkChanged(primaryLinkDraft, dealer.logo_website_url)
     || linkChanged(secondaryLinkDraft, dealer.logo_secondary_website_url)
+  const showingSaved = previewSource === 'saved' && dirty
+  const canvasDealer = showingSaved ? dealer : previewDealer
+  const canvasAppearance = showingSaved ? dealer.door_builder_appearance ?? null : appearance
 
   useEffect(() => {
     if (!dirty) return
@@ -166,7 +213,8 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
   useEffect(() => {
     const redirect = () => {
       if (!isLegacyBrandingTarget(window.location.hash)) return
-      const next = studioSectionFromValue(window.location.hash)
+      const found = studioSectionFromValue(window.location.hash)
+      const next = found === 'typography' ? 'colors' : found
       if (!next) return
       window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
       setParams({ section: next }, { replace: true })
@@ -678,9 +726,9 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
   }
 
   const sectionMeta = {
-    logos: ['Logos', 'Upload both logos, generate variants, and set each website link.'],
-    placement: ['Logo Display & Placement', 'Choose one or two logos, then where the homepage shows them.'],
-    colors: ['Colors', 'Brand colors are separate from the six Door Builder overrides.'],
+    logos: ['Logos', 'Files save immediately. Website links stay in the draft until you save.'],
+    placement: ['Logo Display', 'Choose how many logos, and where the homepage shows them.'],
+    colors: ['Colors', 'Header, footer, button, and text. Reset returns a color to its default. Other saved colors stay as they are.'],
     typography: ['Typography', 'Headings and body type update the preview immediately.'],
   } as const
   const active = sectionMeta[panel]
@@ -700,19 +748,30 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
     return { state: 'saved', name: logoName(generatedUrl) }
   }
 
+  const editorBodyRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const body = editorBodyRef.current
+    if (!body) return
+    body.scrollTop = 0
+  }, [panel, logoView])
+
+  const colorBrand = {
+    primary: brand.primary || DOOR_BUILDER_PRIMARY_FALLBACK,
+    secondary: brand.secondary || DOOR_BUILDER_SECONDARY_FALLBACK,
+  }
+  const headerColor = resolveAppearanceValue(appearance?.headerBackground, colorBrand) ?? colorBrand.secondary
+  const footerColor = resolveAppearanceValue(appearance?.footerBackground, colorBrand) ?? colorBrand.secondary
+  const textColor = resolveAppearanceValue(appearance?.bodyText, colorBrand) ?? resolveAppearanceValue(appearance?.headingText, colorBrand) ?? '#05040b'
+  const buttonColor = /^#[0-9a-f]{3,6}$/i.test(brand.primary) ? brand.primary : DOOR_BUILDER_PRIMARY_FALLBACK
+  function setAppearanceColor(key: 'headerBackground' | 'footerBackground', hex: string | null) {
+    setAppearanceDraft((current) => patchAppearance(current === undefined ? dealer.door_builder_appearance ?? null : current, key, hex))
+  }
+  function setTextColor(hex: string | null) {
+    setAppearanceDraft((current) => patchTextColor(current === undefined ? dealer.door_builder_appearance ?? null : current, hex))
+  }
+
   const editor = (
     <>
-      <div className="branding-studio__sheet-bar">
-        <strong>{active[0]}</strong>
-        <button type="button" onClick={() => setEditing(false)}>Close</button>
-        {saveAlert ? <p className="branding-studio__save-alert" role="alert">{saveAlert}</p> : null}
-      </div>
-      <div className="branding-studio__editor-head">
-        <h2>{logoView !== 'cards' ? 'Manage Variants' : panel === 'logos' ? 'Logo Settings' : active[0]}</h2>
-        <p>{logoView !== 'cards' ? 'Original, white, and black choices for this logo. Files save immediately.' : panel === 'logos' ? 'Displayed in the selected website locations.' : active[1]}</p>
-        {message && <p className="branding-studio__message" role="status">{message}</p>}
-        {error && <p className="branding-studio__message is-error" role="alert">{error}</p>}
-      </div>
       {logoView !== 'cards' && <button type="button" className="branding-studio__back-section" onClick={() => setLogoView('cards')}>Back</button>}
       {panel === 'logos' && logoView === 'cards' && (
         <div className="branding-studio__cards">
@@ -799,27 +858,28 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
         </div>
       )}
       {panel === 'placement' && (
-        <>
-          <p className="branding-studio__note">Header and Hero are only set here. Marketing banners do not use these choices.</p>
-          <DealerLogoDisplaySettings key={`display-${draftEpoch}`} dealer={dealer} embedded showUploads={false} value={display} onDraftChange={setDisplayDraft} onSaveDisplay={async (value) => saveDisplay(dealer, value)} onSaveSecondary={saveSecondary} onUpdated={onDealerUpdated} />
-          <DealerLogoPlacementSettings key={`placement-${draftEpoch}`} dealer={dealer} value={placement} onDraftChange={setPlacementDraft} onSave={async (value) => savePlacement(dealer, value)} onUpdated={onDealerUpdated} />
-        </>
+        <div className="studio-flat">
+          <section className="studio-group">
+            <h3>How many logos</h3>
+            <p>Marketing banners do not use these choices.</p>
+            <DealerLogoDisplaySettings key={`display-${draftEpoch}`} dealer={dealer} embedded showUploads={false} value={display} onDraftChange={setDisplayDraft} onSaveDisplay={async (value) => saveDisplay(dealer, value)} onSaveSecondary={saveSecondary} onUpdated={onDealerUpdated} />
+          </section>
+          <section className="studio-group">
+            <h3>Logo placement</h3>
+            <p>Header is the top bar. Hero sits above the headline.</p>
+            <DealerLogoPlacementSettings key={`placement-${draftEpoch}`} dealer={dealer} value={placement} onDraftChange={setPlacementDraft} onSave={async (value) => savePlacement(dealer, value)} onUpdated={onDealerUpdated} />
+          </section>
+        </div>
       )}
       {panel === 'colors' && (
-        <>
-          <section className="studio-brand">
-            <h3>Brand colors</h3>
-            <p>Primary and secondary stay with the dealer brand. They are not the six Door Builder overrides below.</p>
-            <BrandColorField id="brand-primary" label="Primary" value={brand.primary} onChange={(next) => setBrandDraft({ primary: next, secondary: brand.secondary })} />
-            <BrandColorField id="brand-secondary" label="Secondary" value={brand.secondary} onChange={(next) => setBrandDraft({ primary: brand.primary, secondary: next })} />
-          </section>
-          {(canEditAppearance || mode === 'admin')
-            ? <DoorBuilderAppearanceSettings key={`appearance-${draftEpoch}`} dealer={previewDealer} mode={mode} canEdit embedded loadFromServer={false} initialAppearance={appearance} onDraftChange={setAppearanceDraft} onSave={async (value) => { onDealerUpdated(await saveAppearance(dealer, value)) }} />
-            : <p>Appearance settings are available to dealer admins.</p>}
-        </>
-      )}
-      {panel === 'typography' && (
-        <DealerTypographySettings key={`type-${draftEpoch}`} dealer={previewDealer} draft={typographyDraft} embedded onDraftChange={(values) => setTypographyDraft(JSON.stringify(values) === JSON.stringify(dealerTypographyValues(dealer)) ? null : values)} onSave={async (values) => saveTypography(dealer, values)} onUpdated={onDealerUpdated} />
+        canEditAppearance || mode === 'admin' ? (
+          <div className="studio-color-list">
+            <ColorRow id="studio-header-color" label="Header color" value={headerColor} onCommit={(hex) => setAppearanceColor('headerBackground', hex)} onReset={() => setAppearanceColor('headerBackground', null)} />
+            <ColorRow id="studio-footer-color" label="Footer color" value={footerColor} onCommit={(hex) => setAppearanceColor('footerBackground', hex)} onReset={() => setAppearanceColor('footerBackground', null)} />
+            <ColorRow id="studio-button-color" label="Button color" value={buttonColor} onCommit={(hex) => setBrandDraft({ primary: hex, secondary: dealer.secondary_color ?? '' })} onReset={() => setBrandDraft({ primary: '', secondary: dealer.secondary_color ?? '' })} />
+            <ColorRow id="studio-text-color" label="Text color" value={textColor} onCommit={setTextColor} onReset={() => setTextColor(null)} />
+          </div>
+        ) : <p>Appearance settings are available to dealer admins.</p>
       )}
       {removal && <LogoBackgroundDialog originalUrl={removal.originalUrl} removedUrl={removal.removedUrl} reason={removal.reason} busy={uploading} onAccept={() => void acceptTransparentLogo()} onKeep={() => void keepOriginalLogo()} onCancel={dismissRemoval} />}
       <div className="branding-studio__sheet-actions">
@@ -835,7 +895,7 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
         <Link className="branding-studio__back" to={backTo}>{mode === 'dealer' ? 'Company Details' : 'Back to Dealer'}</Link>
         <div className="branding-studio__identity">
           <h1>Branding Studio</h1>
-          <p>Manage logos, brand colors, placement and typography.</p>
+          <p>Manage logos, placement, and the homepage colors.</p>
         </div>
         <p className={`branding-studio__status${dirty ? '' : ' is-clean'}`} role="status">{dirty ? 'Unsaved changes' : '✓ All changes saved'}</p>
         {saveAlert ? <p className="branding-studio__save-alert" role="alert">{saveAlert}</p> : null}
@@ -847,7 +907,7 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
         </div>
       </header>
       <div className="branding-studio__pills" role="group" aria-label="Branding categories">
-        {STUDIO_SECTIONS.map((item) => (
+        {STUDIO_SECTIONS.filter((item) => item.id !== 'typography').map((item) => (
           <button key={item.id} type="button" aria-pressed={panel === item.id} onClick={() => choose(item.id)}>
             {item.id === 'placement' ? 'Logo Display' : item.label}
           </button>
@@ -857,21 +917,33 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
         <section className="branding-studio__preview" aria-label="Live preview">
           <div className="branding-studio__preview-card">
             <div className="branding-studio__preview-bar">
-              <strong>Live Door Builder Preview</strong>
-              <div className="branding-studio__toggles" role="group" aria-label="Preview page">
-                <button type="button" aria-pressed={surface === 'builder'} onClick={() => { setSurface('builder'); setMobile(false) }}>Door Builder</button>
-                <button type="button" aria-pressed={!mobile && surface !== 'builder'} onClick={() => setMobile(false)}>Desktop</button>
+              <strong>{showingSaved ? 'Saved production preview' : 'Draft preview'}</strong>
+              <div className="branding-studio__source" role="group" aria-label="Preview source">
+                <button type="button" aria-pressed={!showingSaved} onClick={() => setPreviewSource('draft')}>Draft</button>
+                <button type="button" className="is-saved" aria-pressed={showingSaved} disabled={!dirty} onClick={() => setPreviewSource('saved')}>Saved</button>
+              </div>
+              <div className="branding-studio__toggles" role="group" aria-label="Preview width">
+                <button type="button" aria-pressed={!mobile} onClick={() => setMobile(false)}>Desktop</button>
                 <button type="button" aria-pressed={mobile} onClick={() => setMobile(true)}>Mobile</button>
               </div>
             </div>
-            <div className="branding-studio__page-pills" role="group" aria-label="Preview page">
-              <button type="button" aria-pressed={surface === 'homepage'} onClick={() => setSurface('homepage')}>Homepage</button>
-              <button type="button" aria-pressed={surface === 'find'} onClick={() => setSurface('find')}>Find My Door</button>
-            </div>
-            <DoorBuilderAppearancePreview dealer={previewDealer} appearance={appearance} surface={surface} mobile={mobile} hideToolbar />
+            <DoorBuilderAppearancePreview dealer={canvasDealer} appearance={canvasAppearance} surface="homepage" mobile={mobile} hideToolbar matchLiveDocument />
           </div>
         </section>
-        <aside className="branding-studio__editor" aria-label="Branding settings">{editor}</aside>
+        <aside className="branding-studio__editor" aria-label="Branding settings" ref={editorBodyRef}>
+          <div className="branding-studio__sheet-bar">
+            <strong>{active[0]}</strong>
+            <button type="button" onClick={() => setEditing(false)}>Close</button>
+            {saveAlert ? <p className="branding-studio__save-alert" role="alert">{saveAlert}</p> : null}
+          </div>
+          <div className="branding-studio__editor-head">
+            <h2>{logoView !== 'cards' ? 'Manage Variants' : active[0]}</h2>
+            <p>{logoView !== 'cards' ? 'Original, white, and black choices for this logo. Files save immediately.' : active[1]}</p>
+            {message && <p className="branding-studio__message" role="status">{message}</p>}
+            {error && <p className="branding-studio__message is-error" role="alert">{error}</p>}
+          </div>
+          <div className="branding-studio__editor-body">{editor}</div>
+        </aside>
       </div>
     </div>
   )

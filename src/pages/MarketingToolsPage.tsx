@@ -43,11 +43,11 @@ export function MarketingToolsPage({
 
   return (
     <div className={embedded ? 'dealer-admin-marketing__content' : 'page-content'}>
-      <header className="page-header">
-        <p className="eyebrow">{embedded ? dealer.company_name : 'Dealer Marketing'}</p>
+      {embedded ? null : <header className="page-header">
+        <p className="eyebrow">Dealer Marketing</p>
         <h1>Marketing Tools</h1>
-        <p>Create website-ready graphics using {embedded ? `${dealer.company_name}’s` : 'your approved'} dealer branding.</p>
-      </header>
+        <p>Create website-ready graphics using your approved dealer branding.</p>
+      </header>}
 
       {message && <div className="portal-alert portal-alert--success" role="status">{message}</div>}
       {error && <div className="portal-alert" role="alert">{error}</div>}

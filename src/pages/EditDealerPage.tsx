@@ -181,7 +181,7 @@ export function EditDealerPage({ dealers, isLoading, error, onSaved, scope }: Ed
         <button className={activeSection === 'company' ? 'is-active' : ''} type="button" onClick={() => setActiveSection('company')}>Company Details</button>
         <button className={activeSection === 'branding' ? 'is-active' : ''} type="button" onClick={() => setActiveSection('branding')}>Branding</button>
         <button className={activeSection === 'design' ? 'is-active' : ''} type="button" onClick={() => setActiveSection('design')}>Typography &amp; Design</button>
-        <Link to={`/admin/dealers/${dealer.id}#dealer-users`}>Dealer Users / Access</Link>
+        <Link to={`/admin/dealers/${dealer.id}/access`}>Dealer Users / Access</Link>
       </nav>
 
       {activeSection === 'company' && <DealerForm
@@ -202,7 +202,7 @@ export function EditDealerPage({ dealers, isLoading, error, onSaved, scope }: Ed
           <div className="filter-field"><label htmlFor="primary-color">Primary Brand Color</label><div className="color-field"><input aria-label="Choose primary brand color" type="color" value={selectedBrandColors.primary || '#0d666c'} onChange={(event) => setBrandColors({ ...selectedBrandColors, primary: event.target.value })} /><input id="primary-color" value={selectedBrandColors.primary} onChange={(event) => setBrandColors({ ...selectedBrandColors, primary: event.target.value })} placeholder="#0d666c" /></div></div>
           <div className="filter-field"><label htmlFor="secondary-color">Secondary Brand Color</label><div className="color-field"><input aria-label="Choose secondary brand color" type="color" value={selectedBrandColors.secondary || '#f8d30e'} onChange={(event) => setBrandColors({ ...selectedBrandColors, secondary: event.target.value })} /><input id="secondary-color" value={selectedBrandColors.secondary} onChange={(event) => setBrandColors({ ...selectedBrandColors, secondary: event.target.value })} placeholder="#f8d30e" /></div></div>
         </div>
-        <div className="dealer-form__actions"><button className="button button--outline" type="button" disabled={isSavingBranding} onClick={() => setBrandColors({ primary: dealer.primary_color ?? '', secondary: dealer.secondary_color ?? '' })}>Cancel</button><Link className="button button--outline" to={`/admin/dealers/${dealer.id}#branding`}>Manage Logos</Link><button className="button button--primary" type="submit" disabled={isSavingBranding}>{isSavingBranding ? 'Saving...' : 'Save Branding'}</button></div>
+        <div className="dealer-form__actions"><button className="button button--outline" type="button" disabled={isSavingBranding} onClick={() => setBrandColors({ primary: dealer.primary_color ?? '', secondary: dealer.secondary_color ?? '' })}>Cancel</button><Link className="button button--outline" to={`/admin/dealers/${dealer.id}/branding`}>Manage Logos</Link><button className="button button--primary" type="submit" disabled={isSavingBranding}>{isSavingBranding ? 'Saving...' : 'Save Branding'}</button></div>
       </form>}
 
       {activeSection === 'design' && <DealerTypographySettings dealer={dealer} onSave={saveTypography} onUpdated={onSaved}/>}

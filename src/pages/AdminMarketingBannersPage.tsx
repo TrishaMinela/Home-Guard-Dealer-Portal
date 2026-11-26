@@ -17,7 +17,7 @@ export function AdminMarketingBannersPage({ dealers }: { dealers: AdminDealer[] 
           <h1>Banner Library</h1>
           <p>Upload a clean template for each banner and set its logo region. Dealers can generate banners for their own dealership. They cannot change these templates.</p>
         </div>
-        <Link className="button button--outline" to={backToDealer ? `/admin/dealers/${dealerId}#marketing-tools` : '/admin/dealers'}>
+        <Link className="button button--outline" to={backToDealer ? `/admin/dealers/${dealerId}/marketing` : '/admin/dealers'}>
           {backToDealer ? 'Back to dealer' : 'Back to Dealers'}
         </Link>
       </header>

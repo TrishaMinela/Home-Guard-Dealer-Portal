@@ -224,8 +224,8 @@ export function DoorBuilderLeadWebhook({ dealerId, preview }: { dealerId: string
       <div className="dealer-section-header door-builder-webhook__heading">
         <DealerCardIcon name="webhook" />
         <div className="dealer-section-header__copy">
-          <h3>Lead Webhook</h3>
-          <p>Manage dealer lead delivery, connection testing and recent activity.</p>
+          <h3>Leads & Webhook</h3>
+          <p>This is the web address that can receive a copy of this dealer’s Door Builder leads. It does not change Opta or the other CRM connections.</p>
         </div>
         <span className={`status-badge dd-status ${configured ? 'status-badge--active' : 'status-badge--inactive'}`}>{configured ? 'Configured' : 'Not Configured'}</span>
       </div>
@@ -238,13 +238,13 @@ export function DoorBuilderLeadWebhook({ dealerId, preview }: { dealerId: string
             <section className="door-builder-webhook__panel">
               <div className="door-builder-webhook__panel-head">
                 <div>
-                  <h4>Webhook Connection</h4>
-                  <p>Dealer webhook destination. Home Guard master routing remains separate.</p>
+                  <h4>Where leads are sent</h4>
+                  <p>Paste the address from Zapier or another tool. Home Guard’s own routing stays separate.</p>
                 </div>
                 <span className="dd-chip">Zapier</span>
               </div>
               <form className="door-builder-webhook__main" onSubmit={(event) => void save(event)}>
-                <label htmlFor={`${warningId}-url`}>Webhook URL
+                <label htmlFor={`${warningId}-url`}>Lead address
                   <span className="door-builder-webhook__url">
                     <input id={`${warningId}-url`} type="text" inputMode="url" autoComplete="off" spellCheck={false} maxLength={200} value={urlValue} placeholder="https://hooks.zapier.com/hooks/catch/…/…/" onFocus={(event) => { setUrlFocused(true); if (!draft && webhook.maskedUrl && event.currentTarget.value === webhook.maskedUrl) event.currentTarget.value = '' }} onBlur={() => setUrlFocused(false)} onChange={(event) => setDraft(event.target.value === webhook.maskedUrl ? '' : event.target.value)} />
                     <button className="door-builder-webhook__copy" type="button" aria-label="Copy masked webhook" disabled={!webhook.maskedUrl} onClick={() => void copyMasked()}>
@@ -252,7 +252,7 @@ export function DoorBuilderLeadWebhook({ dealerId, preview }: { dealerId: string
                     </button>
                   </span>
                 </label>
-                <p className="door-builder-webhook__hint">Saved addresses are masked for security. Paste a Catch Hook URL to save or replace it. Saved webhook: {configured ? webhook.maskedUrl : 'Not Configured'}.</p>
+                <p className="door-builder-webhook__hint">The saved address is hidden except for the last few characters. Paste a new address to replace it. Nothing is sent until you choose Test Connection. Saved address: {configured ? webhook.maskedUrl : 'Not set'}.</p>
                 <div className="door-builder-webhook__actions">
                   <button className="button button--primary" type="submit" disabled={busy || !encryptionConfigured || !draft.trim()}>{isSaving ? 'Saving securely…' : 'Save Webhook'}</button>
                   <button className="button button--outline" type="button" disabled={busy || !configured} aria-describedby={warningId} onClick={() => setConfirmTest(true)}>{isTesting ? 'Testing…' : 'Test Connection'}</button>

@@ -161,18 +161,5 @@
   --logo-pair-max-height: 56px;
 }
 
-.db-preview-frame {
-  container-type: inline-size;
-}
-
-@container (max-width: 900px) {
-  .db-appearance-preview header .logo-pair {
-    --logo-pair-max-height: 58px;
-  }
-}
-
-@container (max-width: 560px) {
-  .db-appearance-preview header .logo-pair {
-    --logo-pair-max-height: 40px;
-  }
-}
+/* Narrow pair sizing follows the simulated page (.is-mobile), not the editor column.
+   A 1280px desktop canvas stays at 72px even when the settings panel makes the frame narrow. */

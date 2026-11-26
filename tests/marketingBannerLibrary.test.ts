@@ -389,9 +389,11 @@ test('Marketing Tools renders the banner library instead of the version 1 genera
   assert.doesNotMatch(css, /\.banner-generator|\.banner-size-grid|\.banner-template-grid|\.banner-preview-frame/)
 
   const libraryAt = tools.indexOf('<MarketingBannerLibrary')
-  const visualizerAt = tools.indexOf('>Visualizer Link<')
+  const embeddedVisualizerAt = tools.indexOf('>Visualizer Link<')
+  const standaloneVisualizerAt = tools.indexOf('>Visualizer Link<', libraryAt)
   const embedAt = tools.indexOf('>Embed Code<')
-  assert.ok(libraryAt > -1 && visualizerAt > libraryAt && embedAt > visualizerAt)
+  assert.ok(libraryAt > -1 && embeddedVisualizerAt > -1 && embeddedVisualizerAt < libraryAt)
+  assert.ok(standaloneVisualizerAt > libraryAt && embedAt > standaloneVisualizerAt)
   assert.match(tools, /getDealerVisualizerUrl\(dealer\.slug\)/)
   assert.match(tools, /Copy Embed Code/)
 
@@ -426,7 +428,8 @@ test('Marketing Tools renders the banner library instead of the version 1 genera
   assert.match(adminLayout, /<Route path="\/admin\/marketing-banners" element={<AdminMarketingBannersPage/)
   assert.match(adminPage, /Back to dealer/)
   assert.match(adminPage, /Back to Dealers/)
-  assert.match(adminPage, /\/admin\/dealers\/\$\{dealerId\}#marketing-tools/)
+  assert.match(adminPage, /\/admin\/dealers\/\$\{dealerId\}\/marketing/)
+  assert.doesNotMatch(adminPage, /#marketing-tools/)
   assert.match(portal, /\{ label: 'Marketing Tools', path: '\/marketing'/)
   assert.doesNotMatch(portal, /Marketing Banners|\/admin\/marketing-banners/)
 })
