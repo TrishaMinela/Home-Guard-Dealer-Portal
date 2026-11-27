@@ -16,6 +16,7 @@ import { isLegacyBrandingTarget, studioSectionFromValue } from '../features/bran
 type DealerCompanyProfilePageProps = {
   dealer: DealerAccount
   canEditAppearance?: boolean
+  canEditProfile?: boolean
   onDealerUpdated: (dealer: DealerAccount) => void
 }
 
@@ -39,6 +40,7 @@ function dealerToForm(dealer: DealerAccount): DealerFormValues {
 export function DealerCompanyProfilePage({
   dealer,
   canEditAppearance = false,
+  canEditProfile = true,
   onDealerUpdated,
 }: DealerCompanyProfilePageProps) {
   const navigate = useNavigate()
@@ -116,6 +118,7 @@ export function DealerCompanyProfilePage({
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (!canEditProfile) return
     setMessage('')
     setError('')
     setIsSaving(true)
@@ -142,6 +145,7 @@ export function DealerCompanyProfilePage({
 
   async function handleSlugRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (!canEditProfile) return
     setMessage('')
     setError('')
 
@@ -198,7 +202,9 @@ export function DealerCompanyProfilePage({
         <a href="#website-address">Website Address</a>
       </nav>
 
+      {!canEditProfile && <div className="portal-alert" role="status">Company details and the Visualizer URL can be changed by a dealer admin. You can still review this dealership.</div>}
       <form onSubmit={handleSave}>
+      <fieldset className="studio-lock" disabled={!canEditProfile}>
       <section className="content-card dealer-form" id="company-details">
         <div className="dealer-form__section">
           <div className="dealer-form__section-heading">
@@ -235,6 +241,7 @@ export function DealerCompanyProfilePage({
         </div>
         <Link className="button button--primary" to="/company/branding">Customize Door Builder</Link>
       </section>
+      </fieldset>
 
       </form>
 
@@ -255,7 +262,9 @@ export function DealerCompanyProfilePage({
           <p><strong>Current URL:</strong> {getDealerVisualizerDisplayUrl(dealer.slug)}</p>
         </div>
 
-        {dealer.slug_request_status === 'pending' ? (
+        {!canEditProfile ? (
+          <p>Visualizer URL changes are available to dealer admins. The address above is the one customers use for this dealership.</p>
+        ) : dealer.slug_request_status === 'pending' ? (
           <div className="slug-request-state slug-request-state--pending">
             <strong>Pending Home Guard Approval</strong>
             <span>{getDealerVisualizerDisplayUrl(dealer.requested_slug ?? '')}</span>

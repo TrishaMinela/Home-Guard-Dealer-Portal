@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AdminLeadDetail } from '../components/AdminLeadDetail'
 import type { Lead, LeadDataState } from '../types/lead'
+import { visibleLead } from '../utils/dealerResourceAccess'
 import { dateStamp, exportCsv, type CsvColumn } from '../utils/csvExport'
 import { formatCsvTimestamp, formatPortalDateTime } from '../utils/dateTime'
 
@@ -39,14 +40,14 @@ const dealerExportColumns: CsvColumn<Lead>[] = [
   { header: 'Visualizer URL', value: (lead) => lead.visualizer_url },
 ]
 
-type LeadsPageProps = LeadDataState & { dealerSlug: string; dealerName: string }
+type LeadsPageProps = LeadDataState & { dealerId: string; dealerSlug: string; dealerName: string }
 
-export function LeadsPage({ leads, isLoading, error, dealerSlug, dealerName }: LeadsPageProps) {
+export function LeadsPage({ leads, isLoading, error, dealerId, dealerSlug, dealerName }: LeadsPageProps) {
   const navigate = useNavigate()
   const { leadId } = useParams()
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('All')
-  const selectedLead = leadId ? leads.find((lead) => lead.id === leadId) ?? null : null
+  const selectedLead = visibleLead(leads, dealerId, leadId)
   const leadUnavailable = Boolean(leadId) && !isLoading && !selectedLead
 
   function openLead(lead: Lead) {

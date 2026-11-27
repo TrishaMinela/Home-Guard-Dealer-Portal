@@ -75,11 +75,11 @@ function App() {
 
   async function handleSignOut() {
     setError('')
-    const { error: signOutError } = await supabase.auth.signOut()
-
-    if (signOutError) {
-      setError(signOutError.message)
-    }
+    setPassword('')
+    const { error: signOutError } = await supabase.auth.signOut({ scope: 'global' })
+    if (!signOutError) return
+    const { error: localError } = await supabase.auth.signOut({ scope: 'local' })
+    if (localError) setError('We could not sign you out. Please try again.')
   }
 
   if (isLoadingSession) {

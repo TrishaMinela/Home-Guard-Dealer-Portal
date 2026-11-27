@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
+import { AuthBrand } from './AuthBrand'
+import { PasswordField } from './PasswordField'
 import { supabase } from '../lib/supabase'
 import { authorizedDestination } from '../utils/authorizedDestination'
+import { passwordRuleError } from '../utils/passwordRules'
 import { portalEntryCopy } from '../utils/portalEntryCopy'
 
 type InviteStep = 'loading' | 'welcome' | 'password' | 'ready' | 'existing' | 'invalid'
@@ -90,8 +93,9 @@ export function InviteSetupPage() {
       setStep('invalid')
       return
     }
-    if (password.length < 10 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
-      setError('Use at least 10 characters, including a letter and a number.')
+    const ruleError = passwordRuleError(password)
+    if (ruleError) {
+      setError(ruleError)
       return
     }
     if (password !== confirmation) {
@@ -128,17 +132,15 @@ export function InviteSetupPage() {
 
   return <main className="invite-page">
     <section className="invite-card" aria-live="polite">
-      <div className="brand-lockup invite-brand">
-        <div className="brand-mark" aria-hidden="true">HG</div>
-        <div><span className="brand-name">Home Guard</span><span className="brand-subtitle">Secure Portal</span></div>
-      </div>
+      <AuthBrand subtitle="Dealer Portal" bordered />
 
       {step === 'loading' && <div className="invite-state"><p className="eyebrow">Secure invitation</p><h1>Verifying your invitation…</h1><p>Please wait while we securely prepare your Portal access.</p></div>}
 
       {step === 'welcome' && <div className="invite-state">
         <p className="eyebrow">You've been invited</p>
-        <h1>Set up your Portal access</h1>
+        <h1>Welcome to Home Guard Industries</h1>
         <p>{portalEntryCopy(destination).summary}</p>
+        <p>If you already use this portal, continue with your existing password from the sign-in page. A new invitation does not replace a password you have already created unless you choose a new one here.</p>
         <div className="invite-benefits"><span>Your account will give you access to:</span><ul>{portalEntryCopy(destination).benefits.map((item) => <li key={item}>{item}</li>)}</ul></div>
         <button className="button button--primary invite-action" type="button" onClick={() => setStep('password')}>Continue</button>
       </div>}
@@ -148,10 +150,8 @@ export function InviteSetupPage() {
         <h1>Create your password</h1>
         <p>Choose a secure password to finish setting up your Home Guard Portal access.</p>
         <form className="invite-form" onSubmit={(event) => void completeSetup(event)}>
-          <label htmlFor="invite-password">New password</label>
-          <input id="invite-password" type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} disabled={isSaving} required />
-          <label htmlFor="invite-password-confirmation">Confirm password</label>
-          <input id="invite-password-confirmation" type="password" autoComplete="new-password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} disabled={isSaving} required />
+          <PasswordField id="invite-password" label="New password" autoComplete="new-password" value={password} onChange={setPassword} disabled={isSaving} />
+          <PasswordField id="invite-password-confirmation" label="Confirm password" autoComplete="new-password" value={confirmation} onChange={setConfirmation} disabled={isSaving} />
           <p className="invite-password-note">Use at least 10 characters, including a letter and a number.</p>
           {error && <p className="message message--error" role="alert">{error}</p>}
           <button className="button button--primary invite-action" type="submit" disabled={isSaving}>{isSaving ? 'Completing setup…' : 'Complete Account Setup'}</button>
@@ -164,12 +164,18 @@ export function InviteSetupPage() {
       </div>}
 
       {step === 'existing' && <div className="invite-state">
-        <p className="eyebrow">Account ready</p><h1>Your Portal account is already configured</h1><p>Continue using your existing password and authorized Portal access.</p>
+        <p className="eyebrow">Account ready</p>
+        <h1>Your Portal account is already configured</h1>
+        <p>This invitation was opened for an account that is already set up. Continue with your existing password and your own portal access.</p>
         <button className="button button--primary invite-action" type="button" onClick={goToPortal}>Continue to Portal</button>
+        <a className="auth-back-link" href="/">Sign in with your existing password</a>
       </div>}
 
       {step === 'invalid' && <div className="invite-state">
-        <p className="eyebrow">Invitation unavailable</p><h1>This invitation is no longer valid.</h1><p>It may have expired or already been used. Please ask your Portal administrator to send a new invitation.</p>
+        <p className="eyebrow">Invitation unavailable</p>
+        <h1>This invitation is no longer valid.</h1>
+        <p>It may have expired or already been used. Ask the Home Guard teammate who invited you to send a new invitation. If you already created a password, sign in or request a reset link.</p>
+        <a className="button button--primary invite-action" href="/auth/forgot-password">Request a new link</a>
         <a className="button button--outline invite-action" href="/">Return to Portal Sign In</a>
       </div>}
     </section>

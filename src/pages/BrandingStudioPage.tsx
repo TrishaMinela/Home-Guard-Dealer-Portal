@@ -120,6 +120,7 @@ export function AdminBrandingStudioRoute({
 }
 
 export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, onDealerUpdated }: Props) {
+  const canWrite = mode === 'admin' || canEditAppearance
   const [params, setParams] = useSearchParams()
   const requested = studioSectionFromValue(params.get('section')) ?? studioSectionFromValue(window.location.hash) ?? 'logos'
   const section: StudioSectionId = requested === 'typography' ? 'colors' : requested
@@ -278,7 +279,7 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
   }
 
   async function saveAll() {
-    if (!dirty || saving || saveInFlight.current) return
+    if (!canWrite || !dirty || saving || saveInFlight.current) return
     saveInFlight.current = true
     setSaving(true)
     setMessage('')
@@ -883,8 +884,8 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
       )}
       {removal && <LogoBackgroundDialog originalUrl={removal.originalUrl} removedUrl={removal.removedUrl} reason={removal.reason} busy={uploading} onAccept={() => void acceptTransparentLogo()} onKeep={() => void keepOriginalLogo()} onCancel={dismissRemoval} />}
       <div className="branding-studio__sheet-actions">
-        <button type="button" className="button button--outline" onClick={discard} disabled={!dirty || saving}>Discard Changes</button>
-        <button type="button" className="button button--primary" onClick={() => void saveAll()} disabled={!dirty || saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
+        <button type="button" className="button button--outline" onClick={discard} disabled={!canWrite || !dirty || saving}>Discard Changes</button>
+        <button type="button" className="button button--primary" onClick={() => void saveAll()} disabled={!canWrite || !dirty || saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
       </div>
     </>
   )
@@ -900,8 +901,8 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
         <p className={`branding-studio__status${dirty ? '' : ' is-clean'}`} role="status">{dirty ? 'Unsaved changes' : '✓ All changes saved'}</p>
         {saveAlert ? <p className="branding-studio__save-alert" role="alert">{saveAlert}</p> : null}
         <div className="branding-studio__actions">
-          <button type="button" className="button button--outline" onClick={discard} disabled={!dirty || saving}>Discard Changes</button>
-          <button type="button" className="button button--primary" onClick={() => void saveAll()} disabled={!dirty || saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
+          <button type="button" className="button button--outline" onClick={discard} disabled={!canWrite || !dirty || saving}>Discard Changes</button>
+          <button type="button" className="button button--primary" onClick={() => void saveAll()} disabled={!canWrite || !dirty || saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
           <button type="button" className="branding-studio__edit" onClick={() => setEditing(true)}>Edit Settings</button>
           <a className="branding-studio__live" href={getDealerVisualizerUrl(dealer.slug)} target="_blank" rel="noreferrer">Open Live Website</a>
         </div>
@@ -942,7 +943,10 @@ export function BrandingStudioPage({ mode, dealer, canEditAppearance, backTo, on
             {message && <p className="branding-studio__message" role="status">{message}</p>}
             {error && <p className="branding-studio__message is-error" role="alert">{error}</p>}
           </div>
-          <div className="branding-studio__editor-body">{editor}</div>
+          <div className="branding-studio__editor-body">
+            {!canWrite && <p className="studio-logo__hint">Logo, color, and placement changes are available to dealer admins. You can still review this dealership.</p>}
+            <fieldset className="studio-lock" disabled={!canWrite}>{editor}</fieldset>
+          </div>
         </aside>
       </div>
     </div>

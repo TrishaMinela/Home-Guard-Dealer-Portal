@@ -6,6 +6,8 @@ const app = readFileSync('src/App.tsx', 'utf8')
 const login = readFileSync('src/components/LoginPage.tsx', 'utf8')
 const forgot = readFileSync('src/components/ForgotPasswordPage.tsx', 'utf8')
 const reset = readFileSync('src/components/ResetPasswordPage.tsx', 'utf8')
+const redirect = readFileSync('src/utils/passwordResetRedirect.ts', 'utf8')
+const rules = readFileSync('src/utils/passwordRules.ts', 'utf8')
 const destination = readFileSync('src/utils/authorizedDestination.ts', 'utf8')
 
 test('login and public auth routes expose the branded reset flow', () => {
@@ -17,7 +19,7 @@ test('login and public auth routes expose the branded reset flow', () => {
 })
 
 test('reset requests use the production callback and neutral response', () => {
-  assert.match(forgot, /https:\/\/home-guard-dealer-portal\.vercel\.app\/auth\/reset-password/)
+  assert.match(redirect, /https:\/\/home-guard-dealer-portal\.vercel\.app\/auth\/reset-password/)
   assert.match(forgot, /resetPasswordForEmail\(email\.trim\(\), \{ redirectTo: passwordResetRedirectUrl\(\) \}\)/)
   assert.match(forgot, /If an account exists for that email, a password reset link has been sent\./)
   assert.doesNotMatch(forgot, /error\.message|console\.(error|log)/)
@@ -27,7 +29,8 @@ test('reset form requires a genuine recovery signal and safely updates the passw
   assert.match(reset, /event === 'PASSWORD_RECOVERY'/)
   assert.match(reset, /!hasRecoverySignal\.current && !recoveryEventReceived\.current/)
   assert.match(reset, /supabase\.auth\.updateUser\(\{ password \}\)/)
-  assert.match(reset, /password\.length < 10/)
+  assert.match(reset, /passwordRuleError\(password\)/)
+  assert.match(rules, /password\.length < 10/)
   assert.match(reset, /password !== confirmation/)
   assert.doesNotMatch(reset, /error\.message|access_token[^'")]*display|refresh_token[^'")]*display/)
 })

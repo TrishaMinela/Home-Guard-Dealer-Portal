@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
+import { AuthBrand } from './AuthBrand'
+import { PasswordField } from './PasswordField'
 import { supabase } from '../lib/supabase'
 import { authorizedDestination } from '../utils/authorizedDestination'
+import { passwordRuleError } from '../utils/passwordRules'
 
 type ResetStep = 'loading' | 'password' | 'success' | 'no_access' | 'access_error' | 'invalid'
 
@@ -82,8 +85,9 @@ export function ResetPasswordPage() {
       setStep('invalid')
       return
     }
-    if (password.length < 10 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
-      setError('Use at least 10 characters, including a letter and a number.')
+    const ruleError = passwordRuleError(password)
+    if (ruleError) {
+      setError(ruleError)
       return
     }
     if (password !== confirmation) {
@@ -120,10 +124,7 @@ export function ResetPasswordPage() {
 
   return <main className="invite-page auth-page">
     <section className="invite-card auth-card" aria-live="polite">
-      <div className="brand-lockup invite-brand">
-        <div className="brand-mark" aria-hidden="true">HG</div>
-        <div><span className="brand-name">Home Guard</span><span className="brand-subtitle">Secure Portal</span></div>
-      </div>
+      <AuthBrand subtitle="Secure Portal" bordered />
 
       {step === 'loading' && <div className="invite-state"><p className="eyebrow">Secure recovery</p><h1>Verifying your reset link…</h1><p>Please wait while we securely prepare your password reset.</p></div>}
 
@@ -132,10 +133,8 @@ export function ResetPasswordPage() {
         <h1>Create a new password</h1>
         <p>Choose a secure password for your Home Guard Portal account.</p>
         <form className="invite-form" onSubmit={(event) => void updatePassword(event)}>
-          <label htmlFor="reset-password">New password</label>
-          <input id="reset-password" type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} disabled={isSaving} required />
-          <label htmlFor="reset-password-confirmation">Confirm password</label>
-          <input id="reset-password-confirmation" type="password" autoComplete="new-password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} disabled={isSaving} required />
+          <PasswordField id="reset-password" label="New password" autoComplete="new-password" value={password} onChange={setPassword} disabled={isSaving} />
+          <PasswordField id="reset-password-confirmation" label="Confirm password" autoComplete="new-password" value={confirmation} onChange={setConfirmation} disabled={isSaving} />
           <p className="invite-password-note">Use at least 10 characters, including a letter and a number.</p>
           {error && <p className="message message--error" role="alert">{error}</p>}
           <button className="button button--primary invite-action" type="submit" disabled={isSaving}>{isSaving ? 'Updating…' : 'Update Password'}</button>

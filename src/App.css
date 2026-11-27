@@ -30,6 +30,7 @@
 .invite-action { width: 100%; margin-top: 8px; }
 .access-state__card { display: grid; justify-items: start; gap: 16px; }
 .brand-lockup { display: flex; align-items: center; gap: 12px; }
+.auth-logo { display: block; width: auto; height: 42px; max-width: 148px; object-fit: contain; }
 .brand-lockup--compact { gap: 9px; }
 .brand-mark {
   width: 42px; height: 42px; display: grid; flex: 0 0 auto; place-items: center;
@@ -87,6 +88,7 @@ input:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,102
 .form-message { min-height: 22px; margin-top: 3px; }
 .message { font-size: 13px; line-height: 1.5; }
 .message--error { color: var(--color-error); }
+.message--success { color: #157a45; }
 .account-email { color: var(--color-muted); font-size: 13px; }
 .button {
   min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
@@ -781,6 +783,12 @@ select:focus { border-color: var(--color-teal); box-shadow: 0 0 0 3px rgba(13,10
 .settings-form .content-card { margin-top: 0; }
 .settings-card { overflow: hidden; }
 .settings-card__body { padding: 24px 26px 26px; }
+.password-change, .password-change__form { display: grid; gap: 10px; max-width: 440px; }
+.password-change .button { justify-self: start; }
+@media (max-width: 760px) {
+  .password-change, .password-change__form { max-width: none; }
+  .password-change .button { width: 100%; }
+}
 .color-field { display: grid; grid-template-columns: 52px minmax(0,1fr); gap: 10px; }
 .color-field input[type='color'] {
   width: 52px; min-height: 48px; padding: 4px; cursor: pointer;

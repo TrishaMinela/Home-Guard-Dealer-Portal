@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Lead, LeadDataState } from '../types/lead'
 
-export function useLeads(): LeadDataState {
+export function useLeads(dealerId: string): LeadDataState {
   const [leads, setLeads] = useState<Lead[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -14,6 +14,7 @@ export function useLeads(): LeadDataState {
       const { data, error: queryError } = await supabase
         .from('leads')
         .select('id, submission_id, dealer_id, first_name, last_name, email, phone, address, city, state, zip, preferred_contact_method, project_timeline, comments, status, source, visualizer_url, utm_source, utm_medium, utm_campaign, utm_content, door_configuration, created_at, updated_at')
+        .eq('dealer_id', dealerId)
         .order('created_at', { ascending: false })
 
       if (!isCurrent) return
@@ -35,7 +36,7 @@ export function useLeads(): LeadDataState {
     return () => {
       isCurrent = false
     }
-  }, [])
+  }, [dealerId])
 
   return { leads, isLoading, error }
 }
