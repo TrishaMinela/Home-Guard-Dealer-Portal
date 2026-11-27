@@ -3,6 +3,8 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import type { AccountAccess } from '../types/account'
 import { dealerWithSavedLogos } from '../utils/dealerSavedLogos'
+import { isDealerAdminRole } from '../utils/dealerRole'
+import { DEALER_UNAVAILABLE_MESSAGE } from '../utils/dealerUnavailable'
 
 export function useAccountAccess(user: User | null) {
   const [access, setAccess] = useState<AccountAccess | null>(null)
@@ -113,13 +115,37 @@ export function useAccountAccess(user: User | null) {
 
       if (!isCurrent) return
 
-      if (dealerError) {
+      if (dealerError || !dealerRecord) {
+        const status = await supabase.rpc('my_dealer_portal_status')
+        const statusRow = Array.isArray(status.data)
+          ? status.data.find((row: { dealer_id?: string; is_active?: boolean }) => row.dealer_id === membership.dealer_id)
+          : null
+        if (!isCurrent) return
+        if (statusRow && statusRow.is_active === false) {
+          setAccess({
+            userId: authenticatedUser.id,
+            type: 'dealer_unavailable',
+            dealer: null,
+            message: DEALER_UNAVAILABLE_MESSAGE,
+          })
+          return
+        }
         console.error('Unable to load dealer information.', dealerError)
         setAccess({
           userId: authenticatedUser.id,
           type: 'none',
           dealer: null,
           message: 'Unable to load your dealer information.',
+        })
+        return
+      }
+
+      if (dealerRecord.is_active === false) {
+        setAccess({
+          userId: authenticatedUser.id,
+          type: 'dealer_unavailable',
+          dealer: null,
+          message: DEALER_UNAVAILABLE_MESSAGE,
         })
         return
       }
@@ -135,7 +161,7 @@ export function useAccountAccess(user: User | null) {
         userId: authenticatedUser.id,
         type: 'dealer',
         dealer: dealerWithSavedLogos(dealerRecord, lightLogos, blackLogos, secondaryLogos, logoWebsites),
-        dealerRole: membership.role === 'dealer_admin' ? 'dealer_admin' : 'member',
+        dealerRole: isDealerAdminRole(membership.role) ? 'dealer_admin' : 'member',
         message: '',
       })
     }

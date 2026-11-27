@@ -148,8 +148,9 @@ function fulfill(route: Route, status: number, body: unknown) {
   })
 }
 
-async function installSupabase(page: Page, role: 'dealer_admin' | 'member') {
+async function installSupabase(page: Page, role: 'dealer_admin' | 'member', options: { active?: boolean } = {}) {
   let currentPassword = password
+  const activeDealer = { ...dealer, is_active: options.active !== false }
   const seen: string[] = []
   await page.route(`${supabaseOrigin}/**`, async (route) => {
     const request = route.request()
@@ -195,7 +196,7 @@ async function installSupabase(page: Page, role: 'dealer_admin' | 'member') {
     }
     if (url.pathname.startsWith('/rest/v1/dealers')) {
       const wantsObject = (request.headers().accept || '').includes('application/vnd.pgrst.object+json')
-      return fulfill(route, 200, wantsObject ? dealer : [dealer])
+      return fulfill(route, 200, wantsObject ? activeDealer : [activeDealer])
     }
     if (url.pathname.startsWith('/rest/v1/leads')) {
       const requested = url.searchParams.get('dealer_id')?.replace(/^eq\./, '')
@@ -454,4 +455,47 @@ test('a dealer member can review the dealership but cannot save company or brand
   assert.equal(await page.getByRole('button', { name: 'Save Changes' }).first().isDisabled(), true)
   await shot(page, 'branding-member-desktop')
   await page.close()
+})
+
+test('the invitation form defaults to Dealer Member and the user list shows each role', async () => {
+  const page = await browser!.newPage({ viewport: { width: 1280, height: 1000 } })
+  await page.goto(`${origin}/#dealer-access-harness`, { waitUntil: 'networkidle' })
+  const role = page.getByLabel('Role')
+  await role.waitFor()
+  assert.equal(await role.inputValue(), 'dealer_member')
+  await page.getByRole('cell', { name: 'Dealer Admin' }).waitFor()
+  await page.getByRole('cell', { name: 'Dealer Member' }).waitFor()
+  await shot(page, 'invite-role-desktop')
+  await page.getByLabel('Email Address').fill('new.member@northwind.example')
+  await page.getByRole('button', { name: 'Add User' }).click()
+  await page.locator('tr', { hasText: 'new.member@northwind.example' }).getByText('Dealer Member').waitFor()
+  await role.selectOption('dealer_admin')
+  await page.getByLabel('Email Address').fill('new.admin@northwind.example')
+  await page.getByRole('button', { name: 'Add User' }).click()
+  await page.locator('tr', { hasText: 'new.admin@northwind.example' }).getByText('Dealer Admin').waitFor()
+  await shot(page, 'user-roles-desktop')
+  await page.close()
+})
+
+test('a disabled dealership sees the unavailable page and an active dealership gets back in', async () => {
+  const blocked = await browser!.newPage({ viewport: { width: 1280, height: 900 } })
+  await installSupabase(blocked, 'dealer_admin', { active: false })
+  await blocked.goto(`${origin}/`, { waitUntil: 'networkidle' })
+  await blocked.getByLabel('Email').fill(email)
+  await blocked.getByLabel('Password', { exact: true }).fill(password)
+  await blocked.getByRole('button', { name: 'Sign In' }).click()
+  await blocked.getByRole('heading', { name: 'Portal access unavailable' }).waitFor()
+  await blocked.getByText("Your dealership's Portal access is currently unavailable. Please contact Home Guard Industries.").waitFor()
+  assert.equal(await blocked.getByRole('link', { name: 'Dashboard' }).count(), 0)
+  await shot(blocked, 'disabled-dealer-desktop')
+  await blocked.setViewportSize({ width: 375, height: 812 })
+  await shot(blocked, 'disabled-dealer-mobile')
+  await blocked.getByRole('button', { name: 'Sign Out' }).click()
+  await blocked.getByRole('heading', { name: 'Welcome back' }).waitFor()
+  await blocked.close()
+
+  const restored = await browser!.newPage({ viewport: { width: 1280, height: 900 } })
+  await installSupabase(restored, 'dealer_admin', { active: true })
+  await signIn(restored)
+  await restored.close()
 })

@@ -1,23 +1,26 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { dealerLogoAccessAllowed } from '../api/_lib/dealerLogoAccess.ts'
+import { dealerLogoRequestAccess } from '../api/_lib/dealerPortalAccess.ts'
 import { sameDealer, visibleLead } from '../src/utils/dealerResourceAccess.ts'
 
 const dealerA = '11111111-1111-4111-8111-111111111111'
 const dealerB = '22222222-2222-4222-8222-222222222222'
 
-test('a dealer admin can generate a logo only for the dealership they belong to', () => {
-  assert.equal(dealerLogoAccessAllowed(false, true), true)
-  assert.equal(dealerLogoAccessAllowed(false, false), false)
-  assert.equal(dealerLogoAccessAllowed(true, false), true)
+test('a dealer admin can generate a logo only for an active dealership they belong to', () => {
+  assert.equal(dealerLogoRequestAccess({ isHomeGuardAdmin: false, isDealerAdminForDealer: true, dealerIsActive: true }).allowed, true)
+  assert.equal(dealerLogoRequestAccess({ isHomeGuardAdmin: false, isDealerAdminForDealer: false, dealerIsActive: true }).allowed, false)
+  assert.equal(dealerLogoRequestAccess({ isHomeGuardAdmin: true, isDealerAdminForDealer: false, dealerIsActive: false }).allowed, true)
+  const paused = dealerLogoRequestAccess({ isHomeGuardAdmin: false, isDealerAdminForDealer: true, dealerIsActive: false })
+  assert.equal(paused.allowed, false)
+  if (!paused.allowed) assert.equal(paused.status, 403)
 })
 
 test('logo generation checks membership for the dealer id in the request', () => {
   const source = readFileSync('api/dealer-light-logo.ts', 'utf8')
   const membership = source.indexOf(".eq('dealer_id', body.dealerId)")
   const role = source.indexOf(".eq('role', 'dealer_admin')")
-  const decision = source.lastIndexOf('dealerLogoAccessAllowed(')
+  const decision = source.lastIndexOf('dealerLogoRequestAccess(')
   assert.ok(membership > 0 && role > membership && decision > role)
 })
 

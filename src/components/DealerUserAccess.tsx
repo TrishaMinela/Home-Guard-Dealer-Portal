@@ -4,6 +4,7 @@ import { DealerPasswordModal } from './DealerPasswordModal'
 import { supabase } from '../lib/supabase'
 import { DealerSectionHeader } from './DealerSectionHeader'
 import { DealerOutlineIcon } from './DealerOutlineIcon'
+import { dealerInviteRole, dealerRoleLabel, type DealerInviteRole } from '../utils/dealerRole'
 import { explainPreviewConfiguration, previewConfigurationNotice } from '../utils/previewConfiguration'
 
 type DealerUser = {
@@ -34,6 +35,7 @@ export function DealerUserAccess({ dealerId, sectionId, canSetPassword = false, 
   const fixture = import.meta.env.DEV ? previewUsers : undefined
   const [users, setUsers] = useState<DealerUser[]>(fixture ?? [])
   const [email, setEmail] = useState('')
+  const [role, setRole] = useState<DealerInviteRole>('dealer_member')
   const [loading, setLoading] = useState(!fixture)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -61,14 +63,14 @@ export function DealerUserAccess({ dealerId, sectionId, canSetPassword = false, 
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) { setError('Enter a valid email address.'); return }
     if (fixture) {
       const invited = email.trim().toLowerCase()
-      setUsers((current) => [...current, { name: '', email: invited, status: 'pending', role: 'dealer_admin', accessGrantedAt: new Date().toISOString(), invitedAt: new Date().toISOString(), lastSignInAt: null }])
+      setUsers((current) => [...current, { name: '', email: invited, status: 'pending', role, accessGrantedAt: new Date().toISOString(), invitedAt: new Date().toISOString(), lastSignInAt: null }])
       setSuccess('Preview only. This user was not invited.')
       setEmail('')
       return
     }
     setSaving(true); setError(''); setSuccess('')
     try {
-      const result = await requestDealerAccess(dealerId, { action: 'grant', email: email.trim().toLowerCase() })
+      const result = await requestDealerAccess(dealerId, { action: 'grant', email: email.trim().toLowerCase(), role })
       setUsers(result.users); setSuccess(result.notice ?? 'Dealer access was granted.')
       if (result.warning) setError(result.warning)
       setEmail('')
@@ -108,6 +110,16 @@ export function DealerUserAccess({ dealerId, sectionId, canSetPassword = false, 
           <p>Invite an existing account or a new Portal user.</p>
           <form onSubmit={(event) => void grant(event)}>
             <label><span>Email Address</span><input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="user@example.com" disabled={saving} /></label>
+            <label>
+              <span>Role</span>
+              <select id="dealer-invite-role" value={role} disabled={saving} onChange={(event) => {
+                const next = dealerInviteRole(event.target.value)
+                if (next) setRole(next)
+              }}>
+                <option value="dealer_member">Dealer Member</option>
+                <option value="dealer_admin">Dealer Admin</option>
+              </select>
+            </label>
             <button className="button button--primary" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Add User'}</button>
           </form>
         </div>
@@ -137,7 +149,7 @@ export function DealerUserAccess({ dealerId, sectionId, canSetPassword = false, 
                       </span>
                     </td>
                     <td><span className={`billing-status billing-status--${user.status === 'active' ? 'paid' : 'draft'}`}>{user.status}</span></td>
-                    <td><span className={`dd-role${user.role.includes('admin') ? ' dd-role--admin' : user.role.includes('market') ? ' dd-role--marketing' : ''}`}>{user.role.replaceAll('_', ' ')}</span></td>
+                    <td><span className={`dd-role${user.role === 'dealer_admin' ? ' dd-role--admin' : ''}`}>{dealerRoleLabel(user.role)}</span></td>
                     <td>{new Date(user.accessGrantedAt).toLocaleString()}</td>
                     <td>{user.lastSignInAt ? new Date(user.lastSignInAt).toLocaleString() : 'Never'}</td>
                     <td>{user.status === 'pending' ? user.invitedAt ? `Sent ${new Date(user.invitedAt).toLocaleDateString()}` : 'Pending setup' : 'Complete'}</td>
@@ -158,7 +170,7 @@ export function DealerUserAccess({ dealerId, sectionId, canSetPassword = false, 
           </div>
         )}
       </div>
-      <p className="dd-note">New Portal users are invited as Dealer Admin. This does not change billing or CRM roles.</p>
+      <p className="dd-note">Choose Dealer Member or Dealer Admin before sending the invitation. Dealer Member is the default. An existing membership keeps its current role. This does not change billing or CRM roles.</p>
     </section>
     <ConfirmationModal open={Boolean(pendingRemoval)} title="Remove dealer access?" message="This user will lose access to this dealer. Their sign-in and any other legitimate roles will remain unchanged." target={pendingRemoval?.email} confirmLabel="Remove Access" confirmingLabel="Removing…" destructive isConfirming={saving} onCancel={() => { if (!saving) setPendingRemoval(null) }} onConfirm={() => { if (pendingRemoval) void update(pendingRemoval, 'revoke') }} />
     <ConfirmationModal open={Boolean(pendingPasswordConfirmation)} title="Change dealer user password?" message="This replaces the user’s current Portal password. Their dealer access and other account permissions will remain unchanged." target={pendingPasswordConfirmation?.email} confirmLabel="Continue" onCancel={() => setPendingPasswordConfirmation(null)} onConfirm={() => { setPasswordTarget(pendingPasswordConfirmation); setPendingPasswordConfirmation(null); setPasswordError('') }} />

@@ -40,7 +40,7 @@ test('the color picker stays hidden until it has been positioned', () => {
 
 test('dealer appearance controls are limited to dealer admins', () => {
   assert.match(access, /select\('dealer_id, role'\)/)
-  assert.match(access, /dealerRole: membership\.role === 'dealer_admin' \? 'dealer_admin' : 'member'/)
+  assert.match(access, /dealerRole: isDealerAdminRole\(membership\.role\) \? 'dealer_admin' : 'member'/)
   assert.match(readFileSync('src/components/PortalLayout.tsx', 'utf8'), /canEditAppearance=\{dealerRole === 'dealer_admin'\}/)
   assert.match(readFileSync('src/pages/BrandingStudioPage.tsx', 'utf8'), /canEditAppearance \|\| mode === 'admin'/)
   assert.match(readFileSync('src/pages/BrandingStudioPage.tsx', 'utf8'), /Appearance settings are available to dealer admins/)

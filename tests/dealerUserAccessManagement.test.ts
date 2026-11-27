@@ -29,7 +29,9 @@ test('dealer membership rejects incompatible Portal roles and other dealers', ()
     assert.match(endpoint, new RegExp(`from\\('${table}'\\)`))
   }
   assert.match(endpoint, /membership\.dealer_id !== dealerId/)
-  assert.match(endpoint, /role: 'dealer_admin'/)
+  assert.match(endpoint, /dealerInviteRole\(body\.role\)/)
+  assert.match(endpoint, /role: invitedRole/)
+  assert.doesNotMatch(endpoint, /role: 'dealer_admin'/)
   assert.doesNotMatch(endpoint, /insert\(\{[^}]*billing_internal_admin|insert\(\{[^}]*billing_account_id/)
 })
 

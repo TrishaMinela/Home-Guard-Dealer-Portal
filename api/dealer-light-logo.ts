@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createClient } from '@supabase/supabase-js'
 import sharp from 'sharp'
-import { dealerLogoAccessAllowed } from './_lib/dealerLogoAccess.js'
+import { dealerLogoRequestAccess } from './_lib/dealerPortalAccess.js'
 import { generateWhiteLogo, validatePrimaryLogoUrl, validateSecondaryLogoUrl } from './_lib/dealerLightLogo.js'
 
 type JsonResponse = ServerResponse<IncomingMessage> & { json?: (value: unknown) => void }
@@ -45,11 +45,16 @@ export default async function handler(request: IncomingMessage, response: JsonRe
     const [homeGuard, membership, dealerResult] = await Promise.all([
       admin.from('home_guard_admins').select('id').eq('user_id', userData.user.id).maybeSingle(),
       admin.from('dealer_users').select('id').eq('user_id', userData.user.id).eq('dealer_id', body.dealerId).eq('role', 'dealer_admin').maybeSingle(),
-      admin.from('dealers').select('id,logo_url').eq('id', body.dealerId).maybeSingle(),
+      admin.from('dealers').select('id,logo_url,is_active').eq('id', body.dealerId).maybeSingle(),
     ])
     const lookupError = homeGuard.error ?? membership.error ?? dealerResult.error
     if (lookupError) throw lookupError
-    if (!dealerLogoAccessAllowed(Boolean(homeGuard.data), Boolean(membership.data))) return send(response, 403, { error: 'Dealer logo access required.' })
+    const logoAccess = dealerLogoRequestAccess({
+      isHomeGuardAdmin: Boolean(homeGuard.data),
+      isDealerAdminForDealer: Boolean(membership.data),
+      dealerIsActive: dealerResult.data?.is_active !== false,
+    })
+    if (!logoAccess.allowed) return send(response, logoAccess.status, { error: logoAccess.message })
     if (!dealerResult.data) return send(response, 404, { error: 'Dealer not found.' })
     const target = body.target === 'secondary' ? 'secondary' : 'primary'
     let secondaryUrl: string | null = null

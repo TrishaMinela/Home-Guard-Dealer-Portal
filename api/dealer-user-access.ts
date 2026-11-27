@@ -2,9 +2,10 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createClient, type User } from '@supabase/supabase-js'
 import { authorizeBillingAccessOperator } from './_lib/authorizeBillingAccessManager.js'
 import { classifyInvitationFailure } from './_lib/invitationDelivery.js'
+import { dealerInviteRole, type DealerInviteRole } from '../src/utils/dealerRole.js'
 
 type JsonResponse = ServerResponse<IncomingMessage> & { json?: (value: unknown) => void }
-type Body = { action?: 'grant' | 'revoke' | 'resend' | 'set-password'; dealerId?: string; email?: string; password?: string }
+type Body = { action?: 'grant' | 'revoke' | 'resend' | 'set-password'; dealerId?: string; email?: string; password?: string; role?: string }
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 function send(response: JsonResponse, status: number, value: unknown) {
@@ -84,6 +85,12 @@ export default async function handler(request: IncomingMessage, response: JsonRe
 
     let notice: string | undefined
     let warning: string | undefined
+    let invitedRole: DealerInviteRole = 'dealer_member'
+    if (request.method === 'POST' && body.action === 'grant') {
+      const selectedRole = dealerInviteRole(body.role)
+      if (!selectedRole) return send(response, 400, { error: 'Choose Dealer Admin or Dealer Member.' })
+      invitedRole = selectedRole
+    }
     if (request.method === 'POST') {
       const email = body.email?.trim().toLowerCase() ?? ''
       if (!/^\S+@\S+\.\S+$/.test(email)) return send(response, 400, { error: 'Enter a valid email address.' })
@@ -114,7 +121,7 @@ export default async function handler(request: IncomingMessage, response: JsonRe
         }
         const existing = (dealerMemberships.data ?? []).find((membership) => membership.dealer_id === dealerId)
         if (!existing) {
-          const { error } = await admin.from('dealer_users').insert({ user_id: target.id, dealer_id: dealerId, role: 'dealer_admin' })
+          const { error } = await admin.from('dealer_users').insert({ user_id: target.id, dealer_id: dealerId, role: invitedRole })
           if (error) throw error
           const actions = invited ? ['invited', 'granted'] : ['granted']
           const { error: auditError } = await admin.from('dealer_user_access_audit_log').insert(actions.map((action) => ({
