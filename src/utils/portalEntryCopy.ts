@@ -15,7 +15,7 @@ export function portalEntryCopy(destination: string) {
   }
   if (destination.startsWith('/dashboard')) {
     return {
-      summary: 'You have been invited to your dealer portal.',
+      summary: 'Home Guard Industries invited you to your dealership’s portal. After you create a password, you will open your own dashboard.',
       benefits: ['Dashboard', 'Leads', 'Marketing Tools'],
       button: 'Go to Dealer Portal',
     }

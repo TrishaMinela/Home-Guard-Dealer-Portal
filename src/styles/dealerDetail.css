@@ -389,6 +389,7 @@ body:has(.dealer-detail-page) { overflow-x: clip; }
 .dealer-detail-page .billing-access-card__form form {
   max-width: none; grid-template-columns: minmax(0, 1fr) auto; align-items: end;
 }
+.dealer-detail-page .dealer-user-access .billing-access-card__form form { grid-template-columns: 1fr; }
 .dealer-detail-page .billing-access-card__form h3 { font-size: 14px; }
 .dd-help { margin: 10px 0 0; color: var(--dd-muted); font-size: 12px; }
 .dealer-detail-page .billing-access-card__list-heading h3 { font-size: 14px; }

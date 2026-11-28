@@ -39,7 +39,7 @@ export function PortalLayout({
 }: PortalLayoutProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const initials = dealerInitials(dealer.company_name)
-  const leadData = useLeads()
+  const leadData = useLeads(dealer.id)
   const notifications: PortalNotification[] = leadData.leads
     .filter((lead) => lead.status.trim().toLowerCase() === 'new')
     .map((lead) => ({
@@ -141,7 +141,7 @@ export function PortalLayout({
             path="/dashboard"
             element={<DashboardPage dealerName={dealer.company_name} {...leadData} />}
           />
-          <Route path="/leads/:leadId?" element={<LeadsPage {...leadData} dealerSlug={dealer.slug} dealerName={dealer.company_name} />} />
+          <Route path="/leads/:leadId?" element={<LeadsPage {...leadData} dealerId={dealer.id} dealerSlug={dealer.slug} dealerName={dealer.company_name} />} />
           <Route
             path="/marketing"
             element={<MarketingToolsPage dealer={dealer} />}
@@ -152,6 +152,7 @@ export function PortalLayout({
               <DealerCompanyProfilePage
                 dealer={dealer}
                 canEditAppearance={dealerRole === 'dealer_admin'}
+                canEditProfile={dealerRole === 'dealer_admin'}
                 onDealerUpdated={onDealerUpdated}
               />
             }
@@ -168,7 +169,7 @@ export function PortalLayout({
               />
             }
           />
-          <Route path="/settings" element={<DealerSettingsPage />} />
+          <Route path="/settings" element={<DealerSettingsPage email={email} />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>

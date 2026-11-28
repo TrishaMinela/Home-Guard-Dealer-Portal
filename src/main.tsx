@@ -5,8 +5,10 @@ import App from './App.tsx'
 
 const root = document.getElementById('root')!
 const devHarness = import.meta.env.DEV ? window.location.hash : ''
-if (devHarness === '#appearance-harness' || devHarness === '#profile-nav-harness' || devHarness === '#admin-nav-harness' || devHarness === '#disable-dealer-harness' || devHarness === '#dealer-detail-preview') {
-  const load = devHarness === '#dealer-detail-preview'
+if (devHarness === '#appearance-harness' || devHarness === '#profile-nav-harness' || devHarness === '#admin-nav-harness' || devHarness === '#disable-dealer-harness' || devHarness === '#dealer-detail-preview' || devHarness === '#dealer-access-harness') {
+  const load = devHarness === '#dealer-access-harness'
+    ? import('./dealerAccessHarness.tsx').then(({ DealerAccessHarness }) => <DealerAccessHarness />)
+    : devHarness === '#dealer-detail-preview'
     ? import('./dealerDetailPreviewHarness.tsx').then(({ DealerDetailPreviewHarness }) => <DealerDetailPreviewHarness />)
     : devHarness === '#disable-dealer-harness'
     ? import('./disableDealerHarness.tsx').then(({ DisableDealerHarness }) => <DisableDealerHarness />)

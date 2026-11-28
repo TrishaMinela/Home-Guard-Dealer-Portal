@@ -134,5 +134,7 @@ test('light-logo generation stores the readability flag and does not replace the
   assert.doesNotMatch(api, /update\(\{[^}]*\blogo_url\b/)
   assert.match(api, /from\('home_guard_admins'\)/)
   assert.match(api, /\.eq\('dealer_id', body\.dealerId\)\.eq\('role', 'dealer_admin'\)/)
-  assert.match(api, /if \(!homeGuard\.data && !membership\.data\) return send\(response, 403/)
+  assert.match(api, /dealerLogoRequestAccess\(\{/)
+  assert.match(api, /dealerIsActive: dealerResult\.data\?\.is_active !== false/)
+  assert.match(api, /if \(!logoAccess\.allowed\) return send\(response, logoAccess\.status, \{ error: logoAccess\.message \}\)/)
 })

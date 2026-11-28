@@ -9,6 +9,7 @@ import { InviteSetupPage } from './components/InviteSetupPage'
 import { LoginPage } from './components/LoginPage'
 import { PortalLayout } from './components/PortalLayout'
 import { ResetPasswordPage } from './components/ResetPasswordPage'
+import { AuthBrand } from './components/AuthBrand'
 import { useAccountAccess } from './hooks/useAccountAccess'
 import { supabase } from './lib/supabase'
 import './App.css'
@@ -75,11 +76,11 @@ function App() {
 
   async function handleSignOut() {
     setError('')
-    const { error: signOutError } = await supabase.auth.signOut()
-
-    if (signOutError) {
-      setError(signOutError.message)
-    }
+    setPassword('')
+    const { error: signOutError } = await supabase.auth.signOut({ scope: 'global' })
+    if (!signOutError) return
+    const { error: localError } = await supabase.auth.signOut({ scope: 'local' })
+    if (localError) setError('We could not sign you out. Please try again.')
   }
 
   if (isLoadingSession) {
@@ -118,6 +119,23 @@ function App() {
           <p className="account-email">Signed in as: {user.email}</p>
           {error && <p className="message message--error">{error}</p>}
           <button className="button button--primary" onClick={handleSignOut}>
+            Sign Out
+          </button>
+        </section>
+      </main>
+    )
+  }
+
+  if (access.type === 'dealer_unavailable') {
+    return (
+      <main className="access-state">
+        <section className="access-state__card">
+          <AuthBrand subtitle="Dealer Portal" />
+          <h1>Portal access unavailable</h1>
+          <p>{access.message}</p>
+          <p className="account-email">Signed in as: {user.email}</p>
+          {error && <p className="message message--error">{error}</p>}
+          <button className="button button--primary" type="button" onClick={() => void handleSignOut()}>
             Sign Out
           </button>
         </section>

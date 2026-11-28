@@ -118,7 +118,7 @@ export function ProfileNavHarness({ canEditAppearance }: { canEditAppearance: bo
         </div>
       )}
       <Routes>
-        <Route path="/company" element={<DealerCompanyProfilePage dealer={current} canEditAppearance={canEditAppearance} onDealerUpdated={setCurrent} />} />
+        <Route path="/company" element={<DealerCompanyProfilePage dealer={current} canEditAppearance={canEditAppearance} canEditProfile={canEditAppearance} onDealerUpdated={setCurrent} />} />
         <Route path="/company/branding" element={<BrandingStudioPage mode={mode} dealer={current} canEditAppearance={mode === 'admin' || canEditAppearance} backTo="/company" onDealerUpdated={setCurrent} />} />
       </Routes>
     </MemoryRouter>

@@ -164,7 +164,8 @@ export function DoorBuilderAppearancePreview({ dealer, appearance, surface: surf
     const measure = () => {
       const available = frame.clientWidth
       const shell = frame.closest<HTMLElement>('.db-preview-shell')
-      const visible = shell?.clientHeight ?? frame.clientHeight
+      const inStudio = Boolean(frame.closest('.branding-studio__preview'))
+      const visible = inStudio ? frame.clientHeight : (shell?.clientHeight ?? frame.clientHeight)
       const nextScale = available > 0 ? available / designWidth : 1
       const page = stage.querySelector<HTMLElement>('.db-appearance-preview')
       if (page && nextScale > 0 && visible > 0) page.style.minHeight = `${Math.ceil(visible / nextScale)}px`
@@ -175,6 +176,8 @@ export function DoorBuilderAppearancePreview({ dealer, appearance, surface: surf
     const observer = new ResizeObserver(measure)
     observer.observe(frame)
     observer.observe(stage)
+    const shell = frame.closest<HTMLElement>('.db-preview-shell')
+    if (shell) observer.observe(shell)
     return () => observer.disconnect()
   }, [designWidth, appearance, dealer, mobile, surface])
 

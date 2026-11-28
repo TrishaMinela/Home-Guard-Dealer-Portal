@@ -1,13 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
+import { passwordResetRedirectUrl } from '../utils/passwordResetRedirect'
+import { AuthBrand } from './AuthBrand'
 
-const productionResetUrl = 'https://home-guard-dealer-portal.vercel.app/auth/reset-password'
 const neutralSuccess = 'If an account exists for that email, a password reset link has been sent.'
-
-function passwordResetRedirectUrl(): string {
-  const isLocalDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  return isLocalDevelopment ? `${window.location.origin}/auth/reset-password` : productionResetUrl
-}
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -24,10 +20,7 @@ export function ForgotPasswordPage() {
 
   return <main className="invite-page auth-page">
     <section className="invite-card auth-card" aria-live="polite">
-      <div className="brand-lockup invite-brand">
-        <div className="brand-mark" aria-hidden="true">HG</div>
-        <div><span className="brand-name">Home Guard</span><span className="brand-subtitle">Secure Portal</span></div>
-      </div>
+      <AuthBrand subtitle="Secure Portal" bordered />
 
       <div className="invite-state">
         <p className="eyebrow">Account recovery</p>

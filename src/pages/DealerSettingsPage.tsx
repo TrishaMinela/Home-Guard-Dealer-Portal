@@ -1,4 +1,10 @@
-export function DealerSettingsPage() {
+import { ChangePasswordForm } from '../components/ChangePasswordForm'
+
+type DealerSettingsPageProps = {
+  email: string
+}
+
+export function DealerSettingsPage({ email }: DealerSettingsPageProps) {
   return (
     <div className="page-content">
       <header className="page-header">
@@ -11,8 +17,8 @@ export function DealerSettingsPage() {
           <h2 id="password-settings-heading">Password</h2>
         </div>
         <div className="settings-card__body">
-          <p>To change your password, request a reset link for the email on your account. The existing reset page sends that link only after you submit it.</p>
-          <p><a className="button button--outline" href="/auth/forgot-password">Reset password</a></p>
+          <ChangePasswordForm email={email} />
+          <p><a href="/auth/forgot-password">Reset password</a></p>
         </div>
       </section>
       <section className="content-card" aria-labelledby="help-settings-heading">
